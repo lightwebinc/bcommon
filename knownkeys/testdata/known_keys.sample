@@ -1,0 +1,7 @@
+# example known_keys v1
+# One active record per address. @rotated-from is history and is never
+# matched for verification. @retired is terminal.
+
+alice@example.com secp256k1 0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798 seq=7 first=2026-01-02T03:04:05Z last=2026-01-09T10:11:12Z fp=SHA256:D3Fbr11MLtMpeFzvKeVi9zSIyKK7nbxXALNh1UubBVQ
+@rotated-from alice@example.com secp256k1 0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c until_seq=6 at=2026-01-09T10:11:12Z fp=SHA256:p80oF5TbGEhPJA2b38CSIauJ63wV48p6tnwwY89tfjc
+@retired bob@example.com secp256k1 02d8b9f4b27f4b5a6a0d8f29c1a7e6a5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4 at=2026-01-05T00:00:00Z fp=SHA256:dOoHkTIf4dWx4QWXnlAATrg63BoBS+nsU/lKPc96B2A

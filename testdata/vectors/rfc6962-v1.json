@@ -1,0 +1,3085 @@
+{
+  "leavesHex": [
+    "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+    "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+    "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+    "084fed08b978af4d7d196a7446a86b58009e636b611db16211b65a9aadff29c5",
+    "e52d9c508c502347344d8c07ad91cbd6068afc75ff6292f062a09ca381c89e71",
+    "e77b9a9ae9e30b0dbdb6f510a264ef9de781501d7b6b92ae89eb059c5ab743db",
+    "67586e98fad27da0b9968bc039a1ef34c939b9b8e523a8bef89d478608c5ecf6",
+    "ca358758f6d27e6cf45272937977a748fd88391db679ceda7dc7bf1f005ee879",
+    "beead77994cf573341ec17b58bbf7eb34d2711c993c1d976b128b3188dc1829a",
+    "2b4c342f5433ebe591a1da77e013d1b72475562d48578dca8b84bac6651c3cb9",
+    "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "e7cf46a078fed4fafd0b5e3aff144802b853f8ae459a4f0c14add3314b7cc3a6",
+    "ef6cbd2161eaea7943ce8693b9824d23d1793ffb1c0fca05b600d3899b44c977",
+    "9d1e0e2d9459d06523ad13e28a4093c2316baafe7aec5b25f30eba2e113599c4",
+    "4d7b3ef7300acf70c892d8327db8272f54434adbc61a4e130a563cb59a0d0f47",
+    "dc0e9c3658a1a3ed1ec94274d8b19925c93e1abb7ddba294923ad9bde30f8cb8",
+    "c555eab45d08845ae9f10d452a99bfcb06f74a50b988fe7e48dd323789b88ee3"
+  ],
+  "trees": [
+    {
+      "size": 1,
+      "rootHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+      "paths": [
+        {
+          "index": 0,
+          "steps": []
+        }
+      ]
+    },
+    {
+      "size": 2,
+      "rootHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 3,
+      "rootHex": "d1f13800048f5909d4043fc0c152f6643280cba608b672715e56ce159a20629f",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 4,
+      "rootHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 5,
+      "rootHex": "6b313b611b40676b9e1dfd70c4503f2379f88f0f1c2740fb7e1cacc32c113465",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 6,
+      "rootHex": "33d501ae67e6e5745c0aa49e3aff95130969b568208b07210c508caa5ff39b3c",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 7,
+      "rootHex": "bee2275db16667589a4515f63e0d053a2fa602c1d9f9703e98920a5bdad59baf",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "8da0dadfa0aaea7d9f4cd621d80cfbda617c8d13798abb8c3854351059e33be0",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "8da0dadfa0aaea7d9f4cd621d80cfbda617c8d13798abb8c3854351059e33be0",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "8da0dadfa0aaea7d9f4cd621d80cfbda617c8d13798abb8c3854351059e33be0",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "8da0dadfa0aaea7d9f4cd621d80cfbda617c8d13798abb8c3854351059e33be0",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 8,
+      "rootHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 9,
+      "rootHex": "aaba260cc2c4084b1d745f8817ad3d3350c5b005d8283bc3246396eee0ad9538",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 10,
+      "rootHex": "d17abecdd62e65e15ca44e38fc113257c487b9ea6273ccb2c9f0dfc895661c98",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 11,
+      "rootHex": "ed1d954562b2a1663d5a2630ffaf20dc151d543c96bd785369c8ab3e3fc3df6c",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "702ac2e177010529234c72e4a1d05f46454315db733b5ede584946080441af9c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 12,
+      "rootHex": "941cf4c19ace86bf45a19afa035d9d0937ee1429abd73353585ae21df1badb9b",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 13,
+      "rootHex": "8759c611964a1e257c11aab61dcd8206d01ae8c29799365f8f1b94045c0a9db2",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "7651ef97098fe34d9f1cca26097a60588264d7c50a19cc64a63bd6c1df72e1ff",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "steps": [
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 14,
+      "rootHex": "3443fd9d32330bab8684309180c0e88399b8c7cfdeef6a1bb88ecc3552ac1edb",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "1c3470233598365fd5a57946ddbbadd84a0eea32ab766ae2bc80440c9dd7587e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "steps": [
+            {
+              "hashHex": "7a247d4d289366994a9909e5f903de6b97558852ef6ef2e1fda8f39f90b8d793",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "steps": [
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 15,
+      "rootHex": "54b1e3892d6ec05fd73f8f0470dfbbaed5bec6b5029764a2cf9ff7a99459d56b",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "cdec6ebc4e93961ead787433fa3d8ec23a050ebd0be6bde705aa611f88172153",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "5bc159967c263027f0c77a5a553f1af4535ed75986cd63d3331373745003f8bd",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "5bc159967c263027f0c77a5a553f1af4535ed75986cd63d3331373745003f8bd",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "5bc159967c263027f0c77a5a553f1af4535ed75986cd63d3331373745003f8bd",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "5bc159967c263027f0c77a5a553f1af4535ed75986cd63d3331373745003f8bd",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "steps": [
+            {
+              "hashHex": "7a247d4d289366994a9909e5f903de6b97558852ef6ef2e1fda8f39f90b8d793",
+              "left": false
+            },
+            {
+              "hashHex": "6cf25932ed70137b143268f18da383107281a4318bb4fc8dd51592b60ad1ac9f",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "steps": [
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": true
+            },
+            {
+              "hashHex": "6cf25932ed70137b143268f18da383107281a4318bb4fc8dd51592b60ad1ac9f",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "steps": [
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 16,
+      "rootHex": "cc6e692ad24b6d105fa005c1028345bd7fd47c0221444ae3e6b9aa3708cacfc2",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "steps": [
+            {
+              "hashHex": "7a247d4d289366994a9909e5f903de6b97558852ef6ef2e1fda8f39f90b8d793",
+              "left": false
+            },
+            {
+              "hashHex": "a28fee2ecaefde26decc1c0c6316bd5789e84210002500a084bf4207920dcdbb",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "steps": [
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": true
+            },
+            {
+              "hashHex": "a28fee2ecaefde26decc1c0c6316bd5789e84210002500a084bf4207920dcdbb",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "steps": [
+            {
+              "hashHex": "065ff4a1b42a85e78e83d21d639d417936083e5c90a1125e545cb1df8b653a3d",
+              "left": false
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "steps": [
+            {
+              "hashHex": "6cf25932ed70137b143268f18da383107281a4318bb4fc8dd51592b60ad1ac9f",
+              "left": true
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 17,
+      "rootHex": "028145c4eede095d2c6f0f63f0bdd130349f04a4970aaf544d8cbd00bedb5e42",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "9d1843c1a24a654a39ff3448714bc9fe69da0170fa390b1ac67047377ba72f0e",
+              "left": false
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "d9de27625445003d8a9739a851e3ff8d41c0683630b4d63a88327a6aaa37c409",
+              "left": true
+            },
+            {
+              "hashHex": "22e77bd10c45b92713c2c3999e93334c6eb440905c65c1203a8361c2a91f0b83",
+              "left": false
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "36e4970e7c84e559ed7290304c3c0672289a6918e7746d48397b0e122db7748f",
+              "left": false
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "27d02c8f713c90ea0c37901129db86ac03186ee22a1f6f13da67e6b5bcee2044",
+              "left": true
+            },
+            {
+              "hashHex": "604d540f09268b91672ab011394d5266ccd7d4484d0d109411a55848126a1b2c",
+              "left": true
+            },
+            {
+              "hashHex": "20a4bcb54dc1a9ae1980bc1994f02696627e93a6f9c03d2f89f8f7abe9850232",
+              "left": false
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "d43e0bc415d9fa5bd12e23ca3a797ee65a1aefc3abfcaf8c7c508341c4046536",
+              "left": false
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "12d24297164ffddfd8febbd02275c3c5ff24916dc71d5f3476931480854b3113",
+              "left": true
+            },
+            {
+              "hashHex": "c9e643a3a8ebe49a4a4041781da4279b465b41bcd68b3f5c71ea93b090ca54f0",
+              "left": false
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "2ab92f5a613d6b0ad9ab94d59e4f3aa0f0cb34afd88baaba419fd841e53bd9d1",
+              "left": false
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "f00d6bcebbc5b0e3f18e3d219c0cbd80d08edd7de43b388f18196257ae4f1b8a",
+              "left": true
+            },
+            {
+              "hashHex": "8759d0890547f39383841b565fe658d0c99a2d76589fe804c4b4060f6dd500b8",
+              "left": true
+            },
+            {
+              "hashHex": "0dcc2b645c00dfa2338e1c7ac2c4b570beda5a476d58836e55e28bde55e6bee1",
+              "left": true
+            },
+            {
+              "hashHex": "2416eafb00bc42d9bbc9149d0ac29d9293290da02ad3b6fa94ca15ada1125934",
+              "left": false
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "40fca4753f69c3a589b96a6601f3e696f81b455b147d2b54d0bd10651f47027b",
+              "left": false
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "ebeecc8be69eda35188c3f68ce3361052798d30f5b1de694c9206e4a9e0ec1a5",
+              "left": true
+            },
+            {
+              "hashHex": "828f4b745ea18a29c15448a901825e59d6a0d7f85baa7477ed770460f2092f52",
+              "left": false
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "25681007ee61f80eb8d568b9ec04a8a3120240f2a733f7631ed3307cc0c7cd9a",
+              "left": false
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "5ccd4350688feeab82e65742881f55a142d3a582aeb12c05cc99729d7085a891",
+              "left": true
+            },
+            {
+              "hashHex": "1e61cb80cb3fb22110b1dcbc80343a1a99d13ed5efaa9907553167c4fe2e9998",
+              "left": true
+            },
+            {
+              "hashHex": "17d8e786e08d80219bee0ced93bc2cd4ce7f9061bfbef6f85288fddb9e86bb80",
+              "left": false
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 12,
+          "steps": [
+            {
+              "hashHex": "7a247d4d289366994a9909e5f903de6b97558852ef6ef2e1fda8f39f90b8d793",
+              "left": false
+            },
+            {
+              "hashHex": "a28fee2ecaefde26decc1c0c6316bd5789e84210002500a084bf4207920dcdbb",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 13,
+          "steps": [
+            {
+              "hashHex": "c01ffabef960aa74cf677a719f81b9a9d37feeab10fd7a52ed48e1747a56f674",
+              "left": true
+            },
+            {
+              "hashHex": "a28fee2ecaefde26decc1c0c6316bd5789e84210002500a084bf4207920dcdbb",
+              "left": false
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 14,
+          "steps": [
+            {
+              "hashHex": "065ff4a1b42a85e78e83d21d639d417936083e5c90a1125e545cb1df8b653a3d",
+              "left": false
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 15,
+          "steps": [
+            {
+              "hashHex": "6cf25932ed70137b143268f18da383107281a4318bb4fc8dd51592b60ad1ac9f",
+              "left": true
+            },
+            {
+              "hashHex": "1b29aa948d0839d7e0dea8819856d3fbaf694f6028be69a13d332ea800c4c2d9",
+              "left": true
+            },
+            {
+              "hashHex": "d9adb1f9928edda4223ca7b3abf4fd0b79fcf75119961db9a711d5ff5db9ea92",
+              "left": true
+            },
+            {
+              "hashHex": "80e139b44c90f91edebec705cc7586c3d90f4bdadd49628d25c20d4b03419287",
+              "left": true
+            },
+            {
+              "hashHex": "3b8325bb476d254b9d4d2401a08525834a000cfa0e1423e9e8b8d943178d7251",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 16,
+          "steps": [
+            {
+              "hashHex": "cc6e692ad24b6d105fa005c1028345bd7fd47c0221444ae3e6b9aa3708cacfc2",
+              "left": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

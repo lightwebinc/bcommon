@@ -1,0 +1,13 @@
+# Test binaries and coverage
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace files: this module is verified on its own (see Makefile)
+go.work
+go.work.sum
+
+# A binary built from the vector generator; it is run with go run
+tools/vectors/vectors

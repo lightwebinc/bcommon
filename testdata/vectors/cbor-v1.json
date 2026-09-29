@@ -1,0 +1,368 @@
+{
+  "value": {
+    "type": "map",
+    "pairs": [
+      {
+        "key": {
+          "type": "text",
+          "value": "text"
+        },
+        "value": {
+          "type": "array",
+          "items": [
+            {
+              "type": "text"
+            },
+            {
+              "type": "text",
+              "value": "a"
+            },
+            {
+              "type": "text",
+              "value": "ttttttttttttttttttttttt"
+            },
+            {
+              "type": "text",
+              "value": "uuuuuuuuuuuuuuuuuuuuuuuu"
+            },
+            {
+              "type": "text",
+              "value": "café naïve über 日本"
+            },
+            {
+              "type": "text",
+              "value": "abababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababababab"
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "1000"
+        },
+        "value": {
+          "type": "text",
+          "value": "a three-byte key"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "bytes"
+        },
+        "value": {
+          "type": "array",
+          "items": [
+            {
+              "type": "bytes"
+            },
+            {
+              "type": "bytes",
+              "value": "00"
+            },
+            {
+              "type": "bytes",
+              "value": "0102030405060708090a0b0c0d0e0f1011121314151617"
+            },
+            {
+              "type": "bytes",
+              "value": "202122232425262728292a2b2c2d2e2f3031323334353637"
+            },
+            {
+              "type": "bytes",
+              "value": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e"
+            },
+            {
+              "type": "bytes",
+              "value": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+            },
+            {
+              "type": "bytes",
+              "value": "c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaeb"
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "neg",
+          "value": "-1"
+        },
+        "value": {
+          "type": "bytes",
+          "value": "deadbeef"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "ints"
+        },
+        "value": {
+          "type": "array",
+          "items": [
+            {
+              "type": "uint",
+              "value": "0"
+            },
+            {
+              "type": "uint",
+              "value": "23"
+            },
+            {
+              "type": "uint",
+              "value": "24"
+            },
+            {
+              "type": "uint",
+              "value": "255"
+            },
+            {
+              "type": "uint",
+              "value": "256"
+            },
+            {
+              "type": "uint",
+              "value": "65535"
+            },
+            {
+              "type": "uint",
+              "value": "65536"
+            },
+            {
+              "type": "uint",
+              "value": "4294967295"
+            },
+            {
+              "type": "uint",
+              "value": "4294967296"
+            },
+            {
+              "type": "uint",
+              "value": "18446744073709551615"
+            },
+            {
+              "type": "neg",
+              "value": "-1"
+            },
+            {
+              "type": "neg",
+              "value": "-24"
+            },
+            {
+              "type": "neg",
+              "value": "-25"
+            },
+            {
+              "type": "neg",
+              "value": "-256"
+            },
+            {
+              "type": "neg",
+              "value": "-257"
+            },
+            {
+              "type": "neg",
+              "value": "-65536"
+            },
+            {
+              "type": "neg",
+              "value": "-65537"
+            },
+            {
+              "type": "neg",
+              "value": "-4294967296"
+            },
+            {
+              "type": "neg",
+              "value": "-4294967297"
+            },
+            {
+              "type": "neg",
+              "value": "-9223372036854775808"
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "0"
+        },
+        "value": {
+          "type": "text",
+          "value": "the smallest key"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "aa"
+        },
+        "value": {
+          "type": "uint",
+          "value": "2"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "24"
+        },
+        "value": {
+          "type": "text",
+          "value": "a two-byte key"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "b"
+        },
+        "value": {
+          "type": "uint",
+          "value": "1"
+        }
+      },
+      {
+        "key": {
+          "type": "neg",
+          "value": "-25"
+        },
+        "value": {
+          "type": "text",
+          "value": "a two-byte negative key"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "flags"
+        },
+        "value": {
+          "type": "array",
+          "items": [
+            {
+              "type": "true"
+            },
+            {
+              "type": "false"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "23"
+        },
+        "value": {
+          "type": "text",
+          "value": "the largest one-byte key"
+        }
+      },
+      {
+        "key": {
+          "type": "text",
+          "value": "deep"
+        },
+        "value": {
+          "type": "map",
+          "pairs": [
+            {
+              "key": {
+                "type": "text",
+                "value": "level"
+              },
+              "value": {
+                "type": "uint",
+                "value": "1"
+              }
+            },
+            {
+              "key": {
+                "type": "text",
+                "value": "next"
+              },
+              "value": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "map",
+                    "pairs": [
+                      {
+                        "key": {
+                          "type": "uint",
+                          "value": "3"
+                        },
+                        "value": {
+                          "type": "array",
+                          "items": [
+                            {
+                              "type": "map",
+                              "pairs": [
+                                {
+                                  "key": {
+                                    "type": "neg",
+                                    "value": "-4"
+                                  },
+                                  "value": {
+                                    "type": "array",
+                                    "items": [
+                                      {
+                                        "type": "array",
+                                        "items": []
+                                      },
+                                      {
+                                        "type": "map",
+                                        "pairs": []
+                                      },
+                                      {
+                                        "type": "bytes"
+                                      },
+                                      {
+                                        "type": "text"
+                                      }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "18446744073709551615"
+        },
+        "value": {
+          "type": "text",
+          "value": "the largest key"
+        }
+      },
+      {
+        "key": {
+          "type": "text"
+        },
+        "value": {
+          "type": "text",
+          "value": "an empty key"
+        }
+      }
+    ]
+  },
+  "encodingHex": "af007074686520736d616c6c657374206b6579177818746865206c617267657374206f6e652d62797465206b657918186e612074776f2d62797465206b65791903e870612074687265652d62797465206b65791bffffffffffffffff6f746865206c617267657374206b65792044deadbeef381877612074776f2d62797465206e65676174697665206b6579606c616e20656d707479206b6579616201626161026464656570a2646e65787481a10381a1238480a04060656c6576656c0164696e7473940017181818ff19010019ffff1a000100001affffffff1b00000001000000001bffffffffffffffff2037381838ff39010039ffff3a000100003affffffff3b00000001000000003b7fffffffffffffff64746578748660616177747474747474747474747474747474747474747474747478187575757575757575757575757575757575757575757575757819636166c3a9206e61c3af766520c3bc62657220e697a5e69cac7901006162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616261626162616265627974657387404100570102030405060708090a0b0c0d0e0f10111213141516175818202122232425262728292a2b2c2d2e2f303132333435363758ff404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e590100808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f59012cc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaeb65666c61677383f5f4f6"
+}

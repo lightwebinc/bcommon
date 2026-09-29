@@ -1,0 +1,40 @@
+# Scheduled vulnerability scan. An advisory published against a dependency does
+# not wait for a commit, so detection latency on a quiet repository is
+# unbounded. A red run here means a new advisory hit a dependency. go-sdk is
+# pinned on purpose (docs/dependencies.md), so a finding against it is fixed
+# by a deliberate raise that re-verifies every vector, never by a bot bump.
+name: Vuln scan
+
+on:
+  schedule:
+    # Tuesdays and Fridays 04:00 UTC. CodeQL runs Mondays 03:00; keeping the
+    # two apart makes a failure unambiguous about which scanner found what.
+    - cron: "0 4 * * 2,5"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  vuln:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          # A current toolchain, not the go.mod floor: the floor's standard
+          # library is not what an application builds with, and scanning it
+          # reports advisories that were fixed in later patch releases.
+          go-version: "1.27.1"
+
+      - name: govulncheck
+        # The workable govulncheck pin INVERTS across toolchains: v1.1.4
+        # crashes reading Go 1.27 export data, while >=v1.2 panicked on 1.26.
+        # Re-check this pin in BOTH directions on every toolchain bump.
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...

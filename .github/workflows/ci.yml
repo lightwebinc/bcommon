@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    # main only: a branch that has a PR is already covered by the
+    # pull_request run, and a bare-branch push would run everything a second
+    # time per PR (github.ref differs between the two events, so the
+    # concurrency group cannot dedupe them).
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          # A current toolchain, not the go.mod floor. The floor stays at
+          # 1.26.2 so that pinning this library never raises an application's
+          # own; go-version-file: go.mod would read the floor and exercise a
+          # standard library no application builds with.
+          go-version: "1.27.1"
+      - name: gofmt
+        run: test -z "$(gofmt -l .)"
+      - name: vet
+        run: go vet ./...
+      - name: build
+        run: go build ./...
+      - name: test
+        run: go test -race ./...
+      # int is 32 bits on a 32-bit target, so an index check that converts a
+      # uint32 to int wraps there from 1<<31 up and passes what it must
+      # refuse. The race detector does not run on 386, so this leg is plain.
+      - name: test on a 32-bit target
+        run: GOARCH=386 go test ./...
+      # The one-dependency rule and the go-sdk pin, asserted rather than
+      # intended (docs/dependencies.md). A second direct dependency arriving
+      # by accident is invisible in a diff that only adds an import, and every
+      # application that pins this library would inherit it.
+      - name: one direct dependency at the pinned version
+        run: make deps-check
+      # LICENSE-THIRD-PARTY is generated from what the packages actually link,
+      # so a new dependency that nobody notices is a licence obligation that
+      # nobody notices. This fails the build instead.
+      - name: third-party licences are current
+        run: make licences
+      # The vectors come from a generator in its own module, which go test in
+      # the root module never builds, so a stale vector or a generator that
+      # no longer writes it would otherwise pass. This regenerates them and
+      # compares byte for byte.
+      - name: vectors match their independent generator
+        run: make vectors
+
+  # go.mod promises Go 1.26.2 or later, while the job above builds with the
+  # current toolchain. go vet refuses a standard-library symbol newer than the
+  # go line, but not a behaviour that differs on 1.26 or a GODEBUG default
+  # that changed since, so the library is also built and tested on the newest
+  # 1.26 release. The version is a
+  # 1.26 range on purpose: a toolchain update must not move this leg off the
+  # line it exists to hold, and check-latest keeps a runner's cached 1.26
+  # from standing in for the newest one.
+  go126:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version: "1.26.x"
+          check-latest: true
+      - name: build
+        run: go build ./...
+      - name: test
+        run: go test -race ./...
