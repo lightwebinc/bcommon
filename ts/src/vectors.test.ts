@@ -7,8 +7,9 @@
  *
  * Every family a twin covers is read: CBOR, the manifest body (a CBOR value
  * the codec must reproduce), the refs entries, and the transactions' derived
- * keys, locks, field signatures, funding outputs and carriers. RFC 6962
- * roots and the transaction builders have no twin here.
+ * keys, locks, field signatures, funding outputs and carriers, and the
+ * carrier unlocking-script cases. RFC 6962 roots and the transaction
+ * builders have no twin here.
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -23,7 +24,7 @@ import {
   type WalletInterface,
   type WalletProtocol,
 } from '@bsv/sdk'
-import { LockTime, commitment, decodeCarrier, mineableRefusal, type PayloadCodec } from './carrier.js'
+import { LockTime, SigHashType, commitment, decodeCarrier, mineableRefusal, unlockingRefusal, type PayloadCodec } from './carrier.js'
 import { CborMap, decodeValue, encode, type Value } from './cbor.js'
 import { readerLockingKey } from './derive.js'
 import { verifyFieldSignature } from './fieldsig.js'
@@ -284,6 +285,45 @@ test('transactions-v1: each carrier decodes to its payload, key and commitment, 
   for (const [name, t] of [['funding tree', v.fundingTree], ['create', v.create], ['sweep', v.sweep]] as const) {
     assert.equal(mineableRefusal(Transaction.fromHex(t.txHex)), 'mineable', name)
   }
+})
+
+interface UnlockingVector {
+  carrier: number
+  sigHashType: number
+  cases: Array<{ name: string; accept: boolean; scriptValid: boolean; unlockingHex: string; txid: string; txHex: string }>
+}
+
+// Carrier 0 with its unlocking script rewritten, as the Go test reads it:
+// only the canonical case is taken, by unlockingRefusal and by
+// decodeCarrier alike. The interpreter's verdict (scriptValid) is the Go
+// side's; the cases it accepts are why the check exists.
+test('unlocking-v1: only the canonical unlocking script is taken', () => {
+  const { v, protocol } = chain()
+  const u = vector<UnlockingVector>('unlocking-v1.json')
+  assert.equal(u.sigHashType, SigHashType)
+  const base = v.carriers[u.carrier]
+  assert.ok(base !== undefined, `no carrier ${u.carrier}`)
+  const codec: PayloadCodec<string> = {
+    inspect: (b) => (hex(b) === base.payloadHex ? { kind: 'payload', payload: base.payloadHex } : { kind: 'not-payload' }),
+    validate: () => undefined,
+  }
+  const lockingKeyFor = (): ReturnType<typeof readerLockingKey> => readerLockingKey(protocol, v.objectKeyId, v.identityKeyHex)
+  let accepted = 0
+  let malleable = 0
+  for (const c of u.cases) {
+    const tx = Transaction.fromHex(c.txHex)
+    assert.equal(tx.toHex(), c.txHex, `${c.name}: re-serialises to its own bytes`)
+    assert.equal(tx.id('hex'), c.txid, `${c.name}: txid`)
+    assert.equal(tx.inputs[0]!.unlockingScript!.toHex(), c.unlockingHex, `${c.name}: unlocking script`)
+    assert.equal(c.accept, c.txHex === base.txHex, `${c.name}: only carrier ${u.carrier}'s own bytes are accepted`)
+    assert.equal(unlockingRefusal(tx), c.accept ? undefined : 'non-canonical-unlocking', c.name)
+    const d = decodeCarrier(tx, codec, lockingKeyFor)
+    if (c.accept) assert.ok(typeof d !== 'string', `${c.name} refused: ${String(d)}`)
+    else assert.equal(d, 'non-canonical-unlocking', c.name)
+    if (c.accept) accepted++
+    else if (c.scriptValid) malleable++
+  }
+  assert.ok(u.cases.length >= 21 && accepted === 1 && malleable > 0, `${u.cases.length} cases, ${accepted} accepted, ${malleable} malleable`)
 })
 
 test('transactions-v1: each state token\'s field signature verifies over its tag and commitment, and its lock is what the SDK writes', async () => {

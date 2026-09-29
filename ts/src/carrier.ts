@@ -33,7 +33,16 @@ export const MaxSequence = 0xffffffff
  * topic manager counts it as a metric label: an unbounded reason would be a
  * cardinality bomb fed by whoever publishes objects.
  */
-export type CarrierRefusal = 'not-pushdrop' | 'bad-record' | 'bad-lock' | 'bad-sig' | 'mineable' | 'other'
+export type CarrierRefusal = 'not-pushdrop' | 'bad-record' | 'bad-lock' | 'bad-sig' | 'mineable' | 'non-canonical-unlocking' | 'other'
+
+/**
+ * The one sighash type a carrier's input is signed with, SIGHASH_ALL|FORKID,
+ * as the Go Mint signs it.
+ */
+export const SigHashType = 0x41
+
+/** The order n of secp256k1's group. */
+const order = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n
 
 /**
  * What a codec makes of the first field of a two-field PushDrop:
@@ -137,6 +146,65 @@ export function mineableRefusal(tx: Transaction): CarrierRefusal | undefined {
   return undefined
 }
 
+/** A DER INTEGER's content: present, not negative, not padded. */
+function strictInt(b: Uint8Array): boolean {
+  if (b.length === 0 || (b[0]! & 0x80) !== 0) return false
+  return !(b.length > 1 && b[0] === 0 && (b[1]! & 0x80) === 0)
+}
+
+function toBigInt(b: Uint8Array): bigint {
+  let x = 0n
+  for (const byte of b) x = (x << 8n) | BigInt(byte)
+  return x
+}
+
+/**
+ * A strict DER ECDSA signature under BIP 66's rules, with R in [1, n-1] and
+ * S in [1, n/2].
+ */
+function strictSignature(der: Uint8Array): boolean {
+  if (der.length < 8 || der.length > 72) return false
+  if (der[0] !== 0x30 || der[1] !== der.length - 2) return false
+  const lenR = der[3]!
+  if (der[2] !== 0x02 || lenR === 0 || 6 + lenR > der.length) return false
+  const lenS = der[5 + lenR]!
+  if (der[4 + lenR] !== 0x02 || lenS === 0 || 6 + lenR + lenS !== der.length) return false
+  const r = der.subarray(4, 4 + lenR)
+  const s = der.subarray(6 + lenR)
+  if (!strictInt(r) || !strictInt(s)) return false
+  const R = toBigInt(r)
+  const S = toBigInt(s)
+  return R > 0n && R < order && S > 0n && S <= order >> 1n
+}
+
+/**
+ * The canonical unlocking script: exactly one input, whose unlocking script
+ * is exactly one minimally encoded data push holding a strict DER ECDSA
+ * signature (BIP 66) with R in [1, n-1] and S in [1, n/2], followed by the
+ * one sighash byte SigHashType. The twin of the Go carrier.CheckUnlocking.
+ *
+ * The carrier's txid is its commitment, and a host reads a funding output
+ * spent by another txid as the record retracted. The script interpreter
+ * accepts a high-S signature, a non-minimal push and an extra push or no-op,
+ * so without this check anyone who sees a carrier could spend its funding
+ * output under a new txid carrying the same record and retract it. The check
+ * is structural: whether the signature satisfies the funding output is SPV's.
+ * It reads the transaction alone, so a host can run it before anything else.
+ */
+export function unlockingRefusal(tx: Transaction): CarrierRefusal | undefined {
+  if (tx.inputs.length !== 1) return 'non-canonical-unlocking'
+  const u = tx.inputs[0]?.unlockingScript
+  if (u === undefined) return 'non-canonical-unlocking'
+  const s = Uint8Array.from(u.toBinary())
+  // A signature and its sighash byte are 9 to 73 bytes, which a minimal
+  // encoding always pushes with the one-byte opcode that is its length.
+  const op = s[0]
+  if (op === undefined || op < 1 || op > 75 || s.length !== 1 + op) return 'non-canonical-unlocking'
+  const sig = s.subarray(1)
+  if (sig[sig.length - 1] !== SigHashType) return 'non-canonical-unlocking'
+  return strictSignature(sig.subarray(0, sig.length - 1)) ? undefined : 'non-canonical-unlocking'
+}
+
 export interface Carrier<P> {
   outputIndex: number
   payload: P
@@ -161,9 +229,10 @@ export function commitment(tx: Transaction): number[] {
  * Exactly one output may be a record output: with two, the commitment would
  * name two payloads at once. The order of the checks is part of the
  * contract, because a carrier that breaks two rules is refused for the
- * first: the payload's rules, then unmineability, then the lock, then the
- * signature. The rules that need the previous state belong to the lookup
- * service, not here.
+ * first: the payload's rules, then unmineability, then the canonical
+ * unlocking script (unlockingRefusal), then the lock, then the signature.
+ * The rules that need the previous state belong to the lookup service, not
+ * here.
  */
 export function decodeCarrier<P>(tx: Transaction, codec: PayloadCodec<P>, lockingKeyFor: LockingKeyFor<P>): Carrier<P> | CarrierRefusal {
   let found: (CarrierOutput<P> & { outputIndex: number }) | undefined
@@ -177,7 +246,7 @@ export function decodeCarrier<P>(tx: Transaction, codec: PayloadCodec<P>, lockin
     found = { ...insp.out, outputIndex: i }
   }
   if (found === undefined) return 'not-pushdrop'
-  const refused = payloadRefusal(found, codec) ?? mineableRefusal(tx) ?? lockRefusal(found, lockingKeyFor) ?? signatureRefusal(found)
+  const refused = payloadRefusal(found, codec) ?? mineableRefusal(tx) ?? unlockingRefusal(tx) ?? lockRefusal(found, lockingKeyFor) ?? signatureRefusal(found)
   if (refused !== undefined) return refused
   return {
     outputIndex: found.outputIndex,

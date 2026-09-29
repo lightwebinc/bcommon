@@ -2,9 +2,11 @@ package verify_test
 
 import (
 	"bytes"
+	"math/big"
 	"strings"
 	"testing"
 
+	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
@@ -103,6 +105,13 @@ func TestVerifyCarrierRefusals(t *testing.T) {
 	}
 	handed := func(p []byte, lockTime, seq uint32) scene {
 		return f.served(f.hand(f.w1, f.lock(f.w1, p), 3, lockTime, seq))
+	}
+	// highS is tx with its signature's S replaced by n - S, which anyone can
+	// do without the key: the same record under another txid.
+	highS := func(tx *transaction.Transaction) scene {
+		flipped := script.Script(flipS(t, *tx.Inputs[0].UnlockingScript))
+		tx.Inputs[0].UnlockingScript = &flipped
+		return f.served(tx)
 	}
 	rows := []struct {
 		name   string
@@ -219,6 +228,29 @@ func TestVerifyCarrierRefusals(t *testing.T) {
 			tx.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: f.lock(f.w1, payload(f.id1, 5))})
 			return f.served(tx)
 		}, "REFUSED-DECODE", "{what}: carrier: not a carrier: no inputs"},
+		{"Validate: a high-S unlocking script", func() scene {
+			return highS(valid(18, 0))
+		}, "REFUSED-UNLOCKING", "{what}: carrier: unlocking script is not one canonical signature push: S is high"},
+		{"Validate: a non-minimal push", func() scene {
+			tx := valid(19, 0)
+			u := *tx.Inputs[0].UnlockingScript
+			wide := script.Script(append([]byte{script.OpPUSHDATA1}, u...))
+			tx.Inputs[0].UnlockingScript = &wide
+			return f.served(tx)
+		}, "REFUSED-UNLOCKING", "{what}: carrier: unlocking script is not one canonical signature push: not a minimal push"},
+		{"Validate: mineable before the unlocking script", func() scene {
+			return highS(f.hand(f.w1, f.lock(f.w1, payload(f.id1, 5)), 3, 0, nonFinal))
+		}, "REFUSED-MINEABLE", "{what}: carrier: mineable; the record could reach the chain: nLockTime 0"},
+		{"Validate: the unlocking script before the identity key", func() scene {
+			id := bytes.Clone(f.id1)
+			id[0] = 0x04
+			return highS(f.hand(f.w1, f.lock(f.w1, payload(id, 5)), 3, unmineable, nonFinal))
+		}, "REFUSED-UNLOCKING", "{what}: carrier: unlocking script is not one canonical signature push: S is high"},
+		{"the unlocking script before the proof", func() scene {
+			s := highS(valid(20, 0))
+			s.tracker = &goldentest.Tracker{Roots: map[uint32]string{}}
+			return s
+		}, "REFUSED-UNLOCKING", "{what}: carrier: unlocking script is not one canonical signature push: S is high"},
 		{"Validate: identity key does not parse", func() scene {
 			id := bytes.Clone(f.id1)
 			id[0] = 0x04
@@ -362,4 +394,26 @@ func TestVerifyCarrierIncompleteSpec(t *testing.T) {
 	if code != verify.Verified || c == nil {
 		t.Fatalf("control: %s", code)
 	}
+}
+
+// flipS rewrites a canonical unlocking script's signature to the other S
+// that verifies, n - S, strictly encoded.
+func flipS(t *testing.T, unlocking []byte) []byte {
+	t.Helper()
+	if len(unlocking) < 2 || int(unlocking[0]) != len(unlocking)-1 {
+		t.Fatalf("not one direct push: %x", unlocking)
+	}
+	sig := unlocking[1:]
+	der, hashType := sig[:len(sig)-1], sig[len(sig)-1]
+	lenR := int(der[3])
+	r, s := der[4:4+lenR], new(big.Int).SetBytes(der[6+lenR:])
+	flipped := new(big.Int).Sub(ec.S256().N, s).Bytes()
+	if flipped[0]&0x80 != 0 {
+		flipped = append([]byte{0}, flipped...)
+	}
+	body := append([]byte{0x02, byte(len(r))}, r...)
+	body = append(append(body, 0x02, byte(len(flipped))), flipped...)
+	out := append([]byte{0x30, byte(len(body))}, body...)
+	out = append(out, hashType)
+	return append([]byte{byte(len(out))}, out...)
 }

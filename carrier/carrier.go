@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	hash "github.com/bsv-blockchain/go-sdk/primitives/hash"
@@ -46,6 +47,10 @@ const LockTime uint32 = 4102444800
 // the locktime in force; zero is the conventional non-final value.
 const Sequence uint32 = 0
 
+// SigHashType is the one sighash type a carrier's input is signed with,
+// SIGHASH_ALL|FORKID, as Mint signs it through the derivation's unlocker.
+const SigHashType byte = 0x41
+
 // The refusals. Their texts are what readers print, so they do not change.
 var (
 	ErrNotCarrier = errors.New("carrier: not a carrier")
@@ -53,6 +58,11 @@ var (
 	ErrMineable   = errors.New("carrier: mineable; the record could reach the chain")
 	ErrLock       = errors.New("carrier: locking key is not the identity's record key")
 	ErrSignature  = errors.New("carrier: field signature does not verify")
+	// ErrUnlocking is a carrier whose input is not spent by exactly the one
+	// canonical signature push CheckUnlocking describes. Anyone who sees a
+	// carrier can rewrite a looser unlocking script without the key, and the
+	// rewrite is a different txid spending the same funding output.
+	ErrUnlocking = errors.New("carrier: unlocking script is not one canonical signature push")
 	// ErrIdentity is what an identity key that does not parse wraps when the
 	// application names no sentinel of its own in Params.ErrIdentity.
 	ErrIdentity = errors.New("carrier: identity key does not parse")
@@ -147,13 +157,13 @@ func Decode(tx *transaction.Transaction, classify Classify) (*Carrier, error) {
 }
 
 // Validate applies what a carrier must satisfy on its own: the payload's own
-// rules, unmineability, the lock derivation from identityKey, and the field
-// signature under that lock. The chain rules that need the previous state
+// rules, unmineability, the canonical unlocking script (CheckUnlocking), the
+// lock derivation from identityKey, and the field signature under that lock. The chain rules that need the previous state
 // belong to the verifier and the lookup service, not here.
 //
 // The order is part of the contract, because a carrier that breaks two rules
 // is refused for the first: the payload's rules, then the finality checks,
-// and only then the identity key. So an invalid payload is refused as such
+// then the unlocking script, and only then the identity key. So an invalid payload is refused as such
 // even when the carrier could be mined, and a mineable carrier as mineable
 // even when its identity key does not parse.
 func (c *Carrier) Validate(p Params, identityKey []byte) error {
@@ -177,6 +187,9 @@ func (c *Carrier) Validate(p Params, identityKey []byte) error {
 			return fmt.Errorf("%w: input %d is final", ErrMineable, i)
 		}
 	}
+	if err := CheckUnlocking(c.Tx); err != nil {
+		return err
+	}
 	identity, err := ec.PublicKeyFromBytes(identityKey)
 	if err != nil {
 		// An application's own sentinel says only that a field is wrong, so
@@ -198,6 +211,101 @@ func (c *Carrier) Validate(p Params, identityKey []byte) error {
 		return ErrSignature
 	}
 	return nil
+}
+
+// CheckUnlocking refuses, as ErrUnlocking, a carrier that does not have
+// exactly one input, or whose input's unlocking script is not exactly one
+// minimally encoded data push holding a strict DER ECDSA signature (BIP 66)
+// with R in [1, n-1] and S in [1, n/2], followed by the one sighash byte
+// SigHashType.
+//
+// The carrier's txid is its commitment, and a host reads a funding output
+// spent by another txid as the record retracted. The script interpreter
+// accepts a high-S signature, a non-minimal push and an extra push or no-op,
+// so without this check anyone who sees a carrier could spend its funding
+// output under a new txid carrying the same record and retract it. With it,
+// one signature from the key is the only spend a reader takes. The check is
+// structural: whether the signature satisfies the funding output is the
+// SPV check's (verify.Check).
+func CheckUnlocking(tx *transaction.Transaction) error {
+	if tx == nil {
+		return fmt.Errorf("%w: nil transaction", ErrUnlocking)
+	}
+	if len(tx.Inputs) != 1 || tx.Inputs[0] == nil {
+		return fmt.Errorf("%w: %d inputs, want 1", ErrUnlocking, len(tx.Inputs))
+	}
+	var s []byte
+	if u := tx.Inputs[0].UnlockingScript; u != nil {
+		s = *u
+	}
+	if len(s) == 0 {
+		return fmt.Errorf("%w: empty", ErrUnlocking)
+	}
+	// A signature and its sighash byte are 9 to 73 bytes, which a minimal
+	// encoding always pushes with the one-byte opcode that is its length.
+	op := s[0]
+	switch {
+	case op >= script.OpPUSHDATA1 && op <= script.OpPUSHDATA4:
+		return fmt.Errorf("%w: not a minimal push", ErrUnlocking)
+	case op < 1 || op > 75:
+		return fmt.Errorf("%w: opcode 0x%02x is not a signature push", ErrUnlocking, op)
+	case len(s) < 1+int(op):
+		return fmt.Errorf("%w: truncated push", ErrUnlocking)
+	case len(s) > 1+int(op):
+		return fmt.Errorf("%w: more than one push or opcode", ErrUnlocking)
+	}
+	sig := s[1:]
+	if h := sig[len(sig)-1]; h != SigHashType {
+		return fmt.Errorf("%w: sighash type 0x%02x, want 0x%02x", ErrUnlocking, h, SigHashType)
+	}
+	if why := strictSignature(sig[:len(sig)-1]); why != "" {
+		return fmt.Errorf("%w: %s", ErrUnlocking, why)
+	}
+	return nil
+}
+
+// strictSignature says why der is not a strict DER ECDSA signature under
+// BIP 66's rules with R in [1, n-1] and S in [1, n/2], or "" when it is.
+func strictSignature(der []byte) string {
+	// 0x30 len 0x02 lenR R 0x02 lenS S, each integer at least one byte.
+	if len(der) < 8 || len(der) > 72 {
+		return "signature length out of range"
+	}
+	if der[0] != 0x30 || int(der[1]) != len(der)-2 {
+		return "signature is not one DER sequence"
+	}
+	lenR := int(der[3])
+	if der[2] != 0x02 || lenR == 0 || 6+lenR > len(der) {
+		return "R is not a DER integer"
+	}
+	lenS := int(der[5+lenR])
+	if der[4+lenR] != 0x02 || lenS == 0 || 6+lenR+lenS != len(der) {
+		return "S is not a DER integer"
+	}
+	r, s := der[4:4+lenR], der[6+lenR:]
+	for _, v := range []struct {
+		name string
+		b    []byte
+	}{{"R", r}, {"S", s}} {
+		if v.b[0]&0x80 != 0 {
+			return v.name + " is negative"
+		}
+		if len(v.b) > 1 && v.b[0] == 0 && v.b[1]&0x80 == 0 {
+			return v.name + " is padded"
+		}
+	}
+	n := ec.S256().N
+	if R := new(big.Int).SetBytes(r); R.Sign() == 0 || R.Cmp(n) >= 0 {
+		return "R out of range"
+	}
+	S := new(big.Int).SetBytes(s)
+	if S.Sign() == 0 {
+		return "S is zero"
+	}
+	if S.Cmp(new(big.Int).Rsh(n, 1)) > 0 {
+		return "S is high"
+	}
+	return ""
 }
 
 // Mint builds and signs a carrier for payload, spending output vout of

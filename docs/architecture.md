@@ -284,12 +284,28 @@ to read what a producer wrote:
 | `pushdrop.Derivation.ExpectedLockingKey` | `readerLockingKey` |
 | `pushdrop.Tagged.VerifySignature` | `verifyFieldSignature` |
 | `carrier.DecodeFunding` | `decodeFunding` |
-| `carrier.Decode` with `Carrier.Validate`, `carrier.Commitment`, `carrier.LockTime` | `decodeCarrier` (and its steps `inspectScript`, `payloadRefusal`, `mineableRefusal`, `lockRefusal`, `signatureRefusal`), `commitment`, `LockTime` |
+| `carrier.Decode` with `Carrier.Validate`, `carrier.Commitment`, `carrier.LockTime` | `decodeCarrier` (and its steps `inspectScript`, `payloadRefusal`, `mineableRefusal`, `unlockingRefusal`, `lockRefusal`, `signatureRefusal`), `commitment`, `LockTime` |
+| `carrier.CheckUnlocking`, `carrier.SigHashType` | `unlockingRefusal`, `SigHashType` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
-strings, because a topic manager counts it as a metric label. The package
-also carries the overlay engine's module interfaces (`TopicManager`,
+strings, because a topic manager counts it as a metric label.
+
+Both refuse a carrier whose input is not spent by exactly one canonical
+signature push: one input, and an unlocking script that is exactly one
+minimally encoded push of a strict DER signature (BIP 66) with R in
+[1, n-1] and S in [1, n/2], then the sighash byte SIGHASH_ALL|FORKID (0x41).
+The script interpreter accepts looser forms, a high S, a wider push, an
+extra push or a no-op, and each is a different txid spending the same
+funding output with the same record, so without the check anyone who saw a
+carrier could present a spend of its funding output under another txid, and
+a host would read the record as retracted. In Go the refusal is `carrier.ErrUnlocking`, reported
+by `verify.VerifyCarrier` as `REFUSED-UNLOCKING`; in TypeScript it is
+`non-canonical-unlocking`, which `decodeCarrier` returns after the finality
+check and before the lock. A host that must decide on a transaction before
+it knows which output is the record calls `unlockingRefusal` on its own.
+
+The package also carries the overlay engine's module interfaces (`TopicManager`,
 `LookupService`, `Module` and the rest) and, under the separate
 `@lightwebinc/bcommon/testing` entry point, Node test helpers that drive a
 lookup service in the engine's own order.

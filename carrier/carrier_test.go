@@ -149,6 +149,7 @@ func TestSentinelTexts(t *testing.T) {
 		carrier.ErrLock:       "carrier: locking key is not the identity's record key",
 		carrier.ErrSignature:  "carrier: field signature does not verify",
 		carrier.ErrIdentity:   "carrier: identity key does not parse",
+		carrier.ErrUnlocking:  "carrier: unlocking script is not one canonical signature push",
 	} {
 		if err.Error() != want {
 			t.Errorf("%q, want %q", err, want)
@@ -345,8 +346,9 @@ func TestDecodeSkipIgnoresClassifierError(t *testing.T) {
 }
 
 // Validate's order is its contract: the payload's rules first, then the
-// finality checks, and the identity key only after them. Each row breaks
-// what its name says and, where it breaks two rules, pins which is reported.
+// finality checks, then the unlocking script, and the identity key only
+// after them. Each row breaks what its name says and, where it breaks two
+// rules, pins which is reported.
 func TestValidateOrder(t *testing.T) {
 	f := newFixture(t)
 	offCurve := make([]byte, 33)
@@ -370,6 +372,16 @@ func TestValidateOrder(t *testing.T) {
 	finalSecond := func(c *carrier.Carrier) {
 		c.Tx.Inputs = append(c.Tx.Inputs, &transaction.TransactionInput{SourceTXID: c.Tx.Inputs[0].SourceTXID,
 			SourceTxOutIndex: 1, UnlockingScript: &script.Script{}, SequenceNumber: transaction.MaxTxInSequenceNum})
+	}
+	// A second input as non-final as the first, spent by the same unlocking
+	// script: nothing but the count is wrong.
+	secondInput := func(c *carrier.Carrier) {
+		c.Tx.Inputs = append(c.Tx.Inputs, &transaction.TransactionInput{SourceTXID: c.Tx.Inputs[0].SourceTXID,
+			SourceTxOutIndex: 1, UnlockingScript: c.Tx.Inputs[0].UnlockingScript, SequenceNumber: carrier.Sequence})
+	}
+	highS := func(c *carrier.Carrier) {
+		s := script.Script(flipS(t, *c.Tx.Inputs[0].UnlockingScript))
+		c.Tx.Inputs[0].UnlockingScript = &s
 	}
 
 	for _, row := range []struct {
@@ -397,6 +409,17 @@ func TestValidateOrder(t *testing.T) {
 			text: "carrier: not a carrier: no inputs"},
 		{name: "no inputs and a low locktime", mutate: both(noInputs, lockTime(0)), want: carrier.ErrMineable,
 			text: "carrier: mineable; the record could reach the chain: nLockTime 0"},
+		{name: "high S", mutate: highS, want: carrier.ErrUnlocking,
+			text: "carrier: unlocking script is not one canonical signature push: S is high"},
+		{name: "two non-final inputs", mutate: secondInput, want: carrier.ErrUnlocking,
+			text: "carrier: unlocking script is not one canonical signature push: 2 inputs, want 1"},
+		{name: "invalid payload and high S", payload: "smp\x02", mutate: highS, want: errBadSample, text: "sample: version is not 1"},
+		{name: "high S and mineable", mutate: both(highS, lockTime(0)), want: carrier.ErrMineable,
+			text: "carrier: mineable; the record could reach the chain: nLockTime 0"},
+		{name: "off curve and high S", identity: offCurve, mutate: highS, want: carrier.ErrUnlocking,
+			text: "carrier: unlocking script is not one canonical signature push: S is high"},
+		{name: "foreign identity and high S", identity: foreign.PubKey().Compressed(), mutate: highS, want: carrier.ErrUnlocking,
+			text: "carrier: unlocking script is not one canonical signature push: S is high"},
 		{name: "off curve", identity: offCurve, want: carrier.ErrIdentity,
 			text: "carrier: identity key does not parse: invalid square root"},
 		{name: "off curve, the application's sentinel", identity: offCurve, want: errOwn,

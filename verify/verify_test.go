@@ -250,10 +250,11 @@ func TestCodes(t *testing.T) {
 		verify.RefusedKeyDerive: "REFUSED-KEY-DERIVE", verify.RefusedSig: "REFUSED-SIG", verify.RefusedKey: "REFUSED-KEY",
 		verify.RefusedSeq: "REFUSED-SEQ", verify.RefusedFork: "REFUSED-FORK", verify.RefusedExpired: "REFUSED-EXPIRED",
 		verify.RefusedBump: "REFUSED-BUMP", verify.RefusedCommit: "REFUSED-COMMIT", verify.RefusedWitness: "REFUSED-WITNESS",
-		verify.RefusedMineable: "REFUSED-MINEABLE", verify.RefusedRetired: "REFUSED-RETIRED", verify.Error: "ERROR",
+		verify.RefusedMineable: "REFUSED-MINEABLE", verify.RefusedUnlocking: "REFUSED-UNLOCKING", verify.RefusedRetired: "REFUSED-RETIRED",
+		verify.Error: "ERROR",
 	}
-	if len(codes) != 18 {
-		t.Fatalf("%d distinct codes, want 18", len(codes))
+	if len(codes) != 19 {
+		t.Fatalf("%d distinct codes, want 19", len(codes))
 	}
 	for c, want := range codes {
 		if string(c) != want {

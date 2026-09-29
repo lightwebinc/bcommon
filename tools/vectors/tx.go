@@ -356,45 +356,59 @@ func p2pkhLiteral(b byte) (*script.Script, error) {
 }
 
 func txFamilies() ([]family, error) {
-	v, err := transactions()
+	v, parts, err := transactions()
 	if err != nil {
 		return nil, fmt.Errorf("transactions: %w", err)
 	}
-	return []family{{"transactions-v1.json", v}}, nil
+	u, err := unlockings(v, parts)
+	if err != nil {
+		return nil, fmt.Errorf("unlocking: %w", err)
+	}
+	return []family{{"transactions-v1.json", v}, {"unlocking-v1.json", u}}, nil
 }
 
-func transactions() (*txVector, error) {
+// txParts is what the unlocking family is built from: the transactions
+// themselves rather than their hex, and the builder and tracker that made
+// and proved them.
+type txParts struct {
+	b        *builder
+	tree     *transaction.Transaction
+	carriers []*transaction.Transaction
+	tracker  roots
+}
+
+func transactions() (*txVector, *txParts, error) {
 	ctx := context.Background()
 	seed := bytes.Repeat([]byte{0x42}, 32)
 	key, _ := ec.PrivateKeyFromBytes(seed)
 	w, err := wallet.NewCompletedProtoWallet(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	payer, err := p2pkh.Unlock(key, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// The change and the payment go to literal P2PKH hashes rather than to
 	// derived keys, so these bytes move only when the builders do.
 	change, err := p2pkhLiteral(0x66)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	dest, err := p2pkhLiteral(0x77)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	b := &builder{ctx: ctx, pd: &pushdrop.PushDrop{Wallet: w, Originator: originator},
 		payer: payer, change: change, identity: key.PubKey()}
 
 	objectKey, err := b.readerKey(objectKeyID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	stateKey, err := b.readerKey(stateKeyID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	v := &txVector{
 		PrivateKeyHex:       hex.EncodeToString(seed),
@@ -417,11 +431,11 @@ func transactions() (*txVector, error) {
 	// outputs to the test key, one for each fee-paying transaction.
 	addr, err := script.NewAddressFromPublicKey(key.PubKey(), true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	pay, err := p2pkh.Lock(addr)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	v.PayScriptHex = pay.String()
 	coin := transaction.NewTransaction()
@@ -433,7 +447,7 @@ func transactions() (*txVector, error) {
 	}
 	coinRoot, err := mine(coin, coinHeight, 0x22, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	v.Coin = coinTx{Sats: coinSats, Txid: coin.TxID().String(), TxHex: coin.Hex(),
 		Height: coinHeight, BumpHex: coin.MerklePath.Hex(), RootHex: coinRoot.String()}
@@ -443,10 +457,10 @@ func transactions() (*txVector, error) {
 	// alone under the object derivation with no signature.
 	fundingLock, err := b.lock(objectKeyID, false, fundingTag)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := b.checkLock(fundingLock, objectKeyID, false, fundingTag); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	v.FundingLockHex = fundingLock.String()
 	const treeFeeVout = 0
@@ -459,15 +473,15 @@ func transactions() (*txVector, error) {
 		return tx, b.addChange(tx, coin.Outputs[treeFeeVout].Satoshis, fee)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("funding tree: %w", err)
+		return nil, nil, fmt.Errorf("funding tree: %w", err)
 	}
 	kept, err := tree.AtomicBEEF(false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	treeRoot, err := mine(tree, treeHeight, 0x33, false)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	tracker[treeHeight] = treeRoot
 	v.FundingTree = fundingTreeTx{FeeVout: treeFeeVout, Count: treeCount, Sats: treeSats, FeeSats: feePaid(tree),
@@ -482,10 +496,10 @@ func transactions() (*txVector, error) {
 		vout := uint32(i)
 		record, err := b.lock(objectKeyID, true, payload)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := b.checkLock(record, objectKeyID, true, payload); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		tx := transaction.NewTransaction()
 		tx.LockTime = carrierLockTime
@@ -493,11 +507,11 @@ func transactions() (*txVector, error) {
 		tx.Inputs[0].SequenceNumber = carrierSequence
 		tx.AddOutput(&transaction.TransactionOutput{Satoshis: tree.Outputs[vout].Satoshis, LockingScript: record})
 		if err := tx.Sign(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		c := sha256d(tx.Bytes())
 		if c != *tx.TxID() {
-			return nil, fmt.Errorf("carrier %d: SHA-256d of the bytes is not go-sdk's txid", i)
+			return nil, nil, fmt.Errorf("carrier %d: SHA-256d of the bytes is not go-sdk's txid", i)
 		}
 		carriers = append(carriers, tx)
 		v.Carriers = append(v.Carriers, carrierTx{Vout: vout, PayloadHex: hex.EncodeToString(payload),
@@ -533,13 +547,13 @@ func transactions() (*txVector, error) {
 	}
 	create, createLock, err := transition(0, nil, 1)
 	if err != nil {
-		return nil, fmt.Errorf("create: %w", err)
+		return nil, nil, fmt.Errorf("create: %w", err)
 	}
 	v.Create = transitionTx{Carrier: 0, FeeVout: 1, Sats: tokenSats, LockHex: createLock.String(),
 		FeeSats: feePaid(create), Txid: create.TxID().String(), TxHex: create.Hex()}
 	update, updateLock, err := transition(1, create, 2)
 	if err != nil {
-		return nil, fmt.Errorf("update: %w", err)
+		return nil, nil, fmt.Errorf("update: %w", err)
 	}
 	prevVout := uint32(0)
 	v.Update = transitionTx{Carrier: 1, PrevVout: &prevVout, FeeVout: 2, Sats: tokenSats, LockHex: updateLock.String(),
@@ -554,7 +568,7 @@ func transactions() (*txVector, error) {
 		return tx, b.addChange(tx, coin.Outputs[payFeeVout].Satoshis, fee)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("payment: %w", err)
+		return nil, nil, fmt.Errorf("payment: %w", err)
 	}
 	v.Payment = paymentTx{FeeVout: payFeeVout, Sats: paySats, DestScriptHex: dest.String(),
 		FeeSats: feePaid(payment), Txid: payment.TxID().String(), TxHex: payment.Hex()}
@@ -586,13 +600,13 @@ func transactions() (*txVector, error) {
 	}
 	selfPaid, err := sweep([]uint32{2, 3}, nil)
 	if err != nil {
-		return nil, fmt.Errorf("sweep: %w", err)
+		return nil, nil, fmt.Errorf("sweep: %w", err)
 	}
 	v.Sweep = sweepTx{Vouts: []uint32{2, 3}, FeeSats: feePaid(selfPaid), Txid: selfPaid.TxID().String(), TxHex: selfPaid.Hex()}
 	sweepFeeVout := uint32(4)
 	withFee, err := sweep([]uint32{0, 3}, &sweepFeeVout)
 	if err != nil {
-		return nil, fmt.Errorf("sweep with a fee input: %w", err)
+		return nil, nil, fmt.Errorf("sweep with a fee input: %w", err)
 	}
 	v.SweepWithFee = sweepTx{Vouts: []uint32{0, 3}, FeeVout: &sweepFeeVout, FeeSats: feePaid(withFee),
 		Txid: withFee.TxID().String(), TxHex: withFee.Hex()}
@@ -604,8 +618,8 @@ func transactions() (*txVector, error) {
 	for _, tx := range all {
 		ok, err := spv.Verify(ctx, tx, tracker, nil)
 		if err != nil || !ok {
-			return nil, fmt.Errorf("%s does not verify: ok=%v err=%v", tx.TxID(), ok, err)
+			return nil, nil, fmt.Errorf("%s does not verify: ok=%v err=%v", tx.TxID(), ok, err)
 		}
 	}
-	return v, nil
+	return v, &txParts{b: b, tree: tree, carriers: carriers, tracker: tracker}, nil
 }

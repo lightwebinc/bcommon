@@ -25,6 +25,7 @@ export { decodeFunding } from './funding.js'
 export {
   LockTime,
   MaxSequence,
+  SigHashType,
   commitment,
   decodeCarrier,
   inspectScript,
@@ -32,6 +33,7 @@ export {
   mineableRefusal,
   payloadRefusal,
   signatureRefusal,
+  unlockingRefusal,
   type Carrier,
   type CarrierOutput,
   type CarrierRefusal,

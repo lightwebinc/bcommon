@@ -16,9 +16,11 @@ and nothing in the library imports it:
   RFC's definitions. Every path is checked with the bit-by-bit verification
   of RFC 9162 §2.1.3.2 before it is written.
 - Transactions are built with go-sdk's primitives and its P2PKH and PushDrop
-  templates, called directly. Before it is written, every transaction but
-  the stand-in coin passes go-sdk's SPV check: its scripts run, and its
-  ancestry proves against the two stand-in blocks the generator builds.
+  templates, called directly. Before it is written, every transaction in
+  `transactions-v1.json` but the stand-in coin passes go-sdk's SPV check:
+  its scripts run, and its ancestry proves against the two stand-in blocks
+  the generator builds. The unlocking cases record go-sdk's SPV verdict
+  instead of requiring a pass, since most of them are meant to fail it.
 
 Being a separate module keeps the library at one direct dependency. The
 generator's own requirements are checked by `make vectors`: exactly go-sdk,
@@ -42,6 +44,7 @@ needed to rebuild it, as well as the bytes.
 | `refs-v1.json` | A refs array of three entries: one without a head, a one-member store whose root is the leaf hash of its head, and one with two members the format does not define. | `store`; `store.ts` |
 | `rfc6962-v1.json` | Seventeen fixed leaves, the root of the first n for every n from 1 to 17, and the audit path of every leaf in each tree. | `commit` |
 | `transactions-v1.json` | A mined coin, a funding tree of four outputs spending it, two carriers spending the tree, a state token created and then updated, a payment, and two sweeps of the tree: one the tree pays for, and one with a fee input and change. Also the derived keys, the locks, the tree's kept BEEF, and both proofs. | `pushdrop`, `carrier`, `mint`, `funding`; `derive.ts`, `fieldsig.ts`, `funding.ts`, `carrier.ts` |
+| `unlocking-v1.json` | The first carrier of `transactions-v1.json` with its one unlocking script rewritten: the canonical script, which alone is accepted, and a high S, `OP_PUSHDATA1` and `OP_PUSHDATA2` for a short push, `OP_0` or a byte pushed before the signature, the signature pushed twice, `OP_NOP` after or before it, R or S padded with a zero, a negative R, a sequence length one too long, a byte after the sequence, a zero S, R equal to the group order, the sighash bytes 0x01 and 0xc1, no sighash byte, an empty script, and a carrier of two inputs. Each case records its txid and whether go-sdk's interpreter still accepts the spend: the ones it accepts are spends anyone could make without the key. | `carrier`; `carrier.ts` |
 
 The transaction family is built under a derivation and tags that belong to
 no application: protocol `vector sample` at security level 1, key ids
@@ -85,7 +88,8 @@ files from `testdata/vectors`, never a copy, and hold its twins to the same
 bytes: the CBOR value and the manifest body encode to the vector and decode
 back to it, the refs entries do the same through the refs codec, and the
 transaction family's derived keys, funding outputs, carriers and state-token
-signatures decode and verify as the Go side built them. The SDK's own
+signatures decode and verify as the Go side built them, and every
+unlocking case is accepted or refused as the Go side decides it. The SDK's own
 PushDrop is also checked to write the vector's locks byte for byte. The
 kept BEEF is read rather than compared, because go-sdk writes Atomic BEEF
 V2 and the TypeScript SDK writes V1. The transaction builders have no

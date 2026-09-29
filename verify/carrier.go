@@ -37,9 +37,11 @@ var errIncompleteSpec = errors.New("verify: incomplete carrier spec")
 
 // VerifyCarrier is the check every carrier a reader is handed gets: the host
 // answered one output, it decodes as a carrier, its commitment is the one
-// asked for, it validates (the payload's rules, unmineable shape, lock
-// derivation, field signature), it meets the caller's expectations, and its
-// funding parent is proven in the reader's own header source.
+// asked for, it validates (the payload's rules, unmineable shape, the one
+// canonical unlocking script, lock derivation, field signature), it meets
+// the caller's expectations, and its funding parent is proven in the
+// reader's own header source. The unlocking script is checked on the
+// carrier transaction the BEEF answers, before SPV runs it.
 //
 // The commitment is checked before anything the carrier says about itself:
 // a host answering a different carrier than the one asked for is the case
@@ -90,6 +92,8 @@ func VerifyCarrier(ctx context.Context, items []Item, want [32]byte, what string
 		switch {
 		case errors.Is(err, carrier.ErrMineable):
 			return refuse(RefusedMineable, what+": "+err.Error())
+		case errors.Is(err, carrier.ErrUnlocking):
+			return refuse(RefusedUnlocking, what+": "+err.Error())
 		case errors.Is(err, carrier.ErrLock):
 			return refuse(RefusedKeyDerive, what+": "+err.Error())
 		case errors.Is(err, carrier.ErrSignature):

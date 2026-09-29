@@ -51,6 +51,10 @@ const (
 	RefusedWitness Code = "REFUSED-WITNESS"
 	// RefusedMineable is a carrier that could be mined.
 	RefusedMineable Code = "REFUSED-MINEABLE"
+	// RefusedUnlocking is a carrier whose input is not spent by exactly one
+	// canonical signature push (carrier.CheckUnlocking): a spend anyone can
+	// rewrite without the key under another txid.
+	RefusedUnlocking Code = "REFUSED-UNLOCKING"
 	// RefusedRetired is a retired identity; an application's verification algorithm produces it.
 	RefusedRetired Code = "REFUSED-RETIRED"
 	// Error is not a verdict: the reader could not decide, typically because
