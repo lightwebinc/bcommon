@@ -9,7 +9,8 @@ application supplies its own schema, derivation, tags and wallet profile as
 parameters; nothing here names one.
 
 **Status:** pre-1.0. Every application pins an exact tag, and the API may
-change between v0 minor versions. See [docs/versioning.md](docs/versioning.md).
+change between v0 minor versions. One tag versions both languages. See
+[docs/versioning.md](docs/versioning.md).
 
 | Package | What it provides |
 |---|---|
@@ -33,9 +34,20 @@ change between v0 minor versions. See [docs/versioning.md](docs/versioning.md).
 | `verify` | The refusal vocabulary, SPV verdicts on one transaction, and the carrier check a reader runs |
 | `goldentest` | Test helpers: a fixed key, hex and transaction parsing that fail the test, and a stub chain tracker |
 
+The TypeScript package under [ts/](ts/), `@lightwebinc/bcommon`, holds the
+twins an overlay topic manager or lookup service needs, tested against the
+same vectors as the Go packages. It has two entry points:
+
+| Entry point | What it provides |
+|---|---|
+| `@lightwebinc/bcommon` | Deterministic CBOR, store refs entries, the reader's BRC-42 derivation, PushDrop field signatures, the funding decode, the carrier check, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
+| `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
+
 **Requirements:** Go 1.26.2 or later, and github.com/bsv-blockchain/go-sdk
 pinned at exactly v1.5.2, the library's only direct dependency. See
-[docs/dependencies.md](docs/dependencies.md).
+[docs/dependencies.md](docs/dependencies.md). The TypeScript package needs
+Node 24 and `@bsv/sdk` 2.7.1 exactly, as a peer; `make ts-test` builds and
+tests it, and nothing in the Go build needs Node.
 
 **Vectors:** the tests compare the library's output byte for byte with
 vectors from an independent generator. See [docs/vectors.md](docs/vectors.md).

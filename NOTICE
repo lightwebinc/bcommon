@@ -14,6 +14,12 @@ sets with quorum fan-out, BRC-24 lookup, BRC-169 and BRC-180 resolution,
 a pinned-key file, and SPV verdicts. The application supplies its own
 schema, derivation, tags and wallet profile; nothing here names one.
 
+A TypeScript package under ts/, @lightwebinc/bcommon, carries the twins
+of the parts an overlay topic manager or lookup service needs: the codec,
+store references, the reader's key derivation, field signatures, the
+funding decode and the carrier check, plus the engine interfaces a module
+satisfies and helpers for its tests.
+
 =========================================================================
 Third-Party Standards
 
@@ -82,6 +88,15 @@ Non-compliance extinguishes the license. Those terms bind the use of that
 dependency, by this library and by anything built with it. They do not
 extend to Lightweb Inc.'s own source, which is Apache-2.0 as stated in
 LICENSE.
+
+The TypeScript package under ts/ links nothing at runtime beyond its peer
+dependency @bsv/sdk, and it neither bundles nor installs that: whoever
+installs the package installs @bsv/sdk beside it, as their own copy, and
+the obligation of its license belongs to them. That license is the Open
+BSV License Version 6, whose attribution form differs from Version 5's
+above: "© BSV Association" WITHOUT the comma. The package itself carries
+no third-party code, and ts/LICENSE-THIRD-PARTY, generated from its
+production dependency tree with peers left out, lists nothing.
 
 The full text of every license above is reproduced verbatim in
 LICENSE-THIRD-PARTY, which is GENERATED from what the library's packages

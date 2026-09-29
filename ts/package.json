@@ -1,0 +1,48 @@
+{
+  "name": "@lightwebinc/bcommon",
+  "version": "0.1.0-rc.2",
+  "description": "TypeScript twins of the bcommon Go library: deterministic CBOR, store references, BRC-42 reader derivation, PushDrop field signatures, funding decode and the carrier check, for overlay topic managers and lookup services",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lightwebinc/bcommon.git",
+    "directory": "ts"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc",
+    "check": "tsc --noEmit && tsc --noEmit -p tsconfig.runtime.json",
+    "pretest": "npm run build",
+    "test": "node --test \"dist/**/*.test.js\"",
+    "prepack": "npm run build -- --sourceMap false && node -e \"for (const f of ['LICENSE', 'NOTICE']) require('node:fs').copyFileSync('../' + f, f)\""
+  },
+  "peerDependencies": {
+    "@bsv/sdk": "2.7.1"
+  },
+  "devDependencies": {
+    "@bsv/sdk": "2.7.1",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3"
+  }
+}

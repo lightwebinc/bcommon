@@ -79,3 +79,36 @@ jobs:
         run: go build ./...
       - name: test
         run: go test -race ./...
+
+  # The TypeScript package under ts/ is a separate npm package with its own
+  # toolchain, so it is a job of its own and not a step of the Go ones. Its
+  # tests read the Go tests' vectors from testdata/vectors, so a change that
+  # moves the bytes on one side and not the other fails here.
+  ts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v7
+        with:
+          # The runtime major the overlay host runs, which package.json also
+          # pins. Testing on anything else tests a host nobody deploys.
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ts/package-lock.json
+      - run: npm ci
+      - name: typecheck
+        run: npm run check
+      - name: test
+        run: npm test
+      # What a consumer receives: the runtime and testing entry points,
+      # LICENSE and NOTICE, and no test file. The list is in the log.
+      - name: package contents
+        run: npm pack --dry-run
+      # The production tree with peers left out is empty, and a runtime
+      # dependency arriving by accident would be installed beside the package
+      # with a licence obligation NOTICE does not state. This fails instead.
+      - name: third-party licences are current
+        run: python3 ../scripts/gen-third-party-licenses.py . --check

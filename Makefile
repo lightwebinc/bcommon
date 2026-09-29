@@ -3,7 +3,7 @@
 # surfaces only in an application that pins this module by tag. Verify what
 # a tag ships, not what the workspace happens to have on disk.
 
-.PHONY: verify build test fmt-check vet deps-check licences licences-update vectors vectors-update
+.PHONY: verify build test fmt-check vet deps-check licences licences-update vectors vectors-update ts ts-test ts-licences ts-licences-update
 
 SDK := github.com/bsv-blockchain/go-sdk
 SDK_VERSION := v1.5.2
@@ -74,3 +74,24 @@ vectors:
 
 vectors-update:
 	cd $(VECTORS) && GOWORK=off go run .
+
+# The TypeScript package under ts/ has its own toolchain, so it is not part
+# of verify: a machine that builds the Go library needs no Node. CI runs it
+# in its own job, and these targets are how to run it here. Its tests read
+# the same vectors as the Go tests, so run both after regenerating them.
+ts:
+	cd ts && npm ci && npm run check && npm run build
+
+ts-test: ts
+	cd ts && npm test
+
+# The package's production tree, peers left out, which is empty: its one
+# runtime import is the peer @bsv/sdk, the installer's own. A runtime
+# dependency arriving by accident would be installed beside the package
+# with an obligation NOTICE does not state, so it fails here. Needs npm and
+# an installed ts/node_modules (make ts).
+ts-licences:
+	python3 scripts/gen-third-party-licenses.py ts --check
+
+ts-licences-update:
+	python3 scripts/gen-third-party-licenses.py ts

@@ -1,0 +1,17 @@
+Third-party licences for bcommon
+===============================
+
+GENERATED. Do not edit by hand.
+
+  scripts/gen-third-party-licenses.py <this repo>
+
+Every package below is in this package's production dependency tree,
+so an install of the package installs it too, whatever the installer
+builds with it. Peer dependencies are not listed: a peer is supplied by
+whoever installs this package, as their own copy under its own licence
+(see NOTICE). This repository ships no image of its own.
+
+This repository's own source is Apache-2.0 and is in LICENSE, not here.
+
+Contents:
+  none: nothing is linked or installed beyond this repository's own source

@@ -50,3 +50,14 @@ applications have already committed to the chain. Raise the version in
 `go.mod`, in `tools/vectors/go.mod` and as `SDK_VERSION` in the Makefile
 together, run `make verify`, and confirm every vector still matches byte for
 byte before tagging.
+
+## The TypeScript package
+
+The package under `ts/` has no runtime dependency. Its one peer, `@bsv/sdk`,
+is pinned exactly, at 2.7.1, and the development dependency is the same
+version; the package's boundary test fails if the two differ or if a runtime
+dependency appears. The exact peer holds the TypeScript twins to the SDK
+their bytes were checked against, as the go-sdk pin does for Go. Raising it
+means changing both entries together and running the TypeScript tests,
+which compare the twins' output with the shared vectors, before tagging.
+

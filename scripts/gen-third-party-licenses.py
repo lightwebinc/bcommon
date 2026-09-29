@@ -17,7 +17,8 @@ memory of it.
 Handles both a Go module and an npm package. The Go side reads `go list -deps`,
 so a module in go.mod that nothing imports is correctly absent and an INDIRECT
 dependency that IS imported is correctly present. The npm side reads
-`npm ls --omit=dev --all`, which is the tree that lands in a production image.
+`npm ls --omit=dev --omit=peer --all`, which is the tree an install of the
+package brings with it; a peer dependency is the installer's own.
 
 Usage:  gen-third-party-licenses.py <repo-dir> [--check]
         --check exits 1 if the file on disk differs from what would be written.
@@ -159,6 +160,11 @@ def npm_packages(repo):
     `tsc` does not bundle: the built JavaScript resolves bare imports against
     node_modules at runtime, so every package here is physically present in the
     image and its licence travels only if it is written down.
+
+    Peer dependencies are left out. A peer is not installed by this package but
+    supplied by whoever installs it, as their own copy under their own
+    obligation, and npm 7+ would otherwise list it as though this package
+    brought it.
     """
     import json as _json
 
@@ -169,7 +175,7 @@ def npm_packages(repo):
         raw = open(supplied, encoding="utf-8").read()
     else:
         out = subprocess.run(
-            ["npm", "ls", "--omit=dev", "--all", "--json"],
+            ["npm", "ls", "--omit=dev", "--omit=peer", "--all", "--json"],
             cwd=repo, capture_output=True, text=True,
         )
         raw = out.stdout
@@ -230,18 +236,19 @@ def title(repo, npm):
 
 def build(repo):
     has_docker = os.path.exists(os.path.join(repo, "Dockerfile"))
-    if os.path.exists(os.path.join(repo, "package.json")) and not os.path.exists(os.path.join(repo, "go.mod")):
-        repo_name = title(repo, npm=True)
-        return render(repo_name, npm_build(repo, repo_name), "npm", has_docker)
-    repo_name = title(repo, npm=False)
     # With neither a Dockerfile nor a release workflow, the repository ships
     # no artefact of its own: it is a library, and what is true of it is
-    # what a binary built WITH it must carry.
+    # what a binary or an install built WITH it must carry.
     has_release = any(
         os.path.exists(os.path.join(repo, ".github", "workflows", "release" + ext))
         for ext in (".yml", ".yaml")
     )
-    return render(repo_name, go_build(repo), "go", has_docker, library=not has_docker and not has_release)
+    library = not has_docker and not has_release
+    if os.path.exists(os.path.join(repo, "package.json")) and not os.path.exists(os.path.join(repo, "go.mod")):
+        repo_name = title(repo, npm=True)
+        return render(repo_name, npm_build(repo, repo_name), "npm", has_docker, library=library)
+    repo_name = title(repo, npm=False)
+    return render(repo_name, go_build(repo), "go", has_docker, library=library)
 
 
 def go_build(repo):
@@ -289,6 +296,12 @@ def render(repo_name, entries, kind, has_dockerfile=False, library=False):
             # error this file exists to prevent, one level up.
             out.append("Any release artefact or image built from this repository must")
             out.append("carry it, and the release and image workflows both do.")
+    elif library:
+        out.append("Every package below is in this package's production dependency tree,")
+        out.append("so an install of the package installs it too, whatever the installer")
+        out.append("builds with it. Peer dependencies are not listed: a peer is supplied by")
+        out.append("whoever installs this package, as their own copy under its own licence")
+        out.append("(see NOTICE). This repository ships no image of its own.")
     else:
         out.append("Every package below is in the production dependency tree, so it is")
         out.append("physically present in any image built here: the compiler does not")
@@ -302,6 +315,10 @@ def render(repo_name, entries, kind, has_dockerfile=False, library=False):
     out.append("This repository's own source is Apache-2.0 and is in LICENSE, not here.")
     out.append("")
     out.append("Contents:")
+    if not entries:
+        # Said outright, so that an empty list reads as a result rather than
+        # as a generator that found nothing to look at.
+        out.append("  none: nothing is linked or installed beyond this repository's own source")
     for i, (m, label, _) in enumerate(entries, 1):
         out.append(f"  {i:2d}. {m}  ({label})")
     out.append("")

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+# Copied from the repository root by prepack, so a packed tarball carries
+# them; the root files are the ones to edit.
+/LICENSE
+/NOTICE
+# npm pack output
+*.tgz

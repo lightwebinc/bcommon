@@ -35,13 +35,13 @@ test key, and go-sdk signs with RFC 6979 nonces.
 Each family is one JSON file in `testdata/vectors`. Each records every input
 needed to rebuild it, as well as the bytes.
 
-| File | What it holds | Checked by |
+| File | What it holds | Checked by (Go; TypeScript) |
 |---|---|---|
-| `cbor-v1.json` | A nested value, described item by item with its major type, and its canonical encoding. Its maps have integer and text keys listed out of canonical order. It has integers at every head boundary in both signs out to the widest a uint64 and an int64 hold, byte and text strings at every head width up to two bytes, the simple values, empty containers, and containers nested eight deep. | `cbor` |
-| `manifest-v1.json` | A manifest body: the one-key map whose `members` array lists four members as `c`, `name`, `size`, `type` maps. One member is ordinary, one has an empty name and type and a zero size, one has a 64-byte name and a size past 32 bits, and one has a name outside ASCII. Also the RFC 6962 root over the members' commitments. | `store` |
-| `refs-v1.json` | A refs array of three entries: one without a head, a one-member store whose root is the leaf hash of its head, and one with two members the format does not define. | `store` |
+| `cbor-v1.json` | A nested value, described item by item with its major type, and its canonical encoding. Its maps have integer and text keys listed out of canonical order. It has integers at every head boundary in both signs out to the widest a uint64 and an int64 hold, byte and text strings at every head width up to two bytes, the simple values, empty containers, and containers nested eight deep. | `cbor`; `cbor.ts` |
+| `manifest-v1.json` | A manifest body: the one-key map whose `members` array lists four members as `c`, `name`, `size`, `type` maps. One member is ordinary, one has an empty name and type and a zero size, one has a 64-byte name and a size past 32 bits, and one has a name outside ASCII. Also the RFC 6962 root over the members' commitments. | `store`; `cbor.ts`, the body only |
+| `refs-v1.json` | A refs array of three entries: one without a head, a one-member store whose root is the leaf hash of its head, and one with two members the format does not define. | `store`; `store.ts` |
 | `rfc6962-v1.json` | Seventeen fixed leaves, the root of the first n for every n from 1 to 17, and the audit path of every leaf in each tree. | `commit` |
-| `transactions-v1.json` | A mined coin, a funding tree of four outputs spending it, two carriers spending the tree, a state token created and then updated, a payment, and two sweeps of the tree: one the tree pays for, and one with a fee input and change. Also the derived keys, the locks, the tree's kept BEEF, and both proofs. | `pushdrop`, `carrier`, `mint`, `funding` |
+| `transactions-v1.json` | A mined coin, a funding tree of four outputs spending it, two carriers spending the tree, a state token created and then updated, a payment, and two sweeps of the tree: one the tree pays for, and one with a fee input and change. Also the derived keys, the locks, the tree's kept BEEF, and both proofs. | `pushdrop`, `carrier`, `mint`, `funding`; `derive.ts`, `fieldsig.ts`, `funding.ts`, `carrier.ts` |
 
 The transaction family is built under a derivation and tags that belong to
 no application: protocol `vector sample` at security level 1, key ids
@@ -78,11 +78,27 @@ another language needs it too:
   the floor if that is more. Change under the floor goes to the fee. A
   sweep without a fee input takes its fee from the tombstone.
 
+## The TypeScript package
+
+The TypeScript package's tests (`ts/src/vectors.test.ts`) read the same
+files from `testdata/vectors`, never a copy, and hold its twins to the same
+bytes: the CBOR value and the manifest body encode to the vector and decode
+back to it, the refs entries do the same through the refs codec, and the
+transaction family's derived keys, funding outputs, carriers and state-token
+signatures decode and verify as the Go side built them. The SDK's own
+PushDrop is also checked to write the vector's locks byte for byte. The
+kept BEEF is read rather than compared, because go-sdk writes Atomic BEEF
+V2 and the TypeScript SDK writes V1. The transaction builders have no
+TypeScript twin: their transactions are parsed and re-serialised against
+each txid, not rebuilt. RFC 6962 roots are not checked on the TypeScript
+side.
+
 ## Running it
 
 ```
 make vectors          # regenerate and compare byte for byte; part of make verify
 make vectors-update   # regenerate and write testdata/vectors
+make ts-test          # the TypeScript package's tests, which read them too
 ```
 
 `make vectors` fails on any difference, and on a file in `testdata/vectors`
@@ -97,6 +113,8 @@ deliberate, and the diff needs review before it is committed.
   library's output moving the same way. Output bytes that an application has
   already committed to the chain must not move (see
   [versioning.md](versioning.md)).
+- The TypeScript tests read the same files, so a vector that moves is
+  re-checked there with `make ts-test`, and CI runs both.
 - Raising the go-sdk pin re-runs both sides on the new version. A vector
   that moves means the raise changes bytes applications depend on (see
   [dependencies.md](dependencies.md)).
