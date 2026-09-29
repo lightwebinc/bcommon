@@ -1,6 +1,6 @@
 {
   "name": "@lightwebinc/bcommon",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "TypeScript twins of the bcommon Go library: deterministic CBOR, store references, BRC-42 reader derivation, PushDrop field signatures, funding decode and the carrier check, for overlay topic managers and lookup services",
   "license": "Apache-2.0",
   "repository": {

@@ -58,8 +58,8 @@ func Text(s string) string { return Sanitize(s, Options{}) }
 // newlines, bounded at MaxLines lines of MaxCols columns. A value cut at the
 // line bound ends with "[truncated]". It never returns a byte sequence a
 // terminal interprets, except an SGR sequence when o.ANSI is set, which is
-// re-validated here rather than copied and is always followed by a reset at
-// the end.
+// re-validated here rather than copied and is always followed by a reset: at
+// the end, or before "[truncated]" when the value is cut.
 //
 // Invalid UTF-8 becomes U+FFFD. Without o.ANSI, a half block drawn on a set
 // background becomes a full block: half-block art inks a cell's second half
@@ -144,6 +144,12 @@ func Sanitize(s string, o Options) string {
 		case r == '\n':
 			lines++
 			if lines >= MaxLines {
+				// The reset the end of the value would have written, written
+				// here instead, so a colour cut off mid-value does not run on
+				// into the marker or whatever the caller prints next.
+				if coloured {
+					b.WriteString("\x1b[0m")
+				}
 				b.WriteString("\n[truncated]")
 				return b.String()
 			}

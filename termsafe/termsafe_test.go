@@ -56,6 +56,12 @@ func TestANSIKeepsColourOnlyAndAlwaysResets(t *testing.T) {
 	if got := termsafe.Sanitize("plain", termsafe.Options{ANSI: true}); got != "plain" {
 		t.Fatalf("no colour, no reset: %q", got)
 	}
+	// A coloured value cut at the line bound is reset before the marker, so
+	// the colour does not run on into whatever is printed next.
+	cut := termsafe.Sanitize("\x1b[31m"+strings.Repeat("r\n", 1_000), termsafe.Options{ANSI: true})
+	if !strings.HasSuffix(cut, "\x1b[0m\n[truncated]") {
+		t.Fatalf("truncated colour must be reset first: %q", cut[max(0, len(cut)-24):])
+	}
 	long := "\x1b[" + strings.Repeat("1;", 30) + "m x"
 	if got := termsafe.Sanitize(long, termsafe.Options{ANSI: true}); strings.Contains(got, "\x1b[1;") {
 		t.Fatalf("an over-long SGR must be dropped: %q", got)
