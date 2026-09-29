@@ -60,3 +60,10 @@ bytes long after they were written. The tests' vectors exist to catch such a
 change, and the go-sdk pin, like the TypeScript package's exact `@bsv/sdk`
 peer, exists partly for the same reason (see
 [dependencies.md](dependencies.md)).
+
+## Release history
+
+| Tag | What changed |
+|---|---|
+| v0.2.0 | Two packages added: `producer`, a producer's fees, settlement, funding-tree lifecycle, kept transactions and proof collection, and `termsafe`, text filtered for a terminal. Additive only: every v0.1.0 identifier is unchanged, so an application moves by changing its pin. The TypeScript package changes only its version. |
+| v0.1.0 | The first release. |

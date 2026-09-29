@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"io"
@@ -315,5 +316,170 @@ func TestBoundaryFilesWalk(t *testing.T) {
 	}
 	if files != 10 {
 		t.Errorf("read %d files, want 10 (ok.go, prefixmod.go, prefixsdk.go, tagged.go, nested/nested.go, three under %s, one beside it and one under tools/other)", files, vectorsDir)
+	}
+}
+
+// processImports and processCalls are what a command owns and a library
+// must not: flags, logging to the process's own streams, other processes
+// and signals, the environment and the user's directories a configuration
+// is found in, the standard streams, and the process's exit. A library that
+// reached for any of them would decide, for every application that imports
+// it, where its settings come from or what reaches its terminal. termsafe
+// is the one package about terminals, and it too takes the environment as
+// a parameter rather than reading it.
+var (
+	processImports = map[string]bool{"flag": true, "log": true, "log/slog": true, "os/exec": true, "os/signal": true}
+	processCalls   = map[string]bool{
+		"Args": true, "Exit": true,
+		"Getenv": true, "LookupEnv": true, "Environ": true, "ExpandEnv": true,
+		"Setenv": true, "Unsetenv": true, "Clearenv": true,
+		"UserHomeDir": true, "UserConfigDir": true, "UserCacheDir": true,
+		"Stdin": true, "Stdout": true, "Stderr": true,
+	}
+)
+
+// processConcerns reads every non-test Go file under root, as walkFiles
+// does, and returns each use of a process concern, and how many files it
+// read. The vector generator is a command and is not held to it.
+func processConcerns(root string) (bad []string, files int, err error) {
+	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path != root && skipped(d.Name()) {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		name := filepath.ToSlash(rel)
+		if within(name, vectorsDir) {
+			return nil
+		}
+		files++
+		f, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
+		if err != nil {
+			bad = append(bad, fmt.Sprintf("%s: %v", name, err))
+			return nil
+		}
+		osName := ""
+		for _, spec := range f.Imports {
+			imp, err := strconv.Unquote(spec.Path.Value)
+			if err != nil {
+				return err
+			}
+			if processImports[imp] {
+				bad = append(bad, fmt.Sprintf("%s imports %s", name, imp))
+			}
+			if imp == "os" {
+				osName = "os"
+				if spec.Name != nil {
+					osName = spec.Name.Name
+				}
+			}
+		}
+		if osName == "" || osName == "_" {
+			return nil
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			if x, ok := sel.X.(*ast.Ident); ok && x.Name == osName && processCalls[sel.Sel.Name] {
+				bad = append(bad, fmt.Sprintf("%s uses os.%s", name, sel.Sel.Name))
+			}
+			return true
+		})
+		return nil
+	})
+	return bad, files, err
+}
+
+// TestNoProcessConcerns holds every library file, termsafe's included, to
+// the rule above.
+func TestNoProcessConcerns(t *testing.T) {
+	bad, files, err := processConcerns(".")
+	if err != nil {
+		t.Fatalf("walking the module: %v", err)
+	}
+	if files == 0 {
+		t.Fatal("no Go file in the module was read; nothing was checked")
+	}
+	if len(bad) > 0 {
+		sort.Strings(bad)
+		t.Errorf("a library takes its settings and its output as parameters; these belong in the application:\n\t%s", strings.Join(bad, "\n\t"))
+	}
+}
+
+// The rule on a tree built for it: the flagged files use a concern through
+// an import, a call, an aliased os and a stream; a test file, the vector
+// generator and a file that only opens files are read or skipped as the
+// rule says.
+func TestNoProcessConcernsWalk(t *testing.T) {
+	root := t.TempDir()
+	write := func(rel, body string) {
+		path := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("files.go", "package lib\n\nimport \"os\"\n\nfunc f() { _, _ = os.ReadFile(\"x\") }\n")
+	write("flags.go", "package lib\n\nimport \"flag\"\n\nvar _ = flag.Bool\n")
+	write("env.go", "package lib\n\nimport \"os\"\n\nvar _ = os.Getenv(\"HOME\")\n")
+	write("alias.go", "package lib\n\nimport sys \"os\"\n\nvar _ = sys.Stderr\n")
+	write("home.go", "package lib\n\nimport \"os\"\n\nfunc g() { _, _ = os.UserHomeDir() }\n")
+	write("lib_test.go", "package lib\n\nimport \"os\"\n\nvar _ = os.Getenv(\"HOME\")\n")
+	write(vectorsDir+"/main.go", "package main\n\nimport \"os\"\n\nfunc main() { os.Exit(0) }\n")
+	write("testdata/x.go", "package x\n\nimport \"log\"\n")
+
+	bad, files, err := processConcerns(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sort.Strings(bad)
+	want := []string{"alias.go uses os.Stderr", "env.go uses os.Getenv", "flags.go imports flag", "home.go uses os.UserHomeDir"}
+	if strings.Join(bad, "\n") != strings.Join(want, "\n") {
+		t.Errorf("flagged:\n\t%s\nwant:\n\t%s", strings.Join(bad, "\n\t"), strings.Join(want, "\n\t"))
+	}
+	if files != 5 {
+		t.Errorf("read %d files, want 5 (every non-test file outside testdata and the generator)", files)
+	}
+}
+
+// termsafe imports only the standard library, tests included. It is what
+// every command that prints someone else's text needs, and nothing about
+// filtering a string for a terminal needs go-sdk.
+func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
+	gomod := strings.TrimSpace(string(goCmd(t, ".", "env", "GOMOD")))
+	out := goCmd(t, filepath.Dir(gomod), "list", "-json=ImportPath,Imports,TestImports,XTestImports", modulePath+"/termsafe")
+	var p listed
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.ImportPath != modulePath+"/termsafe" {
+		t.Fatalf("go list answered %q", p.ImportPath)
+	}
+	var bad []string
+	for _, imports := range [][]string{p.Imports, p.TestImports, p.XTestImports} {
+		for _, imp := range imports {
+			first, _, _ := strings.Cut(imp, "/")
+			if strings.Contains(first, ".") && imp != p.ImportPath {
+				bad = append(bad, imp)
+			}
+		}
+	}
+	if len(bad) > 0 {
+		t.Errorf("termsafe imports more than the standard library: %v", bad)
 	}
 }

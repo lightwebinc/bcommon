@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: nineteen Go packages under one module,
+bcommon is a library, not a service: twenty-one Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -34,6 +34,7 @@ would have to trust. It pins the identity key it saw.
   bwallet / wirewallet (keys, coin)          verify ─▶ carrier, pushdrop
   nodeapi (mine, prove) ─▶ guard             headers (chain tracker)
   publish: settlement leg │ object leg       knownkeys (pins)
+  producer: fees, trees, kept, proofs        termsafe (what it prints)
 ```
 
 ## Package layers
@@ -56,6 +57,7 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `headers` | none | yes |
 | 0 | `wirewallet` | none | yes |
 | 0 | `goldentest` | none | yes |
+| 0 | `termsafe` | none | no |
 | 1 | `store` | `cbor`, `commit` | no |
 | 1 | `carrier` | `pushdrop` | yes |
 | 1 | `nodeapi` | `guard` | yes |
@@ -63,10 +65,12 @@ beside the standard library and, where noted, go-sdk.
 | 2 | `verify` | `carrier` | yes |
 | 2 | `bwallet` | `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
+| 3 | `producer` | `bwallet`, `funding`, `mint`, `nodeapi`, `publish` | yes |
 
 Every edge inside the module:
 
 ```text
+  producer ──▶ bwallet, funding, mint, nodeapi, publish
   verify   ──▶ carrier ──▶ pushdrop
   bwallet  ──▶ pushdrop
   bwallet  ──▶ nodeapi ──▶ guard
@@ -76,7 +80,9 @@ Every edge inside the module:
 ```
 
 The graph is shallow on purpose. `mint` takes every lock script and every
-unlocker as a parameter, so it needs neither `pushdrop` nor `carrier`.
+unlocker as a parameter, so it needs neither `pushdrop` nor `carrier`, and
+`producer` takes the funding lock the same way, so it needs neither either.
+`termsafe` imports only the standard library.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -153,6 +159,25 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   ever takes a BEEF, and refuses anything else before sending. No exported
   function takes both, and a test walks the package's exported declarations
   to hold that. It also owns the per-transition `Journal`.
+- **`producer`** owns the orchestration around those builders that every
+  producer runs the same way. `Payer` takes a fee input from the coin pool,
+  signed by the key its coin is locked to, gives it back when a transaction
+  is not sent, takes change back into the pool (holding change from an
+  unmined transaction back until its proof arrives), and settles: waiting
+  for a proof, or with `Async` returning once the leg has accepted the
+  transaction. `Kept` makes every use of one kept transaction the same
+  object, so no BEEF merges two copies of it. `Trees` is the funding-tree
+  lifecycle: spend from the current tree while it has the outputs, otherwise
+  mint, settle, record (through the application's `TreeState`) and publish
+  the next one, sized to the spend. `Proofs` asks arcade, then the node,
+  whether a transaction mined, holding arcade's proof to the node's checks,
+  and `Collector` collects every proof still owed, records it, publishes
+  the proven transaction again so every host upgrades its copy, stamps the
+  journal and releases held change. The application keeps its own state and
+  its own words: the library reaches the state through `TreeState`,
+  `Kept.Load` and `Pending`'s callbacks, reports progress through a `Note`
+  function, and returns the refusals an application may word itself as
+  typed errors (`NoCoinError`, `NoKeyError`) or through `Pending`'s hooks.
 
 ### Reader
 
@@ -179,6 +204,17 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   dial a public service in its place.
 - **`guard`** owns the bounds check on a BRC-74 BUMP before the SDK
   allocates for it.
+
+### Terminal
+
+- **`termsafe`** owns what reaches a terminal from text someone else wrote:
+  `Sanitize` passes printable text and newlines, drops every control
+  character, every escape sequence but a colour one the reader asked for,
+  and the zero-width and bidirectional characters that disguise one string
+  as another, and bounds the result at 200 lines of 512 columns.
+  `Validate` and `ValidateBounded` are the publishing side of the same
+  rules. It is the one package about terminals, and it still reads no
+  environment itself: `UTF8Locale` takes the application's lookup.
 
 ### Tests
 
@@ -283,3 +319,10 @@ library, go-sdk and other packages of this module. `TestBoundary` and
 `TestBoundaryFiles` enforce it, and `make deps-check` holds `go.mod` to one
 direct requirement at the pinned version. See
 [dependencies.md](dependencies.md).
+
+No package takes on what belongs to the application's command: flags,
+logging, the environment, the user's configuration directories, the
+standard streams, other processes or the process's exit.
+`TestNoProcessConcerns` reads every library file for them, and
+`TestTermsafeImportsOnlyTheStandardLibrary` keeps the terminal filter free
+of go-sdk.

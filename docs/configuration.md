@@ -241,6 +241,59 @@ or contains a comma, space, tab, CR or LF, both before sending anything.
 The facade's answer is refused over 1 MiB; arcade's answers are read to at
 most 64 KiB (submit) and 1 MiB (status) before they are parsed.
 
+## Producer: `producer`
+
+### `producer.Payer`
+
+| Field | Default | |
+|---|---|---|
+| `Pool` | none | the `*bwallet.Pool` every fee comes from and change returns to |
+| `Tip` | 0 | the chain height coinbase maturity is judged at |
+| `Keys` | none | every key the producer signs with, by identity key hex; a coin is spent by the key whose fund script locks it, and change to any of them is taken back |
+| `KeyFor` | a lookup in `Keys` | the key of the identity that owns a received payment, for an application that words its own refusal |
+| `Kept` | nil | the producer's `*producer.Kept`; needed once unproven change can be spent |
+| `Allow` | none allowed | the kept transactions whose unproven change `Take` may spend when no proven coin is left |
+| `Settler` | none | the settlement leg; `Settle` refuses without one |
+| `Asset` | none | the node a proof is waited for from and, with `Async`, where a coin's parent is fetched |
+| `Async` | false | settle on the leg's acceptance and collect the proof later |
+| `Fees` | the zero policy | fees for what the Payer mints itself (a funding tree); `mint.DefaultFees` is the usual one, and zero pays no fee |
+| `Timeout` | `DefaultTimeout` (10 min) | how long a wait for a proof lasts |
+| `Poll` | `DefaultPoll` (5 s) | how often the wait asks |
+| `Note` | discard | receives each progress line |
+
+`Take` returns `*producer.NoCoinError` when the pool has no coin it may
+spend (`Held` counts the transactions whose change is waiting for a proof)
+and `*producer.NoKeyError` for a coin none of the keys holds, so the
+application can say what its users should do.
+
+### `producer.Trees`
+
+| Field | Default | |
+|---|---|---|
+| `Payer`, `State` | none | the Payer that pays for a tree, and the application's `TreeState` (`Current`, `Adopt`) |
+| `Identity` | none | identity key hex whose key locks the tree; a current tree of another identity is replaced |
+| `Count`, `Sats` | none | outputs in a new tree (at least; a larger spend gets a larger tree) and the value of each |
+| `Funder` | empty | recorded in `funding.Tree.Funder` |
+| `Lock`, `Change` | none | the funding lock and the change script, asked only when the pool pays |
+| `Fund` | nil | mints and settles a tree some other way, such as a funding wallet |
+| `DryRun` | false | build a pool-paid tree and record, settle and publish nothing |
+| `Facade`, `Topic` | none | the object leg a new tree is published on |
+
+### `producer.Collector` and `producer.Pending`
+
+| Field | Default | |
+|---|---|---|
+| `Proofs` | nothing mined | `producer.Proofs{Arcade, Asset}`: arcade first, when it is the settlement leg, then the node |
+| `Kept`, `Pool`, `Journal` | nil | the copy handed out gets the proof; held change is released; journal entries are stamped |
+| `Facade`, `Topic` | nil | where a proven transaction is published again; nil publishes nothing |
+| `Retry` | empty | ends the note about a proof that could not be published with how to send it again |
+| `Save` | nil | saves the application's state after a proof is recorded |
+| `Note` | discard | receives each line |
+| `Pending.What`, `Txid`, `RawHex`, `BeefHex` | none | the kept transaction and how the lines name it |
+| `Pending.Proven` | nil | records the proof in the application's state |
+| `Pending.Stamp`, `Seq` | false | stamp the journal entry (Seq, Txid) mined |
+| `Pending.Refused`, `Unbuilt` | a generic line | report a refusal, or a kept copy that does not rebuild, in the application's words |
+
 ## Chain tracker: `headers.Client`
 
 | Field | Default | |
@@ -330,3 +383,14 @@ refuse a nil `tracker` with `ErrNoTracker`.
 
 `ParseBUMP(b, bound)` takes the caller's bound on the proof's size, in bytes;
 a bound of zero or less admits nothing. `nodeapi` uses its 1 MiB body bound.
+
+## Terminal text: `termsafe`
+
+`Sanitize(s, Options{ANSI, ASCII})` bounds its output at `MaxLines` (200)
+lines of `MaxCols` (512) columns. `ANSI` keeps colour and weight sequences
+and nothing else, and ends coloured output with a reset; `ASCII` prints
+every rune above 0x7E as `?`. `Validate(field, s)` and
+`ValidateBounded(field, s)` refuse what `Sanitize` would strip, the second
+within the same two bounds; every refusal matches `ErrUnsafe`.
+`UTF8Locale(getenv)` reads `LC_ALL`, `LC_CTYPE` and `LANG` through the
+lookup the application passes, so the package itself reads no environment.

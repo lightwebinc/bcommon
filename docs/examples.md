@@ -291,6 +291,96 @@ trailing bytes: cbor: trailing bytes
 truncated string: cbor: truncated
 ```
 
+## Pay a fee from the pool, as a producer
+
+[`producer/example_test.go`](../producer/example_test.go), `ExamplePayer_Take`
+
+A `producer.Payer` takes a fee input from the application's coin pool,
+signed by whichever of its keys the coin is locked to, and takes change back
+into the pool. Change from a transaction published before it mined is held
+back until its proof arrives, so a second fee finds no coin and says why, as
+a `*producer.NoCoinError` the application can word for its own users.
+Allowing that parent, because the next transaction carries it anyway, spends
+the change against the one copy `producer.Kept` hands out.
+
+```go
+payer := &producer.Payer{
+	Pool: pool, Tip: 100, Keys: map[string]*bwallet.Signer{signer.IdentityHex(): signer},
+	Kept: &producer.Kept{}, Fees: mint.DefaultFees, Note: note,
+}
+fee, err := payer.Take(ctx)
+tx, err := mint.Payment(ctx, dest, 1000, fee, change, mint.DefaultFees)
+payer.Change(tx, 0, nil) // published, not yet mined: held back
+
+_, err = payer.Take(ctx) // *producer.NoCoinError, Held 1
+
+payer.Kept.Load = func(txid string) (*transaction.Transaction, error) { return tx, nil }
+payer.Allow = func() []string { return []string{tx.TxID().String()} }
+next, err := payer.Take(ctx) // next.Tx == tx
+```
+
+In an application the Payer also has a `Settler` and an `Asset`, and
+`Settle` puts each mined transaction on the settlement leg: it waits for the
+proof, or with `Async` returns once the leg has accepted it.
+
+## Spend from a funding tree, minting the next
+
+[`producer/example_test.go`](../producer/example_test.go), `ExampleTrees_Spend`
+
+`producer.Trees.Spend(ctx, need)` answers the tree the next `need` carriers
+spend from: the current one while it has the outputs and is locked to the
+producer's identity, or a new one. A new tree is at least `need` outputs,
+paid for from the pool, settled, adopted into the application's state
+through its `TreeState`, and published so hosts see a later sweep of it.
+A dry run builds it and does none of the rest.
+
+```go
+trees := &producer.Trees{
+	Payer: payer, State: state, Identity: signer.IdentityHex(), Count: 4, Sats: 1000, Funder: "pool",
+	Lock: func(ctx context.Context) (*script.Script, error) {
+		return carrier.FundingLock(ctx, signer, signer.Originator, params)
+	},
+	Change: signer.FundScript,
+	DryRun: true,
+}
+tree, first, err := trees.Spend(ctx, 6)
+```
+
+Output:
+
+```text
+this transition spends 6 outputs, so the tree is minted with 6 rather than 4
+funding tree <tree>: 6 output(s) of 1000 sat
+funding outputs: 6 first: 0 recorded: false
+coins in the pool after GiveBack: 1
+```
+
+Once the tree and the carriers spending it are published before the tree
+mines, a `producer.Collector` collects the proof later: each `Pending` item
+names a kept transaction and how the application records its proof, and
+`Collect` records it, publishes the proven BEEF again so every host upgrades
+its copy, stamps the journal and releases held change.
+`ExampleCollector_Collect` shows the item's shape with nothing yet mined.
+
+## Filter text for a terminal
+
+[`termsafe/example_test.go`](../termsafe/example_test.go), `ExampleSanitize`
+and `ExampleValidateBounded`
+
+A value from a record someone else published is filtered before it is
+printed: a window-title sequence, a screen clear and a bidirectional
+override are dropped, and colour survives only when the reader asked for
+it. On the publishing side, `ValidateBounded` refuses what a reader would
+have to strip, naming the first offence, and an application puts its own
+words in front.
+
+```go
+termsafe.Text(hostile)                                  // "status green evil"
+termsafe.Sanitize(hostile, termsafe.Options{ANSI: true}) // colour kept, then reset
+err := termsafe.ValidateBounded("plan", "ring\x07 the bell")
+// plan line 1 has a control character (U+0007); errors.Is(err, termsafe.ErrUnsafe)
+```
+
 ## Read a carrier in TypeScript
 
 A topic manager or lookup service reads the same carrier with the TypeScript
@@ -338,13 +428,18 @@ vectors; see [vectors.md](vectors.md).
 | [`resolve`](../resolve/example_test.go) `ExampleParseAcct`, `ExampleManifest_Overlay` | the three written forms of a BRC-169 address, the alias refusal, and a BRC-180 manifest entry that is absent |
 | [`hostset`](../hostset/example_test.go) `ExampleStatic_Hosts` | the hosts a static list and an IP literal yield |
 | [`publish`](../publish/example_test.go) `ExampleFacade_Submit` | the object leg refusing a body that is not a BEEF, and a topic list, before it sends anything |
+| [`producer`](../producer/example_test.go) `ExampleCollector_Collect` | a pending item's shape, reported pending while nothing has mined |
+| [`termsafe`](../termsafe/example_test.go) `ExampleUTF8Locale` | the locale read through the application's lookup, and a key abbreviated for a message |
 
 ## Not covered offline
 
 These need a live service and have no example: mining and funding
 (`bwallet.FundFromCoinbase`, `bwallet.Rescan`), node reads
 (`nodeapi.WaitMined`, `nodeapi.Asset`), the settlement and object legs
-(`publish.TCPIngress`, `RPCSettler`, `Arcade`, `Facade`), overlay lookups
+(`publish.TCPIngress`, `RPCSettler`, `Arcade`, `Facade`), a producer's
+settlement, proof collection and published trees (`producer.Payer.Settle`,
+`SettleAndWait`, `Await`, `producer.Proofs`, `producer.Collector` with a
+proof source, `producer.Trees.Spend` beyond a dry run), overlay lookups
 (`lookup.Query`), domain discovery (`resolve.FetchManifest`,
 `resolve.ResolveHandle`), the header service (`headers.Client`) and a wallet
 over the wire (`wirewallet.Dial`). Their parameters are in

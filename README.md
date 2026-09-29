@@ -34,12 +34,14 @@ change between v0 minor versions. One tag versions both languages. See
 | `bwallet` | An embedded BRC-100 wallet backend and coin pool, a Signer, and BRC-29 derivations, keyed by an application profile |
 | `wirewallet` | A BRC-100 wallet over the wallet wire, loopback only, and a handler that serves one |
 | `publish` | The settlement leg (EF to an ingress, hex to a node RPC, arcade) and the BEEF object leg to an overlay host, which never share a socket, plus a transition journal |
+| `producer` | A producer's orchestration: fee inputs and change from a coin pool, settlement, the funding-tree lifecycle, the one kept copy of each unproven transaction, and proof collection that republishes what has mined |
 | `headers` | A chain tracker over the header API of [overlay-bridge](https://github.com/lightwebinc/overlay-bridge) |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
 | `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy |
 | `knownkeys` | The grammar and store of a pinned-key file: pin, rotate, retire, forget |
 | `verify` | The refusal vocabulary, SPV verdicts on one transaction, and the carrier check a reader runs |
+| `termsafe` | Text someone else wrote, filtered before it reaches a terminal, and the same rules checked before a producer publishes text |
 | `goldentest` | Test helpers: a fixed key, hex and transaction parsing that fail the test, and a stub chain tracker |
 
 The TypeScript package under [ts/](ts/), `@lightwebinc/bcommon`, holds the
@@ -56,7 +58,7 @@ same vectors as the Go packages. It has two entry points:
 Go, pinned to an exact tag:
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.1.0
+go get github.com/lightwebinc/bcommon@v0.2.0
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -64,10 +66,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.1.0 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.1.0.tgz
+git clone --depth 1 --branch v0.2.0 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.2.0.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.1.0.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.2.0.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage
@@ -109,8 +111,9 @@ const key = readerLockingKey([1, 'example app'], 'record', identityHex)
 [docs/examples.md](docs/examples.md) walks through deriving and decoding a
 PushDrop lock, building a funding tree and a carrier on an in-process lab
 chain, verifying a carrier from a BEEF, guarding a proof, RFC 6962 proofs,
-stores and CBOR. Every Go example there is an `Example` test that `go test`
-compiles and checks.
+stores and CBOR, paying fees and minting the next funding tree as a
+producer, and filtering text for a terminal. Every Go example there is an
+`Example` test that `go test` compiles and checks.
 
 ## Documentation
 

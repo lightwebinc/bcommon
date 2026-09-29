@@ -3,10 +3,12 @@
 // deterministic CBOR codec, RFC 6962 roots, store references and manifests,
 // BRC-42/43 derivation and tagged PushDrop outputs, a non-final carrier that
 // commits a payload to the chain, transaction builders with a fee loop,
-// funding-tree state, node, arcade and wallet clients, a header source, host
-// sets with quorum fan-out, BRC-24 lookup, BRC-169 and BRC-180 resolution, a
-// pinned-key file, and SPV verdicts. Each subdirectory that holds Go code is
-// one package; this root package holds no code of its own.
+// funding-tree state, node, arcade and wallet clients, the producer's
+// orchestration of fees, funding trees and proofs around them, a header
+// source, host sets with quorum fan-out, BRC-24 lookup, BRC-169 and BRC-180
+// resolution, a pinned-key file, SPV verdicts, and a filter for text that
+// reaches a terminal. Each subdirectory that holds Go code is one package;
+// this root package holds no code of its own.
 //
 // An application supplies what makes these packages its own: the payload
 // schema, the derivation protocol and key ids, the output tags, the wallet
@@ -31,6 +33,11 @@
 // generator in tools/vectors is a separate module that nothing here imports,
 // held to a rule of its own: it may add an independent CBOR encoder, and it
 // may never import this module.
+//
+// Nor does any package take on what belongs to an application's command:
+// flags, logging, the environment, the user's configuration directories,
+// the standard streams, other processes or the process's exit. Settings and
+// output arrive as parameters. TestNoProcessConcerns enforces it.
 //
 // # Versioning
 //
