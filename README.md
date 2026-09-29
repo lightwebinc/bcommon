@@ -52,5 +52,9 @@ tests it, and nothing in the Go build needs Node.
 **Vectors:** the tests compare the library's output byte for byte with
 vectors from an independent generator. See [docs/vectors.md](docs/vectors.md).
 
+**Registry:** the derivation protocols, tags, record magic, topics and
+baskets that applications built on bcommon have chosen, so that no two
+collide, are in [docs/registry.md](docs/registry.md).
+
 **Licence:** Apache-2.0 ([LICENSE](LICENSE)). Third-party notices are in
 [NOTICE](NOTICE) and [LICENSE-THIRD-PARTY](LICENSE-THIRD-PARTY).

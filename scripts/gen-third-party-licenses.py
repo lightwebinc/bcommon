@@ -236,17 +236,24 @@ def title(repo, npm):
 
 def build(repo):
     has_docker = os.path.exists(os.path.join(repo, "Dockerfile"))
-    # With neither a Dockerfile nor a release workflow, the repository ships
-    # no artefact of its own: it is a library, and what is true of it is
-    # what a binary or an install built WITH it must carry.
-    has_release = any(
-        os.path.exists(os.path.join(repo, ".github", "workflows", "release" + ext))
-        for ext in (".yml", ".yaml")
-    )
-    library = not has_docker and not has_release
+    # A repository that builds nothing runnable is a library: what is true of
+    # it is what a binary or an install built WITH it must carry. That is
+    # decided by what it builds, not by whether it has a release workflow,
+    # because a release that only publishes notes ships no artefact.
     if os.path.exists(os.path.join(repo, "package.json")) and not os.path.exists(os.path.join(repo, "go.mod")):
+        import json as _json
+
+        with open(os.path.join(repo, "package.json"), encoding="utf-8") as f:
+            pkg = _json.load(f)
+        library = not has_docker and "bin" not in pkg and not pkg.get("private", False)
         repo_name = title(repo, npm=True)
         return render(repo_name, npm_build(repo, repo_name), "npm", has_docker, library=library)
+    names = subprocess.run(
+        ["go", "list", "-f", "{{.Name}}", "./..."],
+        cwd=repo, capture_output=True, text=True, check=True,
+        env={**os.environ, "GOWORK": "off"},
+    ).stdout.split()
+    library = not has_docker and "main" not in names
     repo_name = title(repo, npm=False)
     return render(repo_name, go_build(repo), "go", has_docker, library=library)
 

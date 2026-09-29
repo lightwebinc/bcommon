@@ -23,7 +23,7 @@ workspace resolves the library from disk and hides which tag is in use.
 
 The TypeScript package under `ts/` has no version line of its own. The
 commit tagged `vX.Y.Z` carries `ts/package.json` at version `X.Y.Z`: tag
-`v0.1.0-rc.2` ships `@lightwebinc/bcommon` 0.1.0-rc.2. A change to either
+`v0.1.0` ships `@lightwebinc/bcommon` 0.1.0. A change to either
 language is a new tag for both, even when the other did not change, so one
 version names one tree and one set of vectors, and the two languages are
 held to the same bytes at every version.
