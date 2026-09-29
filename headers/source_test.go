@@ -237,3 +237,30 @@ func TestTheFloorSitsUnderEveryRealHeader(t *testing.T) {
 		t.Fatal("difficulty 1 passes the mainnet floor")
 	}
 }
+
+// A rate-limited service is retried, not read as a failed proof, and a root
+// proven once is not asked for again.
+func TestA429IsRetriedAndAProvenRootIsReused(t *testing.T) {
+	calls := 0
+	body := sourceFixture(t, "woc-main-900000")
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		if calls == 1 {
+			w.Header().Set("Retry-After", "0")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write(body)
+	}))
+	defer srv.Close()
+	c := client(srv, WhatsOnChain, Mainnet)
+	if ok, err := c.IsValidRootForHeight(context.Background(), mustHash(t, root900000), 900000); err != nil || !ok {
+		t.Fatalf("after a 429: %v %v", ok, err)
+	}
+	if ok, err := c.IsValidRootForHeight(context.Background(), mustHash(t, strings.Repeat("11", 32)), 900000); err != nil || ok {
+		t.Fatalf("cached, wrong root: %v %v", ok, err)
+	}
+	if calls != 2 {
+		t.Fatalf("service asked %d times, want 2", calls)
+	}
+}

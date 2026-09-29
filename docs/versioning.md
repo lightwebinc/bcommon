@@ -65,6 +65,7 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
+| v0.3.3 | `headers` retries a 429 answer with back-off (honouring `Retry-After`) and reuses a root proven by its header's work for ten minutes, so a rate-limited public source is not read as a failed proof. The TypeScript package changes only its version. |
 | v0.3.2 | Documentation only: the registry records bgateway's record magic (`gwr` `0x01`), funding key id and basket, and drops topics that are not for publication; examples and tests say "test chain". The TypeScript package changes only its version. |
 | v0.3.1 | `termsafe`: a coloured value cut at the line bound is reset before `[truncated]`, so its colour no longer runs on into what is printed next. The TypeScript package changes only its version. |
 | v0.3.0 | `headers` reads WhatsOnChain (`woc:main`, `woc:test`) and chaintracks v2 (`chaintracks:URL`) as well as a bridge, and checks the proof of work of every header those serve, with a mainnet floor (`MainnetMinDifficulty`). New: `Parse`, `NewSource`, `Kind`, `Client.Kind`, `Client.Network`, `Client.MinDifficulty`, `ErrSource`, `ErrProofOfWork`. `New` now takes a source specification; a bridge URL means what it did. The TypeScript package changes only its version. |

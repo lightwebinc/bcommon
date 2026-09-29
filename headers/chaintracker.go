@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
@@ -55,7 +56,25 @@ type Client struct {
 	Timeout time.Duration
 
 	err error
+
+	// roots holds roots already proven by their header's work, by height,
+	// for rootTTL: one object's ancestry often names the same block more
+	// than once, and a rate-limited public service should be asked once.
+	mu    sync.Mutex
+	roots map[uint32]provenRoot
 }
+
+type provenRoot struct {
+	root chainhash.Hash
+	at   time.Time
+}
+
+// rootTTL bounds how long a proven root is reused, so a reorganised tip is
+// read again; rootCacheMax bounds how many are kept.
+const (
+	rootTTL      = 10 * time.Minute
+	rootCacheMax = 10_000
+)
 
 var _ chaintracker.ChainTracker = (*Client)(nil)
 
@@ -138,35 +157,61 @@ func overBound(b []byte, limit int64) error {
 	return nil
 }
 
+// retries429 is how many times a 429 answer is retried, with back-off from
+// 500 ms (or the service's Retry-After), each wait capped at 8 s. A public
+// header service rate-limits, and a busy answer is not a failed proof.
+const retries429 = 4
+
 func (c *Client) get(ctx context.Context, path string, into any) (int, error) {
+	for attempt := 0; ; attempt++ {
+		status, retryAfter, err := c.getOnce(ctx, path, into)
+		if err != nil || status != http.StatusTooManyRequests || attempt >= retries429 {
+			return status, err
+		}
+		wait := time.Duration(500<<attempt) * time.Millisecond
+		if s, perr := strconv.Atoi(retryAfter); perr == nil && s >= 0 {
+			wait = time.Duration(s) * time.Second
+		}
+		wait = min(wait, 8*time.Second)
+		select {
+		case <-ctx.Done():
+			return status, ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+}
+
+// getOnce is one GET: the status, the Retry-After header, and the body
+// decoded into into when the status is 200.
+func (c *Client) getOnce(ctx context.Context, path string, into any) (int, string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(c.Base, "/")+path, nil)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	req.Header.Set("Accept", "application/json")
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
-		return 0, err
+		return 0, "", err
 	}
 	defer resp.Body.Close()
 	body, err := readAtMost(resp.Body, maxBody)
 	if err != nil {
-		return resp.StatusCode, err
+		return resp.StatusCode, "", err
 	}
 	// Status first. A 404 means the store does not hold that height yet, and
 	// IsValidRootForHeight turns that into (false, nil) on purpose; a service
 	// that padded its 404 page must not come back as a malformed answer.
 	if resp.StatusCode != http.StatusOK {
-		return resp.StatusCode, nil
+		return resp.StatusCode, resp.Header.Get("Retry-After"), nil
 	}
 	if err := overBound(body, maxBody); err != nil {
-		return resp.StatusCode, err
+		return resp.StatusCode, "", err
 	}
 	if err := json.Unmarshal(body, into); err != nil {
-		return resp.StatusCode, fmt.Errorf("header service answered %d with a body that is not JSON: %w", resp.StatusCode, err)
+		return resp.StatusCode, "", fmt.Errorf("header service answered %d with a body that is not JSON: %w", resp.StatusCode, err)
 	}
-	return resp.StatusCode, nil
+	return resp.StatusCode, "", nil
 }
 
 // IsValidRootForHeight reports whether root is the merkle root committed at
@@ -187,6 +232,12 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 		return false, c.err
 	}
 	if c.Kind != Native {
+		c.mu.Lock()
+		hit, ok := c.roots[height]
+		c.mu.Unlock()
+		if ok && time.Since(hit.at) < rootTTL {
+			return hit.root == *root, nil
+		}
 		h, err := c.fullHeader(ctx, height)
 		if err != nil || h == nil {
 			return false, err
@@ -196,6 +247,12 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 		if err := h.check(height, c.minDifficulty()); err != nil {
 			return false, err
 		}
+		c.mu.Lock()
+		if c.roots == nil || len(c.roots) >= rootCacheMax {
+			c.roots = map[uint32]provenRoot{}
+		}
+		c.roots[height] = provenRoot{root: h.Root, at: time.Now()}
+		c.mu.Unlock()
 		return h.Root == *root, nil
 	}
 	var answer struct {
