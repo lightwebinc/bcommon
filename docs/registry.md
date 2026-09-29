@@ -44,8 +44,7 @@ an edit.
 - **Record magic** is the application's tag prefix, a letter and a version
   byte, so it cannot be mistaken for another application's record.
 - **Topics and lookup services** are `tm_<name>` and `ls_<name>`, with a name
-  derived from the application's. Lab or test topics add a suffix
-  (`tm_<name>_lab`) and are never used in production.
+  derived from the application's.
 - **Baskets** start with the application's name.
 
 An application registers its identifiers here before it freezes its contract,
@@ -81,9 +80,11 @@ A publishing gateway: funding trees and carriers for forwarded objects.
 |---|---|---|
 | Protocol | `[1, "bgateway"]` | Tree outputs and carrier inputs |
 | Key id | `flow` | Tree outputs and carrier inputs |
+| Key id | `fund` | The publisher's funding key |
 | Tag | `gw` `0x01` | Funding-tree output |
 | Tag | `gw` `0x04` | Registration output of a funding tree |
-| Topic | `tm_bgw_lab` | Lab topic only |
+| Record magic | `gwr` `0x01` | Batch record, version 1 |
+| Basket | `bgateway fund` | Wallet basket |
 
 The prefix `gw` is registered to bgateway. The design's earlier `bg` prefix
 is not used, because it collided with another planned application's.
