@@ -65,5 +65,6 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
+| v0.3.0 | `headers` reads WhatsOnChain (`woc:main`, `woc:test`) and chaintracks v2 (`chaintracks:URL`) as well as a bridge, and checks the proof of work of every header those serve, with a mainnet floor (`MainnetMinDifficulty`). New: `Parse`, `NewSource`, `Kind`, `Client.Kind`, `Client.Network`, `Client.MinDifficulty`, `ErrSource`, `ErrProofOfWork`. `New` now takes a source specification; a bridge URL means what it did. The TypeScript package changes only its version. |
 | v0.2.0 | Two packages added: `producer`, a producer's fees, settlement, funding-tree lifecycle, kept transactions and proof collection, and `termsafe`, text filtered for a terminal. Additive only: every v0.1.0 identifier is unchanged, so an application moves by changing its pin. The TypeScript package changes only its version. |
 | v0.1.0 | The first release. |
