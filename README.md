@@ -35,7 +35,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `wirewallet` | A BRC-100 wallet over the wallet wire, loopback only, and a handler that serves one |
 | `publish` | The settlement leg (EF to an ingress, hex to a node RPC, arcade) and the BEEF object leg to an overlay host, which never share a socket, plus a transition journal |
 | `producer` | A producer's orchestration: fee inputs and change from a coin pool, settlement, the funding-tree lifecycle, the one kept copy of each unproven transaction, and proof collection that republishes what has mined |
-| `headers` | A chain tracker over the header API of [overlay-bridge](https://github.com/lightwebinc/overlay-bridge) |
+| `headers` | A chain tracker over WhatsOnChain, chaintracks or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
 | `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy |

@@ -296,15 +296,34 @@ application can say what its users should do.
 
 ## Chain tracker: `headers.Client`
 
+`headers.New(spec)` takes a header source specification:
+
+| Specification | Source | Reads |
+|---|---|---|
+| `woc:main`, `woc:test` | the public WhatsOnChain API | `/block/{h}/header`, `/chain/info` |
+| `chaintracks:https://host/v2` | a chaintracks v2 service | `/header/height/{h}`, `/height` |
+| `https://host:port` | an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge) header read API | `/v1/root/{h}`, `/v1/tip` |
+
+`headers.NewSource(spec)` returns the parse error instead; `New` returns a
+client that answers every call with it.
+
 | Field | Default | |
 |---|---|---|
-| `Base` | none | the header read API of an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), with no path suffix; the client reads `/v1/tip` and `/v1/root/{height}` |
+| `Base` | from the specification | the source's base URL, with no path suffix |
+| `Kind` | from the specification | `Native`, `WhatsOnChain` or `Chaintracks` |
+| `Network` | `main` for WhatsOnChain main and chaintracks, `test` for WhatsOnChain test, none for a bridge | sets the proof-of-work floor |
+| `MinDifficulty` | `MainnetMinDifficulty` (4e9) on `main`, none otherwise | overrides the floor |
 | `HTTP` | a client with no proxy | |
 | `Timeout` | 10 s | used only when `HTTP` is nil |
 
-`headers.New(base)` trims a trailing slash. Answers are bounded at 1 MiB.
-Which header source a reader trusts is the security decision behind every
-proof it checks, so choose one that received its headers itself.
+Answers are bounded at 1 MiB. Which header source a reader trusts is the
+security decision behind every proof it checks. A bridge's `/v1` answers
+carry no header fields and are taken as given, so point at one that received
+its headers itself. A WhatsOnChain or chaintracks answer is not taken as
+given: every header is hashed, must carry the work its bits claim, and on
+mainnet must claim at least the floor, so a source that lies has to mine a
+block to do it. A header that fails is `ErrProofOfWork`, an error and never a
+false answer. For the strongest check run your own chaintracks or node.
 
 ## Hosts: `hostset.Client`
 

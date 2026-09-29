@@ -184,7 +184,8 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`headers`** owns the chain tracker, the root of trust for every proof a
   reader checks. A 404 from the header service is "not held yet", and any
   other failure is an error, never a false answer, so an outage is not read
-  as a forged proof.
+  as a forged proof. A source that serves header fields has each header's
+  proof of work checked against the network's floor.
 - **`hostset`** owns which address answers for an overlay host: DNS or a
   static list as the source, a first, random or all policy, and an optional
   quorum of distinct hosts whose bodies the caller compares.

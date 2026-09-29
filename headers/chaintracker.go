@@ -1,13 +1,16 @@
-// Package headers is a chain tracker over the header read API of an overlay
-// bridge (github.com/lightwebinc/overlay-bridge).
+// Package headers is a chain tracker over a header source: an overlay
+// bridge's native /v1 routes (github.com/lightwebinc/overlay-bridge), the
+// public WhatsOnChain API, or a chaintracks v2 service.
 //
 // It is the root of trust for every proof checked against it. A transaction
 // is only as trustworthy as the headers its BUMP is checked against, so the
 // question of WHO answers "what root does height N commit to" is the whole
-// security question, not a configuration detail. Pointing this at a public
-// header service would mean trusting that service to tell the truth about the
-// chain; pointing it at a bridge that received the headers itself, off the
-// same network that delivered the transaction, does not.
+// security question, not a configuration detail. A bridge that received the
+// headers itself, off the same network that delivered the transaction, needs
+// no further check. A source that serves header fields (WhatsOnChain,
+// chaintracks) is not taken at its word: every header it answers is hashed
+// here and must carry the work its bits claim, at or above the network's
+// floor, so a lie costs a mined block rather than an edited response.
 //
 // It speaks HTTP and imports nothing from the bridge. That is deliberate:
 // this module has exactly one direct dependency, and an HTTP contract plus a
@@ -34,21 +37,38 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 )
 
-// Client reads block headers from a bridge's native /v1 routes.
+// Client reads block headers from one header source.
 type Client struct {
-	// Base is the bridge's header read API base, with no path suffix.
+	// Base is the source's base URL, with no path suffix.
 	Base string
+	// Kind is the dialect Base speaks. The zero value is a bridge's /v1.
+	Kind Kind
+	// Network sets the proof-of-work floor for a source that serves header
+	// fields: Mainnet checks MainnetMinDifficulty, anything else checks each
+	// header against its own target only.
+	Network string
+	// MinDifficulty overrides the network's floor when positive.
+	MinDifficulty float64
 	// HTTP is optional.
 	HTTP *http.Client
 	// Timeout defaults to 10s when HTTP is nil.
 	Timeout time.Duration
+
+	err error
 }
 
 var _ chaintracker.ChainTracker = (*Client)(nil)
 
-// New returns a client for base.
-func New(base string) *Client {
-	return &Client{Base: strings.TrimRight(base, "/")}
+// New returns a client for a header source specification (see Parse). A
+// specification that does not parse yields a client whose every call returns
+// the parse error, so a caller that cannot handle an error at construction
+// still refuses rather than guessing.
+func New(spec string) *Client {
+	c, err := NewSource(spec)
+	if err != nil {
+		return &Client{Base: strings.TrimRight(spec, "/"), err: err}
+	}
+	return c
 }
 
 // maxBody bounds an answer before it is parsed. The header service is trusted
@@ -163,6 +183,21 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 	if root == nil {
 		return false, nil
 	}
+	if c.err != nil {
+		return false, c.err
+	}
+	if c.Kind != Native {
+		h, err := c.fullHeader(ctx, height)
+		if err != nil || h == nil {
+			return false, err
+		}
+		// The work is checked before the root is compared, so a forged header
+		// is an error even when its root is the one the caller hoped for.
+		if err := h.check(height, c.minDifficulty()); err != nil {
+			return false, err
+		}
+		return h.Root == *root, nil
+	}
 	var answer struct {
 		Height     uint32 `json:"height"`
 		MerkleRoot string `json:"merkleRoot"`
@@ -194,6 +229,38 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 // reports how far the header source has got, and a service that answers roots
 // while reporting height zero is a service that has not started.
 func (c *Client) CurrentHeight(ctx context.Context) (uint32, error) {
+	if c.err != nil {
+		return 0, c.err
+	}
+	switch c.Kind {
+	case WhatsOnChain:
+		var info struct {
+			Blocks uint32 `json:"blocks"`
+		}
+		status, err := c.get(ctx, "/chain/info", &info)
+		if err != nil {
+			return 0, err
+		}
+		if status != http.StatusOK {
+			return 0, fmt.Errorf("header service: tip: status %d", status)
+		}
+		return info.Blocks, nil
+	case Chaintracks:
+		var env struct {
+			Status string `json:"status"`
+			Value  struct {
+				Height uint32 `json:"height"`
+			} `json:"value"`
+		}
+		status, err := c.get(ctx, "/height", &env)
+		if err != nil {
+			return 0, err
+		}
+		if status != http.StatusOK || env.Status != "success" {
+			return 0, fmt.Errorf("header service: tip: status %d %q", status, env.Status)
+		}
+		return env.Value.Height, nil
+	}
 	var answer struct {
 		Height uint32 `json:"height"`
 		Hash   string `json:"hash"`
