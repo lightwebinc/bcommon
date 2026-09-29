@@ -23,7 +23,7 @@ import (
 // parent rebuilt with its proof, and the input it becomes signs.
 func TestTakeSpendsACoinUnderTheKeyItIsLockedTo(t *testing.T) {
 	ctx := context.Background()
-	l, n := newLab(t), &notes{}
+	l, n := newTestChain(t), &notes{}
 	pool := poolIn(t)
 	own, other := signerOf(t, newKey(t)), signerOf(t, newKey(t))
 	coin := fund(t, pool, own, 5000, 0x11)
@@ -66,7 +66,7 @@ func TestTakeSpendsACoinUnderTheKeyItIsLockedTo(t *testing.T) {
 // says whether coin is merely waiting for a proof.
 func TestTakeWithNoCoinIsANoCoinError(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	own := signerOf(t, newKey(t))
 	p := payerFor(l, poolIn(t), own, &notes{})
 
@@ -102,7 +102,7 @@ func TestTakeWithNoCoinIsANoCoinError(t *testing.T) {
 // object, so the BEEF never holds two copies of it.
 func TestTakeAllowsUnprovenChangeOfAKeptParent(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	pool := poolIn(t)
 	own := signerOf(t, newKey(t))
 	lock, err := own.FundScript()
@@ -137,7 +137,7 @@ func TestTakeAllowsUnprovenChangeOfAKeptParent(t *testing.T) {
 }
 
 func TestTakeRefusesACoinNoKeyHolds(t *testing.T) {
-	l := newLab(t)
+	l := newTestChain(t)
 	pool := poolIn(t)
 	own, stranger := signerOf(t, newKey(t)), signerOf(t, newKey(t))
 	coin := fund(t, pool, stranger, 5000, 0x12)
@@ -155,7 +155,7 @@ func TestTakeRefusesACoinNoKeyHolds(t *testing.T) {
 // sender, found through KeyFor, or through Keys when KeyFor is not set.
 func TestTakeSpendsAReceivedPaymentUnderItsOwnersKey(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	pool := poolIn(t)
 	owner, sender := signerOf(t, newKey(t)), signerOf(t, newKey(t))
 	dest, err := sender.PaymentDestination(ctx, owner.IdentityHex(), "cHJlZml4", "c3VmZml4")
@@ -200,7 +200,7 @@ func TestTakeSpendsAReceivedPaymentUnderItsOwnersKey(t *testing.T) {
 
 // A key's fund script failing is not skipped: Take stops on it.
 func TestTakeStopsOnAKeyThatCannotDerive(t *testing.T) {
-	l := newLab(t)
+	l := newTestChain(t)
 	pool := poolIn(t)
 	own := signerOf(t, newKey(t))
 	fund(t, pool, own, 5000, 0x14)
@@ -300,7 +300,7 @@ func TestChangeKeepsTheParentWholeAndHoldsUnprovenChange(t *testing.T) {
 // coinbase the pool holds no bytes of.
 func TestParentRebuildsWhatTheSpenderCarries(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	own := signerOf(t, newKey(t))
 	lock, err := own.FundScript()
 	if err != nil {
@@ -363,7 +363,7 @@ func TestParentRebuildsWhatTheSpenderCarries(t *testing.T) {
 // Async settles on the leg's acceptance and leaves the proof for later.
 func TestSettleAsyncReturnsOnAcceptance(t *testing.T) {
 	ctx := context.Background()
-	l, n := newLab(t), &notes{}
+	l, n := newTestChain(t), &notes{}
 	pool := poolIn(t)
 	own := signerOf(t, newKey(t))
 	fund(t, pool, own, 5000, 0x51)
@@ -390,7 +390,7 @@ func TestSettleAsyncReturnsOnAcceptance(t *testing.T) {
 func TestSettleWaitsForTheProof(t *testing.T) {
 	ctx := context.Background()
 	for _, async := range []bool{false, true} {
-		l, n := newLab(t), &notes{}
+		l, n := newTestChain(t), &notes{}
 		l.mineOnSubmit = true
 		pool := poolIn(t)
 		own := signerOf(t, newKey(t))
@@ -422,7 +422,7 @@ func TestSettleWaitsForTheProof(t *testing.T) {
 
 func TestSettleReportsTheLegsRefusalAndATimeout(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	pool := poolIn(t)
 	own := signerOf(t, newKey(t))
 	fund(t, pool, own, 5000, 0x53)
@@ -474,7 +474,7 @@ func itoa(n int) string { return strconv.Itoa(n) }
 // The Payer never writes outside its pool: Take and GiveBack persist the
 // reservation, so a crash between them never double-spends a coin.
 func TestTakePersistsTheReservation(t *testing.T) {
-	l := newLab(t)
+	l := newTestChain(t)
 	dir := t.TempDir()
 	pool, err := bwallet.LoadPool(filepath.Join(dir, "wallet.json"))
 	if err != nil {

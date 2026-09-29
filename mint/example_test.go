@@ -18,12 +18,12 @@ import (
 	"github.com/lightwebinc/bcommon/verify"
 )
 
-// labCoin is a stand-in mined coin on a lab chain that exists only in this
+// testCoin is a stand-in mined coin on a test chain that exists only in this
 // process: one P2PKH output of 50,000 satoshis to the fixed test key, placed
 // by a stand-in proof at offset 1 of a two-transaction block at height 90.
 // The tracker knows that block's merkle root and nothing else, so SPV runs
 // against it exactly as it would against a reader's own header source.
-func labCoin() (*transaction.Transaction, *goldentest.Tracker, error) {
+func testCoin() (*transaction.Transaction, *goldentest.Tracker, error) {
 	addr, err := script.NewAddressFromPublicKey(goldentest.FixedKey().PubKey(), false)
 	if err != nil {
 		return nil, nil, err
@@ -50,14 +50,14 @@ func labCoin() (*transaction.Transaction, *goldentest.Tracker, error) {
 	return coin, &goldentest.Tracker{Roots: map[uint32]string{90: root.String()}, Tip: 100}, nil
 }
 
-// A funding tree on the lab chain: four funding outputs of 1,000 satoshis
+// A funding tree on the test chain: four funding outputs of 1,000 satoshis
 // under the application's funding lock, paid for by the coin, with the fee
 // settled by the fee loop and the change sent back to the payer. The tree
 // is not mined, so it verifies through its proven parent, and the state an
 // application keeps about it carries the BEEF that proves it.
 func ExampleFundingTree() {
 	ctx := context.Background()
-	coin, tracker, err := labCoin()
+	coin, tracker, err := testCoin()
 	if err != nil {
 		fmt.Println(err)
 		return

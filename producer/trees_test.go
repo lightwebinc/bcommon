@@ -14,11 +14,11 @@ import (
 	"github.com/lightwebinc/bcommon/producer"
 )
 
-// treesFor is a Trees over a fresh lab, pool and memory state, with one
-// proven coin in the pool.
-func treesFor(t *testing.T) (*producer.Trees, *lab, *memTrees, *notes) {
+// treesFor is a Trees over a fresh test chain, pool and memory state, with
+// one proven coin in the pool.
+func treesFor(t *testing.T) (*producer.Trees, *testChain, *memTrees, *notes) {
 	t.Helper()
-	l, n := newLab(t), &notes{}
+	l, n := newTestChain(t), &notes{}
 	pool := poolIn(t)
 	own := signerOf(t, newKey(t))
 	fund(t, pool, own, 50000, 0x81)

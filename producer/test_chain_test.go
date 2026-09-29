@@ -140,14 +140,14 @@ func (n *notes) all() []string {
 
 func (n *notes) String() string { return strings.Join(n.all(), "\n") }
 
-// lab is one in-process server speaking a node's asset API, arcade's API and
-// an overlay host's submit route, over a chain that mines what a test tells
-// it to.
-type lab struct {
+// testChain is one in-process server speaking a node's asset API, arcade's
+// API and an overlay host's submit route, over a chain that mines what a test
+// tells it to.
+type testChain struct {
 	srv *httptest.Server
 
 	mu sync.Mutex
-	// known is every transaction the lab can serve raw, by txid.
+	// known is every transaction the test chain can serve raw, by txid.
 	known map[string]*transaction.Transaction
 	// accepted is what arcade took; mined what is in a block, at a height;
 	// refused what the network refused, with why.
@@ -170,25 +170,25 @@ type submission struct {
 	beef  []byte
 }
 
-func newLab(t testing.TB) *lab {
+func newTestChain(t testing.TB) *testChain {
 	t.Helper()
-	l := &lab{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
+	l := &testChain{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
 		mined: map[string]uint32{}, refused: map[string]string{}, height: 700}
 	l.srv = httptest.NewServer(http.HandlerFunc(l.serve))
 	t.Cleanup(l.srv.Close)
 	return l
 }
 
-func (l *lab) arcade() *publish.Arcade {
+func (l *testChain) arcade() *publish.Arcade {
 	return &publish.Arcade{Base: l.srv.URL + "/arc", Poll: 10 * time.Millisecond, Verdict: 200 * time.Millisecond}
 }
 
-func (l *lab) asset() *nodeapi.Asset { return &nodeapi.Asset{Base: l.srv.URL + "/node"} }
+func (l *testChain) asset() *nodeapi.Asset { return &nodeapi.Asset{Base: l.srv.URL + "/node"} }
 
-func (l *lab) facade() *publish.Facade { return &publish.Facade{Base: l.srv.URL + "/host"} }
+func (l *testChain) facade() *publish.Facade { return &publish.Facade{Base: l.srv.URL + "/host"} }
 
 // mine puts each transaction in a block of its own at the next height.
-func (l *lab) mine(txids ...string) {
+func (l *testChain) mine(txids ...string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, id := range txids {
@@ -197,7 +197,7 @@ func (l *lab) mine(txids ...string) {
 	}
 }
 
-func (l *lab) know(txs ...*transaction.Transaction) {
+func (l *testChain) know(txs ...*transaction.Transaction) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, tx := range txs {
@@ -205,13 +205,13 @@ func (l *lab) know(txs ...*transaction.Transaction) {
 	}
 }
 
-func (l *lab) submissions() []submission {
+func (l *testChain) submissions() []submission {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return append([]submission(nil), l.submitted...)
 }
 
-func (l *lab) proof(txid string) (*transaction.MerklePath, uint32, bool) {
+func (l *testChain) proof(txid string) (*transaction.MerklePath, uint32, bool) {
 	h, ok := l.mined[txid]
 	if !ok {
 		return nil, 0, false
@@ -223,7 +223,7 @@ func (l *lab) proof(txid string) (*transaction.MerklePath, uint32, bool) {
 	return proofAt(id, h), h, true
 }
 
-func (l *lab) serve(w http.ResponseWriter, r *http.Request) {
+func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	path := r.URL.Path
@@ -329,8 +329,9 @@ func (m *memTrees) Adopt(t funding.Tree) error {
 	return nil
 }
 
-// payerFor is a Payer over pool with s as its one key, settling to the lab.
-func payerFor(l *lab, pool *bwallet.Pool, s *bwallet.Signer, n *notes) *producer.Payer {
+// payerFor is a Payer over pool with s as its one key, settling to the
+// test chain.
+func payerFor(l *testChain, pool *bwallet.Pool, s *bwallet.Signer, n *notes) *producer.Payer {
 	return &producer.Payer{
 		Pool: pool, Tip: 100, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s},
 		Kept: &producer.Kept{}, Settler: l.arcade(), Asset: l.asset(), Fees: mint.DefaultFees,

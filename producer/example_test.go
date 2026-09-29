@@ -43,7 +43,7 @@ var (
 	}
 )
 
-// exampleProducer is a producer on a lab chain that exists only in this
+// exampleProducer is a producer on a test chain that exists only in this
 // process: the fixed test key's signer, and a pool in dir holding one
 // 50,000-satoshi coin paying its fund key, with a stand-in proof at height
 // 90. Its lines go to lines.

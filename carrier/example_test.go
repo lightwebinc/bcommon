@@ -50,10 +50,10 @@ func exampleClassify(p []byte) (bool, error) {
 	return bytes.HasPrefix(p, examplePrefix[:3]), nil
 }
 
-// labTree builds a lab chain that exists only in this process: a stand-in
-// mined coin at height 90, which the returned tracker holds the root of,
-// and an unmined funding tree of four 1,000-satoshi outputs spending it.
-func labTree(ctx context.Context, w wallet.Interface, p carrier.Params) (*transaction.Transaction, *goldentest.Tracker, error) {
+// testChainTree builds a test chain that exists only in this process: a
+// stand-in mined coin at height 90, which the returned tracker holds the root
+// of, and an unmined funding tree of four 1,000-satoshi outputs spending it.
+func testChainTree(ctx context.Context, w wallet.Interface, p carrier.Params) (*transaction.Transaction, *goldentest.Tracker, error) {
 	addr, err := script.NewAddressFromPublicKey(goldentest.FixedKey().PubKey(), false)
 	if err != nil {
 		return nil, nil, err
@@ -96,7 +96,7 @@ func labTree(ctx context.Context, w wallet.Interface, p carrier.Params) (*transa
 
 // A producer mints a carrier for a payload from one output of its funding
 // tree; the carrier decodes, validates against the producer's identity key,
-// and proves through the tree to the lab chain's header, all offline.
+// and proves through the tree to the test chain's header, all offline.
 func ExampleMint() {
 	ctx := context.Background()
 	w, err := wallet.NewCompletedProtoWallet(goldentest.FixedKey())
@@ -105,7 +105,7 @@ func ExampleMint() {
 		return
 	}
 	p := exampleParams()
-	tree, tracker, err := labTree(ctx, w, p)
+	tree, tracker, err := testChainTree(ctx, w, p)
 	if err != nil {
 		fmt.Println(err)
 		return

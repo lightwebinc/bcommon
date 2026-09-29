@@ -70,7 +70,7 @@ func TestArcadeProofIsHeldToTheNodesChecks(t *testing.T) {
 // know, the node answers, and with neither there is nothing mined.
 func TestProofsAskArcadeThenTheNode(t *testing.T) {
 	ctx := context.Background()
-	l := newLab(t)
+	l := newTestChain(t)
 	p := producer.Proofs{Arcade: l.arcade(), Asset: l.asset()}
 	refused, accepted, elsewhere := strings.Repeat("a1", 32), strings.Repeat("a2", 32), strings.Repeat("a3", 32)
 	l.mu.Lock()

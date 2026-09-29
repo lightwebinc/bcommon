@@ -7,7 +7,7 @@ changes. The excerpts below are taken from those files; follow the link
 under each heading for the complete, runnable version.
 
 Nothing here touches a network. Where an example needs a chain, it builds a
-**lab chain** in the process: a stand-in mined coin with a stand-in proof,
+**test chain** in the process: a stand-in mined coin with a stand-in proof,
 and a chain tracker (`goldentest.Tracker`) that knows that one block's merkle
 root and nothing else. SPV then runs exactly as it would against a reader's
 own header source.
@@ -67,13 +67,13 @@ In an application the wallet is a real BRC-100 wallet: `bwallet.Embedded`,
 or one reached with `wirewallet.Dial`. The SDK's `CompletedProtoWallet`
 stands in here because `Lock` needs only its key calls.
 
-## Build a funding tree on a lab chain
+## Build a funding tree on a test chain
 
 [`mint/example_test.go`](../mint/example_test.go), `ExampleFundingTree`
 
 A funding tree is a mined transaction of equal-valued outputs set aside for
 carriers, each locked with the application's funding lock. The fee input is
-the lab coin; the fee loop signs, measures and rebuilds until the fee covers
+the test coin; the fee loop signs, measures and rebuilds until the fee covers
 the size.
 
 ```go

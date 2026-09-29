@@ -109,7 +109,7 @@ const key = readerLockingKey([1, 'example app'], 'record', identityHex)
 ```
 
 [docs/examples.md](docs/examples.md) walks through deriving and decoding a
-PushDrop lock, building a funding tree and a carrier on an in-process lab
+PushDrop lock, building a funding tree and a carrier on an in-process test
 chain, verifying a carrier from a BEEF, guarding a proof, RFC 6962 proofs,
 stores and CBOR, paying fees and minting the next funding tree as a
 producer, and filtering text for a terminal. Every Go example there is an

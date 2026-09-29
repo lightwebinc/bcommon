@@ -22,7 +22,7 @@ import (
 // in the pool, and the journal holds entries in several states.
 type published struct {
 	tr      *producer.Trees
-	lab     *lab
+	chain   *testChain
 	st      *memTrees
 	tree    *transaction.Transaction
 	journal *publish.Journal
@@ -42,7 +42,7 @@ func publishUnproven(t *testing.T) *published {
 		}
 		return funding.Rebuild(st.cur.RawHex, st.cur.BumpHex, st.cur.BeefHex)
 	}
-	return &published{tr: tr, lab: l, st: st, tree: tree, journal: &publish.Journal{Dir: filepath.Join(t.TempDir(), "journal")}}
+	return &published{tr: tr, chain: l, st: st, tree: tree, journal: &publish.Journal{Dir: filepath.Join(t.TempDir(), "journal")}}
 }
 
 func (p *published) pending(proven *int) producer.Pending {
@@ -57,8 +57,8 @@ func (p *published) pending(proven *int) producer.Pending {
 
 func (p *published) collector(n *notes, saves *int) *producer.Collector {
 	return &producer.Collector{
-		Proofs: producer.Proofs{Arcade: p.lab.arcade(), Asset: p.lab.asset()}, Kept: p.tr.Payer.Kept,
-		Pool: p.tr.Payer.Pool, Journal: p.journal, Facade: p.lab.facade(), Topic: testTopic,
+		Proofs: producer.Proofs{Arcade: p.chain.arcade(), Asset: p.chain.asset()}, Kept: p.tr.Payer.Kept,
+		Pool: p.tr.Payer.Pool, Journal: p.journal, Facade: p.chain.facade(), Topic: testTopic,
 		Save: func() error { *saves++; return nil }, Note: n.note,
 	}
 }
@@ -93,8 +93,8 @@ func TestCollectRecordsAndRepublishesAProof(t *testing.T) {
 	p.entry(t, 2, tracked, true, "")
 	p.entry(t, 3, failed, true, "settle refused")
 	p.entry(t, 4, unsent, false, "")
-	p.lab.mine(treeID, superseded, tracked, failed, unsent)
-	before := len(p.lab.submissions())
+	p.chain.mine(treeID, superseded, tracked, failed, unsent)
+	before := len(p.chain.submissions())
 
 	n, saves, proven := &notes{}, 0, 0
 	it := p.pending(&proven)
@@ -115,7 +115,7 @@ func TestCollectRecordsAndRepublishesAProof(t *testing.T) {
 	if strings.Join(n.all(), "\n") != strings.Join(want, "\n") {
 		t.Fatalf("notes:\n%s\nwant:\n%s", n, strings.Join(want, "\n"))
 	}
-	subs := p.lab.submissions()
+	subs := p.chain.submissions()
 	if len(subs) != before+1 {
 		t.Fatalf("%d republished", len(subs)-before)
 	}
@@ -156,9 +156,9 @@ func TestCollectReportsEveryOtherOutcome(t *testing.T) {
 		t.Fatalf("pending: %q", got)
 	}
 
-	p.lab.mu.Lock()
-	p.lab.refused[treeID] = "double spend"
-	p.lab.mu.Unlock()
+	p.chain.mu.Lock()
+	p.chain.refused[treeID] = "double spend"
+	p.chain.mu.Unlock()
 	n.lines = nil
 	c.Collect(ctx, []producer.Pending{p.pending(&proven)})
 	if got := n.String(); got != "WARNING: funding tree "+treeID+" was refused by the network: REJECTED: double spend" {
@@ -173,10 +173,10 @@ func TestCollectReportsEveryOtherOutcome(t *testing.T) {
 		t.Fatalf("a Refused hook: %v, notes %q", said, n)
 	}
 
-	p.lab.mu.Lock()
-	delete(p.lab.refused, treeID)
-	p.lab.mu.Unlock()
-	p.lab.mine(treeID)
+	p.chain.mu.Lock()
+	delete(p.chain.refused, treeID)
+	p.chain.mu.Unlock()
+	p.chain.mine(treeID)
 	broken := p.pending(&proven)
 	broken.BeefHex = "zz"
 	n.lines = nil
@@ -214,8 +214,8 @@ func TestCollectRepublishFailures(t *testing.T) {
 	ctx := context.Background()
 	p := publishUnproven(t)
 	treeID := p.tree.TxID().String()
-	p.lab.mine(treeID)
-	p.lab.facadeDown = true
+	p.chain.mine(treeID)
+	p.chain.facadeDown = true
 	n, saves, proven := &notes{}, 0, 0
 	c := p.collector(n, &saves)
 	c.Pool, c.Journal = nil, nil

@@ -52,11 +52,11 @@ func exampleSpec() verify.CarrierSpec {
 	}
 }
 
-// labCarrier mints a carrier on a lab chain that exists only in this
+// testChainCarrier mints a carrier on a test chain that exists only in this
 // process: a stand-in mined coin at height 90, whose block root the returned
 // tracker holds, an unmined funding tree spending it, and a carrier spending
 // the tree's first output.
-func labCarrier(ctx context.Context, content string) (*transaction.Transaction, *goldentest.Tracker, error) {
+func testChainCarrier(ctx context.Context, content string) (*transaction.Transaction, *goldentest.Tracker, error) {
 	key := goldentest.FixedKey()
 	w, err := wallet.NewCompletedProtoWallet(key)
 	if err != nil {
@@ -115,7 +115,7 @@ func labCarrier(ctx context.Context, content string) (*transaction.Transaction, 
 // forgery.
 func ExampleVerifyCarrier() {
 	ctx := context.Background()
-	tx, tracker, err := labCarrier(ctx, "an object")
+	tx, tracker, err := testChainCarrier(ctx, "an object")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -172,7 +172,7 @@ func ExampleVerifyCarrier() {
 // default.
 func ExampleCheck() {
 	ctx := context.Background()
-	tx, tracker, err := labCarrier(ctx, "an object")
+	tx, tracker, err := testChainCarrier(ctx, "an object")
 	if err != nil {
 		fmt.Println(err)
 		return
