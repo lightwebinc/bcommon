@@ -169,7 +169,11 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   object, so no BEEF merges two copies of it. `Trees` is the funding-tree
   lifecycle: spend from the current tree while it has the outputs, otherwise
   mint, settle, record (through the application's `TreeState`) and publish
-  the next one, sized to the spend. `Proofs` asks arcade, then the node,
+  the next one, sized to the spend. With `Ahead`, it mints and settles the
+  next tree in the background once a spend leaves the current one low, so
+  a producer whose trees must mine before they are published does not wait
+  for a block when the current tree runs out; the tree minted ahead is
+  adopted and published only when a spend switches to it. `Proofs` asks arcade, then the node,
   whether a transaction mined, holding arcade's proof to the node's checks,
   and `Collector` collects every proof still owed, records it, publishes
   the proven transaction again so every host upgrades its copy, stamps the

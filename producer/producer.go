@@ -24,7 +24,8 @@
 //     same object, so a BEEF built from it never merges two copies.
 //   - Trees is the funding-tree lifecycle: spend from the current tree, or
 //     mint, settle, record and publish the next one when the current tree
-//     cannot fund what is asked.
+//     cannot fund what is asked; with Ahead, the next tree is minted and
+//     settled in the background before the current one runs out.
 //   - Proofs asks whether a transaction mined; Collector asks it for
 //     everything still waiting, records each proof, republishes the proven
 //     transaction, and releases change the pool held back.
@@ -38,7 +39,14 @@
 // (NoCoinError, NoKeyError) or through Pending's Refused and Unbuilt hooks.
 //
 // Nothing here is safe for concurrent use: one producer run owns its Payer,
-// Kept and Trees.
+// Kept and Trees. The one goroutine the package starts itself is a Trees
+// minting ahead (Trees.Ahead), and it touches none of them: the tree's fee
+// coin is reserved and signed on the caller's goroutine, and the background
+// only settles it, through the Payer's Settler and Asset, or calls Fund.
+// Those, and the Settler's own Note, must tolerate being used from that
+// goroutine while the application uses them from its own; the ones in
+// publish and nodeapi do. The background's notes are held and reported
+// through the Payer's Note by the Spend or Wait that collects its result.
 package producer
 
 import (

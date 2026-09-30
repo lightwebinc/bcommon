@@ -278,6 +278,24 @@ application can say what its users should do.
 | `Fund` | nil | mints and settles a tree some other way, such as a funding wallet |
 | `DryRun` | false | build a pool-paid tree and record, settle and publish nothing |
 | `Facade`, `Topic` | none | the object leg a new tree is published on |
+| `Ahead` | 0, off | outputs left on the current tree at or below which the next tree is minted and settled in the background; see below |
+
+With `Ahead` above zero, and not `DryRun`, a spend that leaves the current
+tree with `Ahead` outputs or fewer starts minting the next one, of `Count`
+outputs, once per tree and with at most one mint in flight. A pool-paid tree
+takes a proven coin and is signed on the caller's goroutine, so the
+reservation never races another `Take`; only the settlement, or `Fund` when
+it is set, runs in the background, under the context of the `Spend` that
+started it, so pass the producer's run context. `Wait` collects the result,
+as every `Spend` also does without waiting: the held notes go to `Note`, the
+change goes into the pool, and `Prepared` answers the tree's record. When
+the current tree cannot cover a spend, `Spend` waits for a mint in flight
+and switches to the tree minted ahead, which is adopted and then published
+exactly as a new tree is; a mint that failed is reported and the tree is
+minted on demand. The tree minted ahead is in no state until the switch, so
+a crash before it strands its funding outputs (its change is already in the
+pool); an application that wants a sweep to take them records `Prepared` in
+its own history.
 
 ### `producer.Collector` and `producer.Pending`
 

@@ -136,6 +136,12 @@ func (p *Payer) Take(ctx context.Context) (mint.Input, error) {
 		return mint.Input{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids())}
 	}
 	p.spent = append(p.spent, o)
+	return p.input(ctx, o)
+}
+
+// input signs for a coin already taken from the pool: the half of Take after
+// the reservation, which Trees also uses for a tree it mints ahead.
+func (p *Payer) input(ctx context.Context, o bwallet.Output) (mint.Input, error) {
 	if o.Derivation != nil {
 		owner, err := p.keyFor(o.Derivation.OwnerHex)
 		if err != nil {

@@ -362,6 +362,50 @@ names a kept transaction and how the application records its proof, and
 its copy, stamps the journal and releases held change.
 `ExampleCollector_Collect` shows the item's shape with nothing yet mined.
 
+### Mint the next tree ahead
+
+[`producer/example_test.go`](../producer/example_test.go), `ExampleTrees_Wait`
+
+With `Ahead` set, the spend that leaves the current tree with `Ahead`
+outputs or fewer mints and settles the next tree in the background, and the
+spend the current tree cannot cover switches to it with no wait for a block.
+`Wait` collects the mint, and `Prepared` answers the record the tree will be
+adopted as; it is adopted and published only at the switch. The example
+settles and publishes on a test chain served from the process itself, one
+in-process server standing in for arcade, the node and an overlay host,
+which mines what it is given.
+
+```go
+trees := &producer.Trees{
+	Payer: payer, State: state, Identity: signer.IdentityHex(), Count: 4, Sats: 1000, Funder: "pool",
+	Lock: lock, Change: signer.FundScript, Facade: facade, Topic: topic,
+	Ahead: 2,
+}
+spend(2)        // a tree is minted; 2 outputs are left, so the next is minted ahead
+trees.Wait(ctx) // collect it
+spend(2)        // the last two
+spend(1)        // the switch
+```
+
+Output, with the settlement lines left out:
+
+```text
+spend 2: <tree 1> from output 0
+minted ahead: <tree 2> trees adopted: 1
+spend 2: <tree 1> from output 2
+spend 1: <tree 2> from output 0
+trees adopted: 2
+funding tree <tree 1>: 4 output(s) of 1000 sat
+funding tree <tree 1>: mined at height 701
+funding tree published: admitted 1 output(s)
+funding tree <tree 1> has 2 output(s) left, so the next is minted ahead
+funding tree <tree 2>: 4 output(s) of 1000 sat
+funding tree <tree 2>: mined at height 702
+funding tree <tree 2> is minted ahead and waits for the switch
+switching to funding tree <tree 2>, minted ahead
+funding tree published: admitted 1 output(s)
+```
+
 ## Filter text for a terminal
 
 [`termsafe/example_test.go`](../termsafe/example_test.go), `ExampleSanitize`
@@ -439,7 +483,7 @@ These need a live service and have no example: mining and funding
 (`publish.TCPIngress`, `RPCSettler`, `Arcade`, `Facade`), a producer's
 settlement, proof collection and published trees (`producer.Payer.Settle`,
 `SettleAndWait`, `Await`, `producer.Proofs`, `producer.Collector` with a
-proof source, `producer.Trees.Spend` beyond a dry run), overlay lookups
+proof source), overlay lookups
 (`lookup.Query`), domain discovery (`resolve.FetchManifest`,
 `resolve.ResolveHandle`), the header service (`headers.Client`) and a wallet
 over the wire (`wirewallet.Dial`). Their parameters are in

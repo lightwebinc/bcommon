@@ -8,6 +8,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
+	"github.com/lightwebinc/bcommon/bwallet"
 	"github.com/lightwebinc/bcommon/funding"
 	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/publish"
@@ -71,6 +72,45 @@ type Trees struct {
 	// spend they see.
 	Facade *publish.Facade
 	Topic  string
+	// Ahead, when above zero, mints the next tree before the current one
+	// runs out: once a spend leaves Ahead outputs or fewer on the current
+	// tree, the next tree is minted and settled in the background, and Spend
+	// switches to it when the current tree cannot cover a spend, with no
+	// wait for a block. Zero mints a tree only when one is needed. See
+	// Spend for the rules, and Wait and Prepared for the tree minted ahead.
+	Ahead uint32
+
+	// ahead delivers the result of the mint in flight, nil when none is;
+	// prepared is the tree minted ahead and not yet used; aheadFor is the
+	// current tree the last mint ahead was started for, so a failure is not
+	// retried on every spend from the same tree.
+	ahead    chan aheadResult
+	prepared *preparedTree
+	aheadFor string
+}
+
+// preparedTree is a tree minted ahead: settled, its change taken, and its
+// record built, but not adopted and not published.
+type preparedTree struct {
+	tx  *transaction.Transaction
+	rec funding.Tree
+}
+
+// aheadResult is what the background half of a mint ahead hands back to the
+// goroutine that owns the Trees.
+type aheadResult struct {
+	tx     *transaction.Transaction
+	mp     *transaction.MerklePath
+	height uint32
+	count  int
+	id     string
+	funder string
+	// change is set when the pool paid, so the tree's change is taken; coin
+	// is the fee coin to put back when the tree never reached the leg.
+	change bool
+	coin   *bwallet.Output
+	notes  []string
+	err    error
 }
 
 // Spend returns the tree the next need carriers spend from, and the index
@@ -88,16 +128,63 @@ type Trees struct {
 // Its funding.Tree, with the BEEF it is kept as while it is unmined, is
 // adopted into the state before the tree is published, so a crash after the
 // publish never leaves a tree on the plane the state does not know.
+//
+// With Ahead set, and not DryRun, a spend that leaves Ahead outputs or
+// fewer on the tree it answers starts minting the next one, of Count
+// outputs, once per tree. A pool-paid tree takes its fee coin and is signed
+// here, on the caller's goroutine, so the reservation never races another
+// Take; only a proven coin is taken, never change Allow would let through,
+// because the tree is settled on its own. The settlement (Payer.Settle), or
+// Fund when it is set, then runs in the background under ctx, so ctx should
+// be the producer's run, not one that ends with this call. Its notes are
+// held and reported through Note by the Spend or Wait that collects it,
+// which also takes the tree's change into the pool. At most one mint is in
+// flight, and none is started while a tree minted ahead waits unused.
+//
+// When the current tree cannot cover need, Spend waits for a mint still in
+// flight, then switches to the tree minted ahead if it is locked to Identity
+// and has need outputs: it is adopted and published exactly as a new tree
+// is, and nothing is minted. A mint ahead that failed is reported through
+// Note, the fee coin it had not spent goes back to the pool, and the tree is
+// minted here as it is with Ahead zero. A tree minted ahead that is too small
+// waits for a later switch; one locked to an earlier identity is dropped.
+//
+// The tree minted ahead is adopted and published only when it is used, never
+// when it is minted: adopting it earlier would make it current and strand
+// the outputs left on the tree carriers still spend, and publishing it
+// before it is adopted would break the rule above. It lives in memory until
+// then, so a crash before the switch leaves it on the chain but in neither
+// the state nor the plane; its change is already in the pool, and only its
+// funding outputs are stranded. An application that wants a sweep to take
+// those too records Prepared in its own history.
 func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transaction, uint32, error) {
 	if t.Payer == nil || t.State == nil {
 		return nil, 0, errors.New("producer: Trees needs a Payer and a State")
 	}
+	_ = t.collect(ctx, false)
 	if cur := t.State.Current(); cur != nil && cur.Remaining() >= need && cur.IdentityKeyHex == t.Identity {
 		tx, err := t.Payer.Kept.Tx(cur.Txid)
 		if err != nil {
 			return nil, 0, fmt.Errorf("funding tree: %w", err)
 		}
+		t.mintAhead(ctx, cur.Txid, cur.Remaining()-need)
 		return tx, cur.Next, nil
+	}
+	if t.ahead != nil {
+		if err := t.collect(ctx, true); err != nil && ctx.Err() != nil {
+			return nil, 0, err
+		}
+	}
+	if pt := t.prepared; pt != nil {
+		switch {
+		case pt.rec.IdentityKeyHex != t.Identity:
+			t.prepared = nil
+			t.Payer.note("funding tree %s minted ahead is locked to another identity and is not used", pt.rec.Txid)
+		case pt.rec.Count >= need:
+			t.prepared = nil
+			t.Payer.note("switching to funding tree %s, minted ahead", pt.rec.Txid)
+			return t.adopt(ctx, pt.tx, pt.rec, need)
+		}
 	}
 	// A tree at least as large as the spend needs, and never smaller than
 	// Count asks for.
@@ -138,15 +225,30 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		}
 		t.Payer.Change(tree, height, mp)
 	}
-	// An unmined tree is kept as its BEEF too, because every carrier that
-	// spends it has to carry the tree's ancestry until the proof arrives.
+	rec, err := t.record(tree, mp, height, count, t.Identity, t.Funder)
+	if err != nil {
+		return nil, 0, err
+	}
+	return t.adopt(ctx, tree, rec, need)
+}
+
+// record is the funding.Tree a new tree is adopted as. An unmined tree is
+// kept as its BEEF too, because every carrier that spends it has to carry
+// the tree's ancestry until the proof arrives.
+func (t *Trees) record(tree *transaction.Transaction, mp *transaction.MerklePath, height uint32, count int, id, funder string) (funding.Tree, error) {
 	treeBeef, err := funding.KeepBEEF(tree, mp)
 	if err != nil {
-		return nil, 0, fmt.Errorf("funding tree BEEF: %w", err)
+		return funding.Tree{}, fmt.Errorf("funding tree BEEF: %w", err)
 	}
-	if err := t.State.Adopt(funding.Tree{IdentityKeyHex: t.Identity, Txid: tree.TxID().String(), RawHex: tree.Hex(),
+	return funding.Tree{IdentityKeyHex: id, Txid: tree.TxID().String(), RawHex: tree.Hex(),
 		BumpHex: funding.BumpHex(mp), Height: height, BeefHex: treeBeef, Sats: t.Sats,
-		Count: uint32(count), Next: 0, Funder: t.Funder}); err != nil { //nolint:gosec // a small configured count
+		Count: uint32(count), Next: 0, Funder: funder}, nil //nolint:gosec // a small configured count
+}
+
+// adopt records a new tree in the state, then publishes it, and starts the
+// next mint ahead when this spend leaves the new tree low.
+func (t *Trees) adopt(ctx context.Context, tree *transaction.Transaction, rec funding.Tree, need uint32) (*transaction.Transaction, uint32, error) {
+	if err := t.State.Adopt(rec); err != nil {
 		return nil, 0, err
 	}
 	tb, err := tree.AtomicBEEF(false)
@@ -164,7 +266,170 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		return nil, 0, fmt.Errorf("publish funding tree: the topic manager admitted nothing: %s", string(res.Raw))
 	}
 	t.Payer.note("funding tree published: admitted %d output(s)", len(res.Admitted))
+	if rec.Count >= need {
+		t.mintAhead(ctx, rec.Txid, rec.Count-need)
+	}
 	return tree, 0, nil
+}
+
+// mintAhead starts minting the next tree when left, the outputs a spend
+// leaves on the tree curTxid, is at or below Ahead, and no mint is in
+// flight, waiting unused, or already tried for that tree.
+func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
+	if t.Ahead == 0 || t.DryRun || left > t.Ahead || t.ahead != nil || t.prepared != nil || t.aheadFor == curTxid {
+		return
+	}
+	t.aheadFor = curTxid
+	count, id, funder := t.Count, t.Identity, t.Funder
+	t.Payer.note("funding tree %s has %d output(s) left, so the next is minted ahead", curTxid, left)
+	fail := func(err error) {
+		t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", err)
+	}
+	done := make(chan aheadResult, 1)
+	if t.Fund != nil {
+		fund := t.Fund
+		t.ahead = done
+		go func() {
+			tree, mp, height, err := fund(ctx, count)
+			done <- aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, err: err}
+		}()
+		return
+	}
+	// The reservation and the signing happen here, on the goroutine that
+	// owns the Payer. Only a proven coin is taken: the tree is settled on its
+	// own and carries no kept transaction.
+	o, err := t.Payer.Pool.TakeAllowing(t.Payer.Tip, nil)
+	if err != nil {
+		fail(&NoCoinError{Err: err, Held: len(t.Payer.Pool.UnprovenTxids())})
+		return
+	}
+	tree, err := t.mintFrom(ctx, count, o)
+	if err != nil {
+		_ = t.Payer.Pool.Return(o)
+		fail(err)
+		return
+	}
+	t.Payer.note("funding tree %s: %d output(s) of %d sat", tree.TxID(), count, t.Sats)
+	// The background half settles through a copy of the Payer whose notes
+	// are held for the collecting goroutine, and whose leg records whether
+	// the tree reached it.
+	var held []string
+	bg := *t.Payer
+	bg.Note = func(format string, args ...any) { held = append(held, fmt.Sprintf(format, args...)) }
+	var leg *recordingSettler
+	if bg.Settler != nil {
+		leg = &recordingSettler{Settler: bg.Settler}
+		bg.Settler = leg
+	}
+	t.ahead = done
+	go func() {
+		mp, height, err := bg.Settle(ctx, "funding tree", tree)
+		r := aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, change: true, notes: held, err: err}
+		if err != nil && (leg == nil || !leg.submitted) {
+			r.coin = &o
+		}
+		done <- r
+	}()
+}
+
+// mintFrom signs for the coin o and mints a tree of count outputs with it.
+func (t *Trees) mintFrom(ctx context.Context, count int, o bwallet.Output) (*transaction.Transaction, error) {
+	fee, err := t.Payer.input(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+	if t.Change == nil {
+		return nil, errors.New("producer: Trees needs a Change script")
+	}
+	changeTo, err := t.Change()
+	if err != nil {
+		return nil, err
+	}
+	return t.mint(ctx, count, fee, changeTo)
+}
+
+// recordingSettler records whether a transaction reached the leg, so a fee
+// coin is put back only when it did not.
+type recordingSettler struct {
+	publish.Settler
+	submitted bool
+}
+
+func (s *recordingSettler) Submit(ctx context.Context, tx *transaction.Transaction) error {
+	err := s.Settler.Submit(ctx, tx)
+	s.submitted = err == nil
+	return err
+}
+
+// collect takes the result of the mint in flight, waiting for it when wait
+// is set: its held notes are reported, its change is taken into the pool, a
+// coin it never spent is put back, and a tree it minted becomes the tree
+// minted ahead. It returns the mint's error, already reported, or ctx's
+// while waiting; the mint is still in flight after the latter.
+func (t *Trees) collect(ctx context.Context, wait bool) error {
+	if t.ahead == nil {
+		return nil
+	}
+	var r aheadResult
+	if wait {
+		select {
+		case r = <-t.ahead:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	} else {
+		select {
+		case r = <-t.ahead:
+		default:
+			return nil
+		}
+	}
+	t.ahead = nil
+	for _, l := range r.notes {
+		t.Payer.note("%s", l)
+	}
+	if r.coin != nil {
+		_ = t.Payer.Pool.Return(*r.coin)
+	}
+	if r.err == nil && r.tx == nil {
+		r.err = errors.New("the funder returned no tree")
+	}
+	if r.err == nil {
+		if r.change {
+			t.Payer.Change(r.tx, r.height, r.mp)
+		}
+		var rec funding.Tree
+		if rec, r.err = t.record(r.tx, r.mp, r.height, r.count, r.id, r.funder); r.err == nil {
+			t.prepared = &preparedTree{tx: r.tx, rec: rec}
+			t.Payer.note("funding tree %s is minted ahead and waits for the switch", rec.Txid)
+			return nil
+		}
+	}
+	t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", r.err)
+	return r.err
+}
+
+// Wait waits for the mint ahead in flight, if there is one, and collects it
+// as Spend does: its notes are reported, its change is taken into the pool,
+// and the tree becomes the one Prepared answers. It returns the mint's
+// error, which Note has already reported and which Spend recovers from by
+// minting when a tree is needed, or ctx's error, which leaves the mint in
+// flight. With nothing in flight it returns nil at once.
+func (t *Trees) Wait(ctx context.Context) error {
+	return t.collect(ctx, true)
+}
+
+// Prepared returns the record the tree minted ahead will be adopted as, or
+// nil when there is none: none was started, it is still in flight (see
+// Wait), it failed, or Spend has switched to it. The tree is in no state
+// until the switch; an application that wants a sweep to take its outputs
+// after a crash keeps this record in its own history.
+func (t *Trees) Prepared() *funding.Tree {
+	if t.prepared == nil {
+		return nil
+	}
+	rec := t.prepared.rec
+	return &rec
 }
 
 // mint builds and signs a tree the pool pays for. The count and value are

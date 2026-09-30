@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"time"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/script"
@@ -203,6 +207,94 @@ func ExampleTrees_Spend() {
 	// funding tree <tree>: 6 output(s) of 1000 sat
 	// funding outputs: 6 first: 0 recorded: false
 	// coins in the pool after GiveBack: 1
+}
+
+// With Ahead set, a spend that leaves the current tree with Ahead outputs
+// or fewer mints the next tree in the background, and the spend the current
+// tree cannot cover switches to it with no wait for a block. The tree
+// minted ahead is adopted and published only at the switch. The example
+// settles on a test chain in this process that mines what it is given.
+func ExampleTrees_Wait() {
+	ctx := context.Background()
+	dir, err := os.MkdirTemp("", "producer-example-")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer os.RemoveAll(dir)
+	var lines []string
+	signer, payer, err := exampleProducer(dir, &lines)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	chain := &testChain{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
+		mined: map[string]uint32{}, refused: map[string]string{}, height: 700, mineOnSubmit: true}
+	chain.srv = httptest.NewServer(http.HandlerFunc(chain.serve))
+	defer chain.srv.Close()
+	payer.Settler, payer.Asset, payer.Poll = chain.arcade(), chain.asset(), 10*time.Millisecond
+	payer.Kept.Load = func(txid string) (*transaction.Transaction, error) {
+		chain.mu.Lock()
+		defer chain.mu.Unlock()
+		return chain.known[txid], nil
+	}
+	state := &exampleState{}
+	trees := &producer.Trees{
+		Payer: payer, State: state, Identity: signer.IdentityHex(), Count: 4, Sats: 1000, Funder: "pool",
+		Lock: func(ctx context.Context) (*script.Script, error) {
+			return carrier.FundingLock(ctx, signer, signer.Originator, exampleParams)
+		},
+		Change: signer.FundScript,
+		Facade: chain.facade(), Topic: "tm_vector_sample",
+		Ahead: 2,
+	}
+
+	names := map[string]string{}
+	name := func(txid string) string {
+		if names[txid] == "" {
+			names[txid] = fmt.Sprintf("<tree %d>", len(names)+1)
+		}
+		return names[txid]
+	}
+	spend := func(need uint32) {
+		tree, first, err := trees.Spend(ctx, need)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		state.cur.Next += need // the application's half: the outputs are spent
+		fmt.Printf("spend %d: %s from output %d\n", need, name(tree.TxID().String()), first)
+	}
+	spend(2) // a tree is minted; 2 outputs are left, so the next is minted ahead
+	if err := trees.Wait(ctx); err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("minted ahead:", name(trees.Prepared().Txid), "trees adopted:", len(state.all))
+	spend(2) // the last two
+	spend(1) // the switch
+	fmt.Println("trees adopted:", len(state.all))
+	hex := regexp.MustCompile(`[0-9a-f]{64}`)
+	for _, l := range lines {
+		if !strings.Contains(l, "settling via") {
+			fmt.Println(hex.ReplaceAllStringFunc(l, name))
+		}
+	}
+	// Output:
+	// spend 2: <tree 1> from output 0
+	// minted ahead: <tree 2> trees adopted: 1
+	// spend 2: <tree 1> from output 2
+	// spend 1: <tree 2> from output 0
+	// trees adopted: 2
+	// funding tree <tree 1>: 4 output(s) of 1000 sat
+	// funding tree <tree 1>: mined at height 701
+	// funding tree published: admitted 1 output(s)
+	// funding tree <tree 1> has 2 output(s) left, so the next is minted ahead
+	// funding tree <tree 2>: 4 output(s) of 1000 sat
+	// funding tree <tree 2>: mined at height 702
+	// funding tree <tree 2> is minted ahead and waits for the switch
+	// switching to funding tree <tree 2>, minted ahead
+	// funding tree published: admitted 1 output(s)
 }
 
 // Collect asks for the proof of each transaction still waiting for one. With
