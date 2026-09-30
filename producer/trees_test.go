@@ -173,6 +173,7 @@ func TestSpendThroughFund(t *testing.T) {
 	tr.Lock, tr.Change = nil, nil
 	var asked int
 	built := transaction.NewTransaction()
+	built.AddInputFromTx(coinFor(&script.Script{script.OpTRUE}, 5, 0x61), 0, nil)
 	for i := 0; i < 5; i++ {
 		built.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: &script.Script{script.OpTRUE}})
 	}

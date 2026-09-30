@@ -180,7 +180,7 @@ func (c *Collector) republish(ctx context.Context, what string, tx *transaction.
 	if c.Facade == nil {
 		return
 	}
-	b, err := tx.AtomicBEEF(false)
+	b, err := funding.BEEF(tx)
 	if err != nil {
 		c.note("note: %s %s proven, but its BEEF does not build: %v", what, tx.TxID(), err)
 		return

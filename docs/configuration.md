@@ -254,7 +254,7 @@ most 64 KiB (submit) and 1 MiB (status) before they are parsed.
 | `Kept` | nil | the producer's `*producer.Kept`; needed once unproven change can be spent |
 | `Allow` | none allowed | the kept transactions whose unproven change `Take` may spend when no proven coin is left |
 | `Settler` | none | the settlement leg; `Settle` refuses without one |
-| `Asset` | none | the node a proof is waited for from and, with `Async`, where a coin's parent is fetched |
+| `Asset` | none | the node a proof is waited for from and where a coin's parent is fetched: with `Async`, any parent not held with its proof; otherwise one the pool holds no bytes of (a coinbase). With none, such a parent is a placeholder that signs but that `funding.BEEF` and `funding.KeepBEEF` refuse to write (`funding.ErrPlaceholder`) |
 | `Async` | false | settle on the leg's acceptance and collect the proof later |
 | `Fees` | the zero policy | fees for what the Payer mints itself (a funding tree); `mint.DefaultFees` is the usual one, and zero pays no fee |
 | `Timeout` | `DefaultTimeout` (10 min) | how long a wait for a proof lasts |

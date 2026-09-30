@@ -11,11 +11,14 @@
 // can verify its spender. KeepBEEF, Rebuild and BumpHex are the three pure
 // steps of that bookkeeping: what to keep while a transaction is unproven,
 // how to rebuild it from what was kept, and the proof's form once it mines.
+// BEEF, which KeepBEEF writes with, refuses an ancestry holding a
+// placeholder parent, so what is kept always reads back.
 package funding
 
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
@@ -109,14 +112,61 @@ func Rebuild(rawHex, bumpHex, beefHex string) (*transaction.Transaction, error) 
 }
 
 // KeepBEEF is the BEEF to keep for a transaction published before it mined,
-// or empty once it has a proof.
+// or empty once it has a proof. It is BEEF's, so an ancestry holding a
+// placeholder is refused with ErrPlaceholder.
 func KeepBEEF(tx *transaction.Transaction, mp *transaction.MerklePath) (string, error) {
 	if mp != nil {
 		return "", nil
 	}
-	b, err := tx.AtomicBEEF(false)
+	b, err := BEEF(tx)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// ErrPlaceholder is BEEF refusing an ancestry that holds a placeholder: a
+// transaction of no inputs standing in for a parent whose bytes were not
+// held, such as producer.Payer builds for a coinbase coin when it has no
+// node to fetch the real one from. A placeholder is enough to sign against,
+// but its bytes are not the transaction its txid names, so written into a
+// BEEF it is a false record that no reader, package guard first, accepts.
+var ErrPlaceholder = errors.New("funding: placeholder parent in a BEEF")
+
+// BEEF is tx's Atomic BEEF, carrying the ancestry back to each proof, after
+// checking that ancestry holds no placeholder. Every real transaction,
+// coinbase included, has at least one input, so a transaction with none is
+// a placeholder, and BEEF refuses it with ErrPlaceholder, naming its txid,
+// rather than writing a BEEF that fails only when it is read back. A mined
+// tx carries no ancestry, so it is never refused.
+func BEEF(tx *transaction.Transaction) ([]byte, error) {
+	if tx == nil {
+		return nil, errors.New("funding: no transaction")
+	}
+	seen := map[*transaction.Transaction]bool{}
+	var walk func(t *transaction.Transaction) error
+	walk = func(t *transaction.Transaction) error {
+		if seen[t] {
+			return nil
+		}
+		seen[t] = true
+		if len(t.Inputs) == 0 {
+			return fmt.Errorf("%w: %s has no inputs; a spender kept or published before it mines must carry the real parent, with its proof", ErrPlaceholder, t.TxID())
+		}
+		if t.MerklePath != nil {
+			return nil
+		}
+		for _, in := range t.Inputs {
+			if in.SourceTransaction != nil {
+				if err := walk(in.SourceTransaction); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := walk(tx); err != nil {
+		return nil, err
+	}
+	return tx.AtomicBEEF(false)
 }

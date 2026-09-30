@@ -278,7 +278,7 @@ func (t *Trees) adopt(ctx context.Context, tree *transaction.Transaction, rec fu
 	if err := t.State.Adopt(rec); err != nil {
 		return nil, 0, err
 	}
-	tb, err := tree.AtomicBEEF(false)
+	tb, err := funding.BEEF(tree)
 	if err != nil {
 		return nil, 0, err
 	}

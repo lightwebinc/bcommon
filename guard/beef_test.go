@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bsv-blockchain/go-sdk/chainhash"
+	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 )
 
@@ -233,4 +235,55 @@ func FuzzCheckBEEF(f *testing.F) {
 			t.Fatalf("the SDK allocated %d bytes for an admitted %d-byte BEEF", got, len(b))
 		}
 	})
+}
+
+// A transaction of no inputs is refused wherever it sits in a BEEF, in
+// every form: the shape of a stand-in parent (a coin's output under the
+// coin's txid) written out as if it were a transaction, and of a hostile
+// subject. No producer of this module writes one (funding.BEEF refuses to),
+// so none reaches a reader from a well-behaved peer.
+func TestInputlessTransactionIsRefusedInEveryBEEF(t *testing.T) {
+	// A pushed 100-byte script makes each transaction long enough that the
+	// count floors pass and the walk reaches the inputs.
+	pad := &script.Script{}
+	if err := pad.AppendPushData(make([]byte, 100)); err != nil {
+		t.Fatal(err)
+	}
+	coinTxid := chainhash.Hash{0x0c}
+	standIn := transaction.NewTransaction()
+	standIn.AddOutput(&transaction.TransactionOutput{Satoshis: 700, LockingScript: pad})
+	standIn.SetTxHash(&coinTxid)
+	spender := transaction.NewTransaction()
+	spender.AddInputFromTx(standIn, 0, nil)
+	spender.Inputs[0].UnlockingScript = &script.Script{}
+	spender.AddOutput(&transaction.TransactionOutput{Satoshis: 600, LockingScript: pad})
+
+	lone := transaction.NewTransaction()
+	lone.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: pad})
+
+	forms := map[string]func() ([]byte, error){
+		"stand-in parent, atomic": func() ([]byte, error) { return spender.AtomicBEEF(false) },
+		"stand-in parent, V1":     spender.BEEF,
+		"stand-in parent, V2": func() ([]byte, error) {
+			b, err := transaction.NewBeefFromTransaction(spender)
+			if err != nil {
+				return nil, err
+			}
+			return b.Bytes()
+		},
+		"input-less subject, atomic": func() ([]byte, error) { return lone.AtomicBEEF(false) },
+		"input-less subject, V1":     lone.BEEF,
+	}
+	for name, build := range forms {
+		b, err := build()
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if err := CheckBEEF(b, DefaultBound); !errors.Is(err, ErrBEEF) || !strings.Contains(err.Error(), "no inputs") {
+			t.Errorf("%s: CheckBEEF %v, want the no-inputs refusal", name, err)
+		}
+		if _, tx, _, err := ParseBEEF(b, DefaultBound); !errors.Is(err, ErrBEEF) || tx != nil {
+			t.Errorf("%s: ParseBEEF %v, want the no-inputs refusal", name, err)
+		}
+	}
 }

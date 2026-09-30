@@ -296,8 +296,9 @@ func TestChangeKeepsTheParentWholeAndHoldsUnprovenChange(t *testing.T) {
 
 // Parent rebuilds what a fee input signs against: the pool's copy with its
 // proof, the pool's copy alone when the spender is mined before it is
-// published, the node's copy with its proof when it is not, and a stub for a
-// coinbase the pool holds no bytes of.
+// published, the node's copy with its proof when it is not or when the pool
+// holds no bytes of it (a coinbase), and a placeholder for a coinbase when
+// there is no node to ask.
 func TestParentRebuildsWhatTheSpenderCarries(t *testing.T) {
 	ctx := context.Background()
 	l := newTestChain(t)
@@ -346,17 +347,29 @@ func TestParentRebuildsWhatTheSpenderCarries(t *testing.T) {
 		t.Fatalf("a parent the node lacks: %v", err)
 	}
 
-	// A coinbase with no bytes, spent by a transaction mined before it is
-	// published: a stub with the one output, under the coin's own txid.
+	// A coinbase with no bytes: the node's copy with its proof, Async or
+	// not, since the spender may be kept as BEEF before it mines.
 	p.Async = false
+	l.mu.Lock()
+	l.known[coin.TxID().String()] = coin
+	l.mu.Unlock()
 	cb := out
+	cb.Vout = 0
+	tx, err = p.Parent(ctx, cb)
+	if err != nil || tx.MerklePath == nil || len(tx.Inputs) == 0 || tx.TxID().String() != cb.TxID {
+		t.Fatalf("coinbase, fetched: %v", err)
+	}
+
+	// With no node to ask: a placeholder with the one output, under the
+	// coin's own txid, and no inputs.
+	p.Asset = nil
 	cb.Vout = 2
 	tx, err = p.Parent(ctx, cb)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tx.TxID().String() != cb.TxID || len(tx.Outputs) != 3 || tx.Outputs[2].Satoshis != 700 || !tx.Outputs[2].LockingScript.Equals(lock) {
-		t.Fatalf("stub: %s with %d outputs", tx.TxID(), len(tx.Outputs))
+	if tx.TxID().String() != cb.TxID || len(tx.Inputs) != 0 || len(tx.Outputs) != 3 || tx.Outputs[2].Satoshis != 700 || !tx.Outputs[2].LockingScript.Equals(lock) {
+		t.Fatalf("placeholder: %s with %d outputs", tx.TxID(), len(tx.Outputs))
 	}
 }
 

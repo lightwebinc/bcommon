@@ -231,19 +231,25 @@ func (p *Payer) GiveBack() {
 }
 
 // Parent rebuilds enough of a pool coin's parent transaction to sign
-// against it, and for a spender published before it mines, enough to carry
-// in its BEEF.
+// against it, and for a spender kept or published before it mines, enough
+// to carry in its BEEF.
 //
 // Unproven change is only ever taken when its parent is kept (Allow), and
 // then the parent is the kept object itself, ancestry and all. A coin whose
 // parent the pool holds with its proof is rebuilt from both. With Async, a
-// parent the pool holds without a proof, or does not hold at all, is fetched
-// from the node with its proof, because the spender is published before it
-// mines and its BEEF must carry a parent that verifies on its own. Otherwise
-// a parent the pool does not hold (a coinbase) is a stub carrying just the
-// coin's output, which is enough to sign against when the spender is mined
-// before it is published, since a mined transaction's BEEF carries no
-// ancestry.
+// parent the pool holds without a proof is fetched from Asset with its
+// proof, because the spender is published before it mines and its BEEF must
+// carry a parent that verifies on its own; without Async the pool's copy is
+// enough, since the spender is mined before it is published.
+//
+// A parent the pool does not hold at all (a coinbase) is fetched from Asset
+// with its proof, Async or not: an application may keep the spender as BEEF
+// before it mines (funding.KeepBEEF), and that BEEF must carry the real
+// parent. Only with no Asset is it a placeholder carrying just the coin's
+// output under the coin's txid. A placeholder is enough to sign against but
+// is not a transaction, and funding.BEEF refuses to write one
+// (funding.ErrPlaceholder), so its spender must mine before its BEEF is
+// built.
 func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Transaction, error) {
 	if o.Unproven {
 		return p.Kept.Tx(o.TxID)
@@ -263,46 +269,56 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 			}
 			return tx, nil
 		}
-		if !p.Async {
+		if !p.Async || p.Asset == nil {
 			return tx, nil
 		}
 	}
-	if p.Async && p.Asset != nil {
-		raw, err := p.Asset.TxRaw(ctx, o.TxID)
-		if err != nil {
-			return nil, fmt.Errorf("fee input %s: fetching its parent, which an unmined spender must carry: %w", o.Outpoint(), err)
-		}
-		tx, err := guard.ParseTransaction(raw, guard.DefaultBound)
-		if err != nil {
-			return nil, fmt.Errorf("fee input %s: parent does not parse: %w", o.Outpoint(), err)
-		}
-		if tx.TxID().String() != o.TxID {
-			return nil, fmt.Errorf("fee input %s: the node answered transaction %s", o.Outpoint(), tx.TxID())
-		}
-		mp, _, err := p.Asset.Proof(ctx, o.TxID)
-		if err != nil {
-			return nil, fmt.Errorf("fee input %s: its parent's proof, which an unmined spender must carry: %w", o.Outpoint(), err)
-		}
-		tx.MerklePath = mp
-		return tx, nil
+	if p.Asset != nil {
+		return p.fetchParent(ctx, o)
 	}
-	tx, err := rawTx(o.Raw)
-	if err != nil || o.Raw == "" {
-		tx = transaction.NewTransaction()
-		for i := uint32(0); i <= o.Vout; i++ {
-			tx.AddOutput(&transaction.TransactionOutput{})
-		}
-		ls, err := script.NewFromHex(o.LockingScript)
-		if err != nil {
-			return nil, err
-		}
-		tx.Outputs[o.Vout] = &transaction.TransactionOutput{Satoshis: o.Satoshis, LockingScript: ls}
-		h, err := hashFromHex(o.TxID)
-		if err != nil {
-			return nil, err
-		}
-		tx.SetTxHash(h)
+	return placeholder(o)
+}
+
+// fetchParent is a coin's parent as the node serves it, held to the coin's
+// txid, with its proof.
+func (p *Payer) fetchParent(ctx context.Context, o bwallet.Output) (*transaction.Transaction, error) {
+	raw, err := p.Asset.TxRaw(ctx, o.TxID)
+	if err != nil {
+		return nil, fmt.Errorf("fee input %s: fetching its parent, which a spender kept or published before it mines must carry: %w", o.Outpoint(), err)
 	}
+	tx, err := guard.ParseTransaction(raw, guard.DefaultBound)
+	if err != nil {
+		return nil, fmt.Errorf("fee input %s: parent does not parse: %w", o.Outpoint(), err)
+	}
+	if tx.TxID().String() != o.TxID {
+		return nil, fmt.Errorf("fee input %s: the node answered transaction %s", o.Outpoint(), tx.TxID())
+	}
+	mp, _, err := p.Asset.Proof(ctx, o.TxID)
+	if err != nil {
+		return nil, fmt.Errorf("fee input %s: its parent's proof, which a spender kept or published before it mines must carry: %w", o.Outpoint(), err)
+	}
+	tx.MerklePath = mp
+	return tx, nil
+}
+
+// placeholder stands in for a parent whose bytes are not held and cannot be
+// fetched: the coin's output at its index, under the coin's txid, and no
+// inputs, which is how funding.BEEF knows it and refuses to write it.
+func placeholder(o bwallet.Output) (*transaction.Transaction, error) {
+	ls, err := script.NewFromHex(o.LockingScript)
+	if err != nil {
+		return nil, err
+	}
+	h, err := hashFromHex(o.TxID)
+	if err != nil {
+		return nil, err
+	}
+	tx := transaction.NewTransaction()
+	for i := uint32(0); i < o.Vout; i++ {
+		tx.AddOutput(&transaction.TransactionOutput{})
+	}
+	tx.AddOutput(&transaction.TransactionOutput{Satoshis: o.Satoshis, LockingScript: ls})
+	tx.SetTxHash(h)
 	return tx, nil
 }
 
