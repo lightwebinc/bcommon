@@ -44,7 +44,14 @@ an edit.
 - **Record magic** is the application's tag prefix, a letter and a version
   byte, so it cannot be mistaken for another application's record.
 - **Topics and lookup services** are `tm_<name>` and `ls_<name>`, with a name
-  derived from the application's.
+  derived from the application's. An application topic that more than one
+  independent user can create MUST carry entropy: a random suffix of
+  letters, chosen once when the topic is created, so that unrelated users
+  cannot collide on a shared object plane. Names follow BRC-87: lowercase
+  letters and underscores only, no leading, trailing or doubled underscore,
+  and at most 50 characters, suffix included. A reader never identifies such
+  a topic by its readable part alone; it holds the whole name, suffix and
+  all.
 - **Baskets** start with the application's name.
 
 An application registers its identifiers here before it freezes its contract,
@@ -99,6 +106,31 @@ Pay-per-flow payment channels that settle metered usage.
 | Protocol | `[2, "pay per flow"]` | Every channel derivation |
 | Key ids | `<channel id> ...` | Derived per channel and leg (settlement, funding, change, refund, lane) |
 | `OP_RETURN` tag | `PPF`, version `0x02` | Settlement commitment payload |
+
+### blogs
+
+A distributed logging application.
+**Provisional** until its first publish (not yet committed on chain;
+assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "blogs"]` | Every blogs derivation |
+| Key id | `batch` | The batch carrier's output, its field signature, and funding outputs |
+| Key id | `anchor` | The anchor token's lock |
+| Key id | `fund` | The embedded wallet's funding key |
+| Tag | `bl` `0x01` | Anchor token |
+| Tag | `bl` `0x02` | Funding-tree output |
+| Record magic | `blb` `0x01` | Batch record, version 1 |
+| Record magic | `bla` `0x01` | Anchor record, version 1 |
+| Topics | `tm_log_<name>_<suffix>` | One topic per log stream; `<suffix>` is 10 random lowercase letters chosen when the stream is created |
+| Lookup service | `ls_log` | Lookup service for log streams |
+| Baskets | `blogs fund`, `blogs batch funding`, `blogs anchor`, `blogs kill tombstone` | Wallet baskets |
+
+blogs owns the `tm_log_` topic namespace: no other application names a
+topic that starts with it. A stream's topic carries entropy under the rule
+above, because anyone can create a stream; with `tm_log_`, the separating
+underscore and the suffix taking 18 characters, `<name>` has at most 32.
 
 ## Not registered
 
