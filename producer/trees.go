@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
@@ -125,6 +126,10 @@ type aheadResult struct {
 //
 // A new tree is paid for by Fund when it is set, and otherwise from the pool
 // through the Payer, and then settled (Payer.Settle) and its change taken.
+// The pool pays with a coin of at least the tree's value and the fee floor.
+// A failure before the tree reaches the settlement leg puts that coin back in
+// the pool before Spend returns; once the tree has reached the leg the coin
+// is spent and no later GiveBack returns it.
 // Its funding.Tree, with the BEEF it is kept as while it is unmined, is
 // adopted into the state before the tree is published, so a crash after the
 // publish never leaves a tree on the plane the state does not know.
@@ -133,7 +138,8 @@ type aheadResult struct {
 // fewer on the tree it answers starts minting the next one, of Count
 // outputs, once per tree. A pool-paid tree takes its fee coin and is signed
 // here, on the caller's goroutine, so the reservation never races another
-// Take; only a proven coin is taken, never change Allow would let through,
+// Take; only a proven coin is taken, of at least the tree's value and the
+// fee floor, never change Allow would let through,
 // because the tree is settled on its own. The settlement (Payer.Settle), or
 // Fund when it is set, then runs in the background under ctx, so ctx should
 // be the producer's run, not one that ends with this call. Its notes are
@@ -202,27 +208,48 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 			return nil, 0, err
 		}
 	} else {
-		fee, err := t.Payer.Take(ctx)
+		fee, coin, err := t.Payer.take(ctx, t.treeNeed(count))
 		if err != nil {
 			return nil, 0, err
 		}
+		// Every failure before the tree reaches the leg puts the coin back
+		// here, so a caller that returns on the error without a GiveBack
+		// loses no coin.
 		if t.Change == nil {
+			t.Payer.giveBackOne(coin)
 			return nil, 0, errors.New("producer: Trees needs a Change script")
 		}
 		changeTo, err := t.Change()
 		if err != nil {
+			t.Payer.giveBackOne(coin)
 			return nil, 0, err
 		}
 		if tree, err = t.mint(ctx, count, fee, changeTo); err != nil {
+			t.Payer.giveBackOne(coin)
 			return nil, 0, err
 		}
 		t.Payer.note("funding tree %s: %d output(s) of %d sat", tree.TxID(), count, t.Sats)
 		if t.DryRun {
 			return tree, 0, nil
 		}
-		if mp, height, err = t.Payer.Settle(ctx, "funding tree", tree); err != nil {
+		settler := *t.Payer
+		var leg *recordingSettler
+		if settler.Settler != nil {
+			leg = &recordingSettler{Settler: settler.Settler}
+			settler.Settler = leg
+		}
+		mp, height, err = settler.Settle(ctx, "funding tree", tree)
+		if err != nil {
+			if leg == nil || !leg.submitted {
+				t.Payer.giveBackOne(coin)
+			} else {
+				t.Payer.release(coin)
+			}
 			return nil, 0, err
 		}
+		// The coin is spent by a tree on the leg: a GiveBack after a later
+		// failure must not put it back.
+		t.Payer.release(coin)
 		t.Payer.Change(tree, height, mp)
 	}
 	rec, err := t.record(tree, mp, height, count, t.Identity, t.Funder)
@@ -298,7 +325,7 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 	// The reservation and the signing happen here, on the goroutine that
 	// owns the Payer. Only a proven coin is taken: the tree is settled on its
 	// own and carries no kept transaction.
-	o, err := t.Payer.Pool.TakeAllowing(t.Payer.Tip, nil)
+	o, err := t.Payer.Pool.TakeAtLeast(t.Payer.Tip, t.treeNeed(count), nil)
 	if err != nil {
 		fail(&NoCoinError{Err: err, Held: len(t.Payer.Pool.UnprovenTxids())})
 		return
@@ -330,6 +357,18 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 		}
 		done <- r
 	}()
+}
+
+// treeNeed is the least a coin must hold to pay for a tree of count
+// outputs: their value and the fee floor. The fee is at least the floor, so
+// a smaller coin cannot pay; a coin at or above it may still fall short once
+// the tree is signed and measured, and the mint's failure puts it back.
+func (t *Trees) treeNeed(count int) uint64 {
+	outs := uint64(max(count, 0)) //nolint:gosec // a small configured count
+	if t.Sats != 0 && outs > (math.MaxUint64-t.Payer.Fees.Floor)/t.Sats {
+		return math.MaxUint64
+	}
+	return outs*t.Sats + t.Payer.Fees.Floor
 }
 
 // mintFrom signs for the coin o and mints a tree of count outputs with it.

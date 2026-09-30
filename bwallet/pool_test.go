@@ -227,3 +227,59 @@ func TestTakeAllowingReleasesOnlyAParentTheSpenderCarries(t *testing.T) {
 		t.Fatalf("a proven coin was not preferred: %+v %v", o, err)
 	}
 }
+
+// TakeAtLeast leaves a coin too small for the caller in the pool and takes
+// the oldest one that is large enough; Take and TakeAllowing never hand out
+// a coin of nothing.
+func TestTakeAtLeastSkipsCoinsTooSmall(t *testing.T) {
+	p := newPool(t)
+	zero, small, big := out(1, 0, 0, 1, false), out(2, 0, 100, 2, false), out(3, 0, 5000, 3, false)
+	if _, err := p.Add(zero, small, big); err != nil {
+		t.Fatal(err)
+	}
+	o, err := p.TakeAtLeast(0, 300, nil)
+	if err != nil || o.Outpoint() != big.Outpoint() {
+		t.Fatalf("took %+v %v, want the 5000 sat coin", o, err)
+	}
+	_, err = p.TakeAtLeast(0, 300, nil)
+	if !errors.Is(err, ErrNoSpendable) || err.Error() != "bwallet: no spendable output in the wallet of at least 300 sat" {
+		t.Fatalf("only small coins left: %v", err)
+	}
+	if p.Count() != 2 {
+		t.Fatalf("a refused take changed the pool: %d held", p.Count())
+	}
+	o, err = p.Take(0)
+	if err != nil || o.Outpoint() != small.Outpoint() {
+		t.Fatalf("Take took %+v %v, want the 100 sat coin past the zero one", o, err)
+	}
+	if _, err := p.TakeAllowing(0, []string{zero.TxID}); !errors.Is(err, ErrNoSpendable) {
+		t.Fatalf("a zero-value coin was taken: %v", err)
+	}
+	if _, err := p.TakeAtLeast(0, 0, nil); !errors.Is(err, ErrNoSpendable) {
+		t.Fatalf("a minimum of zero took a coin of nothing: %v", err)
+	}
+	if p.Count() != 1 {
+		t.Fatalf("pool holds %d, want the zero-value coin alone", p.Count())
+	}
+}
+
+// The minimum holds on the fallback to allowed unproven change too.
+func TestTakeAtLeastAppliesToAllowedChange(t *testing.T) {
+	p := newPool(t)
+	small, big := out(1, 0, 100, 0, false), out(2, 0, 5000, 0, false)
+	small.Unproven, big.Unproven = true, true
+	if _, err := p.Add(small, big); err != nil {
+		t.Fatal(err)
+	}
+	allow := []string{small.TxID, big.TxID}
+	if _, err := p.TakeAtLeast(0, 300, nil); !errors.Is(err, ErrNoSpendable) {
+		t.Fatalf("unproven change taken without an allow: %v", err)
+	}
+	o, err := p.TakeAtLeast(0, 300, allow)
+	if err != nil || o.Outpoint() != big.Outpoint() {
+		t.Fatalf("took %+v %v, want the allowed 5000 sat coin", o, err)
+	}
+	if _, err := p.TakeAtLeast(0, 300, allow); err == nil || !strings.Contains(err.Error(), "of at least 300 sat") {
+		t.Fatalf("only a small allowed coin left: %v", err)
+	}
+}

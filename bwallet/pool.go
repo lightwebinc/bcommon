@@ -147,23 +147,10 @@ func (p *Pool) Add(outs ...Output) (int, error) {
 
 // Take removes and returns the oldest output spendable at tip, saving the
 // pool without it. The output is reserved from that moment; Return undoes it.
+// A coin of zero satoshis is never taken: it can pay for nothing. Take is
+// TakeAtLeast(tip, 1, nil).
 func (p *Pool) Take(tip uint32) (Output, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	for i, o := range p.outputs {
-		if !o.Spendable(tip) {
-			continue
-		}
-		p.outputs = append(p.outputs[:i:i], p.outputs[i+1:]...)
-		if err := p.saveLocked(); err != nil {
-			// Put it back so memory and disk agree on failure.
-			p.outputs = append(p.outputs, o)
-			p.sortLocked()
-			return Output{}, err
-		}
-		return o, nil
-	}
-	return Output{}, ErrNoSpendable
+	return p.TakeAtLeast(tip, 1, nil)
 }
 
 // TakeAllowing is Take, falling back to an unproven coin whose parent is one
@@ -174,24 +161,54 @@ func (p *Pool) Take(tip uint32) (Output, error) {
 // funding tree its carrier spends. Taking that parent's change adds nothing
 // to the spender's BEEF, so it does not deepen the unmined chain the hold on
 // unproven change exists to bound, and it is what lets a wallet with a single
-// coin publish twice inside one block.
+// coin publish twice inside one block. TakeAllowing is TakeAtLeast(tip, 1,
+// allow).
 func (p *Pool) TakeAllowing(tip uint32, allow []string) (Output, error) {
-	if o, err := p.Take(tip); err == nil || !errors.Is(err, ErrNoSpendable) || len(allow) == 0 {
-		return o, err
-	}
+	return p.TakeAtLeast(tip, 1, allow)
+}
+
+// TakeAtLeast is TakeAllowing restricted to coins of at least minSats
+// satoshis, for a caller that knows what the coin must pay: a coin below it
+// is left in the pool rather than handed out to fail the build. A minSats of
+// zero counts as one, since a coin of nothing pays for nothing. The oldest
+// proven coin that is large enough is taken first, then the oldest allowed
+// unproven one. When coins are held but none is large enough the error
+// wraps ErrNoSpendable and says so.
+func (p *Pool) TakeAtLeast(tip uint32, minSats uint64, allow []string) (Output, error) {
+	minSats = max(minSats, 1)
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	for i, o := range p.outputs {
-		if !o.Unproven || !slices.Contains(allow, o.TxID) {
-			continue
+	small := false
+	pick := func(ok func(Output) bool) (Output, bool, error) {
+		for i, o := range p.outputs {
+			if !ok(o) {
+				continue
+			}
+			if o.Satoshis < minSats {
+				small = true
+				continue
+			}
+			p.outputs = append(p.outputs[:i:i], p.outputs[i+1:]...)
+			if err := p.saveLocked(); err != nil {
+				// Put it back so memory and disk agree on failure.
+				p.outputs = append(p.outputs, o)
+				p.sortLocked()
+				return Output{}, true, err
+			}
+			return o, true, nil
 		}
-		p.outputs = append(p.outputs[:i:i], p.outputs[i+1:]...)
-		if err := p.saveLocked(); err != nil {
-			p.outputs = append(p.outputs, o)
-			p.sortLocked()
-			return Output{}, err
+		return Output{}, false, nil
+	}
+	if o, found, err := pick(func(o Output) bool { return o.Spendable(tip) }); found {
+		return o, err
+	}
+	if len(allow) > 0 {
+		if o, found, err := pick(func(o Output) bool { return o.Unproven && slices.Contains(allow, o.TxID) }); found {
+			return o, err
 		}
-		return o, nil
+	}
+	if small {
+		return Output{}, fmt.Errorf("%w of at least %d sat", ErrNoSpendable, minSats)
 	}
 	return Output{}, ErrNoSpendable
 }

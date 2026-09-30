@@ -197,7 +197,7 @@ func TestSpendThroughFund(t *testing.T) {
 }
 
 // A bad count or value is refused before the wallet is asked for a lock, in
-// mint's words, and after the fee input is reserved.
+// mint's words, and the fee input reserved for it is back in the pool.
 func TestSpendRefusesABadValueBeforeAskingForTheLock(t *testing.T) {
 	tr, _, _, _ := treesFor(t)
 	tr.Sats = 0
@@ -205,6 +205,9 @@ func TestSpendRefusesABadValueBeforeAskingForTheLock(t *testing.T) {
 	_, _, err := tr.Spend(context.Background(), 1)
 	if err == nil || err.Error() != "mint: a funding tree needs at least one output of at least one satoshi" {
 		t.Fatalf("got %v", err)
+	}
+	if tr.Payer.Pool.Count() != 1 {
+		t.Fatal("the fee input was not put back")
 	}
 }
 

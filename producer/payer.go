@@ -118,7 +118,9 @@ func (e *NoKeyError) Error() string {
 }
 
 // Take reserves a pool coin as a fee input. Everything taken is returned to
-// the pool by GiveBack if the transaction is not sent.
+// the pool by GiveBack if the transaction is not sent. Take is
+// TakeAtLeast(ctx, p.Fees.Floor): a coin below the fee floor cannot pay for
+// any transaction, so it is left in the pool.
 //
 // A received payment carries its derivation, and its owner's key re-derives
 // the spending key. Any other coin is spent by whichever key's fund script
@@ -128,16 +130,37 @@ func (e *NoKeyError) Error() string {
 // *NoKeyError, each returned as it is, so the application can put its own
 // words to them. Every other error is returned with the coin's outpoint.
 func (p *Payer) Take(ctx context.Context) (mint.Input, error) {
+	return p.TakeAtLeast(ctx, p.Fees.Floor)
+}
+
+// TakeAtLeast is Take for a caller that knows what the coin must pay, the
+// outputs it funds and the fee: only a coin of at least sats satoshis is
+// taken (bwallet.Pool.TakeAtLeast), and a pool whose spendable coins are all
+// smaller answers a *NoCoinError. A coin that is taken but cannot be signed
+// for is back in the pool before the error is returned.
+func (p *Payer) TakeAtLeast(ctx context.Context, sats uint64) (mint.Input, error) {
+	in, _, err := p.take(ctx, sats)
+	return in, err
+}
+
+// take is TakeAtLeast, also answering the coin, which Trees needs to give
+// back or release on its own.
+func (p *Payer) take(ctx context.Context, sats uint64) (mint.Input, bwallet.Output, error) {
 	var allow []string
 	if p.Allow != nil {
 		allow = p.Allow()
 	}
-	o, err := p.Pool.TakeAllowing(p.Tip, allow)
+	o, err := p.Pool.TakeAtLeast(p.Tip, sats, allow)
 	if err != nil {
-		return mint.Input{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids())}
+		return mint.Input{}, bwallet.Output{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids())}
 	}
 	p.spent = append(p.spent, o)
-	return p.input(ctx, o)
+	in, err := p.input(ctx, o)
+	if err != nil {
+		p.giveBackOne(o)
+		return mint.Input{}, bwallet.Output{}, err
+	}
+	return in, o, nil
 }
 
 // input signs for a coin already taken from the pool: the half of Take after
@@ -185,7 +208,21 @@ func (p *Payer) keyFor(id string) (*bwallet.Signer, error) {
 	return nil, fmt.Errorf("producer: no key held for identity %q", id)
 }
 
-// GiveBack returns every coin Take reserved to the pool.
+// giveBackOne returns one reserved coin to the pool and forgets it.
+func (p *Payer) giveBackOne(o bwallet.Output) {
+	_ = p.Pool.Return(o)
+	p.release(o)
+}
+
+// release forgets a reserved coin without returning it: the transaction it
+// paid for reached the settlement leg, so the coin is spent, and a later
+// GiveBack must not put it back in the pool.
+func (p *Payer) release(o bwallet.Output) {
+	p.spent = slices.DeleteFunc(p.spent, func(s bwallet.Output) bool { return s.Outpoint() == o.Outpoint() })
+}
+
+// GiveBack returns every coin Take reserved to the pool, except one that
+// paid for a funding tree Trees put on the settlement leg, which is spent.
 func (p *Payer) GiveBack() {
 	for _, o := range p.spent {
 		_ = p.Pool.Return(o)

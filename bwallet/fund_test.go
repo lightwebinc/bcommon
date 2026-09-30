@@ -27,6 +27,9 @@ type fakeNode struct {
 	blocks   []string
 	rpcCalls int
 	srv      *httptest.Server
+	// empty is the heights whose coinbase pays the fund script nothing: a
+	// block of no fees once the subsidy is gone.
+	empty map[int]bool
 }
 
 func newFakeNode(t *testing.T, fundLock string) *fakeNode {
@@ -78,10 +81,14 @@ func (n *fakeNode) serve(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			height := i + 1
+			sats := uint64(5000000000)
+			if n.empty[height] {
+				sats = 0
+			}
 			fmt.Fprintf(w, `{"hash":%q,"height":%d,"coinbase_tx":{"txid":%q,"outputs":[`+
-				`{"satoshis":5000000000,"lockingScript":%q},`+
+				`{"satoshis":%d,"lockingScript":%q},`+
 				`{"satoshis":1,"lockingScript":"6a"}]}}`,
-				hash, height, fmt.Sprintf("%064x", height), n.fundLock)
+				hash, height, fmt.Sprintf("%064x", height), sats, n.fundLock)
 			return
 		}
 		http.NotFound(w, r)
@@ -129,6 +136,36 @@ func TestFundFromCoinbaseBatchesAndAddsMatureLater(t *testing.T) {
 
 	if _, _, err := FundFromCoinbase(context.Background(), e.Signer(), e.Pool, rpc, asset, 0, 0); err == nil {
 		t.Fatal("blocks=0 must be refused")
+	}
+}
+
+// A coinbase output of zero satoshis is no coin: funding and a rescan both
+// leave it out of the pool, where it would only be taken to fail.
+func TestFundSkipsAZeroValueCoinbase(t *testing.T) {
+	e := newWallet(t)
+	lock, err := e.FundScript()
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := newFakeNode(t, hex.EncodeToString(*lock))
+	node.empty = map[int]bool{2: true, 3: true}
+	rpc := &nodeapi.RPC{URL: node.srv.URL + "/", User: "u", Pass: "p", ID: "app-under-test"}
+	asset := &nodeapi.Asset{Base: node.srv.URL}
+
+	added, hashes, err := FundFromCoinbase(context.Background(), e.Signer(), e.Pool, rpc, asset, 4, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if added != 2 || len(hashes) != 4 {
+		t.Fatalf("added %d of %d blocks, want 2 of 4", added, len(hashes))
+	}
+	for _, o := range e.Pool.Outputs() {
+		if o.Satoshis == 0 || o.Height == 2 || o.Height == 3 {
+			t.Fatalf("a zero-value coinbase was pooled: %+v", o)
+		}
+	}
+	if n, err := Rescan(context.Background(), e.Signer(), e.Pool, asset, 1, 4); err != nil || n != 0 {
+		t.Fatalf("a rescan added %d: %v", n, err)
 	}
 }
 

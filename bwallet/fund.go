@@ -15,7 +15,8 @@ const DefaultFundBatch = 30
 
 // FundFromCoinbase mines blocks paying the fund address and adds each block's
 // coinbase outputs that pay FundScript to the pool, marked Coinbase with
-// their height so Take applies maturity. It returns how many outputs were
+// their height so Take applies maturity. An output of zero satoshis is not
+// added. It returns how many outputs were
 // added and every block hash mined, including blocks whose coinbase paid
 // nothing to us.
 //
@@ -81,7 +82,8 @@ func Rescan(ctx context.Context, e *Signer, pool *Pool, asset *nodeapi.Asset, fr
 	}
 }
 
-// addCoinbase reads each block and adds its coinbase outputs paying us.
+// addCoinbase reads each block and adds its coinbase outputs paying us,
+// leaving out any of zero satoshis.
 func addCoinbase(ctx context.Context, e *Signer, pool *Pool, asset *nodeapi.Asset, hashes []string) (int, error) {
 	lock, err := e.FundScript()
 	if err != nil {
@@ -96,7 +98,10 @@ func addCoinbase(ctx context.Context, e *Signer, pool *Pool, asset *nodeapi.Asse
 		}
 		var outs []Output
 		for i, out := range blk.CoinbaseTx.Outputs {
-			if out.LockingScript != ours {
+			// A coinbase carries its block's subsidy and fees, and once the
+			// subsidy is gone an empty block pays nothing: an output of zero
+			// satoshis is no coin, and pooled it would only be taken to fail.
+			if out.LockingScript != ours || out.Satoshis == 0 {
 				continue
 			}
 			outs = append(outs, Output{
