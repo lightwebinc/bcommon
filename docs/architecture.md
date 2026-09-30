@@ -48,32 +48,37 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `cbor` | none | no |
 | 0 | `commit` | none | no |
 | 0 | `hostset` | none | no |
-| 0 | `knownkeys` | none | no |
 | 0 | `resolve` | none | no |
 | 0 | `guard` | none | yes |
-| 0 | `pushdrop` | none | yes |
 | 0 | `mint` | none | yes |
-| 0 | `funding` | none | yes |
 | 0 | `headers` | none | yes |
 | 0 | `wirewallet` | none | yes |
 | 0 | `goldentest` | none | yes |
 | 0 | `termsafe` | none | no |
 | 1 | `store` | `cbor`, `commit` | no |
-| 1 | `carrier` | `pushdrop` | yes |
+| 1 | `knownkeys` | `guard` | no |
+| 1 | `pushdrop` | `guard` | yes |
+| 1 | `funding` | `guard` | yes |
 | 1 | `nodeapi` | `guard` | yes |
 | 1 | `lookup` | `hostset` | no |
-| 2 | `verify` | `carrier` | yes |
-| 2 | `bwallet` | `nodeapi`, `pushdrop` | yes |
+| 2 | `carrier` | `guard`, `pushdrop` | yes |
+| 2 | `bwallet` | `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
-| 3 | `producer` | `bwallet`, `funding`, `mint`, `nodeapi`, `publish` | yes |
+| 3 | `verify` | `carrier`, `guard` | yes |
+| 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
 
 Every edge inside the module:
 
 ```text
-  producer ──▶ bwallet, funding, mint, nodeapi, publish
-  verify   ──▶ carrier ──▶ pushdrop
+  producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
+  verify   ──▶ carrier ──▶ pushdrop ──▶ guard
+  verify   ──▶ guard
+  carrier  ──▶ guard
   bwallet  ──▶ pushdrop
   bwallet  ──▶ nodeapi ──▶ guard
+  bwallet  ──▶ guard
+  funding  ──▶ guard
+  knownkeys ─▶ guard
   publish  ──▶ nodeapi
   store    ──▶ cbor, commit
   lookup   ──▶ hostset
@@ -124,13 +129,18 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   PushDrop lock and its unlocker, and the decoding a reader runs. A reader
   holding only the identity key recomputes the locking key with
   `ExpectedLockingKey` and checks the embedded field signature.
+  `CheckCanonical` takes a lock only as the one script the template writes
+  for its key and fields, every push minimal and the key in its canonical
+  encoding, and `DecodeTagged` applies it.
 - **`carrier`** owns the carrier transaction: one input spending a funding
   output, one signed PushDrop record output carrying the payload, nLockTime
   4102444800 (2100-01-01) with a non-final input so it cannot be mined, and
   zero fee. It also owns the funding-output lock (`<key> OP_CHECKSIG <tag>
   OP_DROP`), its decode, the kill-switch `Sweep`, and `Validate`, whose check
   order is part of the contract: the payload's rules, then unmineability,
-  then the lock derivation, then the signature.
+  then the lock derivation, then the signature. `Decode` and
+  `DecodeFunding` take a lock only in its canonical encoding, and `Validate`
+  parses the identity key with `guard.ParsePubKey`.
 
 ### Producer
 
@@ -161,15 +171,18 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   to hold that. It also owns the per-transition `Journal`.
 - **`producer`** owns the orchestration around those builders that every
   producer runs the same way. `Payer` takes a fee input from the coin pool,
-  signed by the key its coin is locked to, gives it back when a transaction
-  is not sent, takes change back into the pool (holding change from an
+  signed by the key its coin is locked to and large enough to pay (never
+  under the fee floor, and `TakeAtLeast` for a known amount), gives it back
+  when a transaction is not sent, takes change back into the pool (holding change from an
   unmined transaction back until its proof arrives), and settles: waiting
   for a proof, or with `Async` returning once the leg has accepted the
   transaction. `Kept` makes every use of one kept transaction the same
   object, so no BEEF merges two copies of it. `Trees` is the funding-tree
   lifecycle: spend from the current tree while it has the outputs, otherwise
   mint, settle, record (through the application's `TreeState`) and publish
-  the next one, sized to the spend. With `Ahead`, it mints and settles the
+  the next one, sized to the spend. A tree's fee coin is back in the pool
+  before any failure short of the settlement leg returns, and is released,
+  never returned, once the tree is on the leg. With `Ahead`, it mints and settles the
   next tree in the background once a spend leaves the current one low, so
   a producer whose trees must mine before they are published does not wait
   for a block when the current tree runs out; the tree minted ahead is
@@ -207,8 +220,11 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   transaction (`Check`) and the carrier check every reader runs
   (`VerifyCarrier`). It refuses a nil chain tracker rather than let the SDK
   dial a public service in its place.
-- **`guard`** owns the bounds check on a BRC-74 BUMP before the SDK
-  allocates for it.
+- **`guard`** owns the checks on bytes someone else supplied before the SDK
+  allocates for them or trusts them: a structural walk of a BRC-74 BUMP, a
+  BEEF and a raw transaction, each bounding every declared count and length
+  by the bytes present, and the one canonical encoding of a compressed
+  public key.
 
 ### Terminal
 
@@ -242,7 +258,10 @@ Where the library applies it:
 | Input | Guard | Where |
 |---|---|---|
 | A BRC-74 BUMP from a service | `guard.ParseBUMP` walks it allocating nothing, refuses any level count the remaining bytes cannot encode and any trailing byte, then parses under a `recover` | `nodeapi.ProofFor`, `nodeapi.Asset.MerkleProof` |
-| A BEEF from an overlay host | go-sdk v1.5.2's BEEF parser bounds every count against the bytes remaining, which is one reason the pin is exact ([dependencies.md](dependencies.md)); there is no separate BEEF guard | `verify.VerifyCarrier`, `funding.Rebuild` |
+| A BEEF from an overlay host, or kept by the application | `guard.ParseBEEF` walks V1, V2 (with its txid-only entries) and Atomic BEEF allocating nothing, bounds the BUMP count and each BUMP, the transaction count, every input, output and script length by the bytes remaining, refuses trailing bytes, a BEEF of no transactions and a transaction of no inputs, applies the caller's total-size bound, then parses under a `recover`. go-sdk v1.5.2 bounds its own counts too, but the protection does not rest on the pin | `verify.VerifyCarrier`, `funding.Rebuild` |
+| A raw transaction from a node, a wallet or the application's state | `guard.ParseTransaction`, the same walk for one transaction | `funding.Rebuild`, `producer.Payer.Parent` |
+| A public key from the wire | `guard.ParsePubKey` takes 33 bytes, prefix 0x02 or 0x03, x below the field prime and on the curve, and nothing else. go-sdk takes a compressed key whose x is at or above the prime and writes it back unreduced, a second encoding of one point | `carrier.Validate`, `bwallet.Counterparty`, `knownkeys`, and every PushDrop lock through `pushdrop.CheckCanonical` |
+| A PushDrop lock | `pushdrop.CheckCanonical`: the lock is exactly the script the template writes for its key and fields; go-sdk's decoder reads wider pushes, trailing opcodes and other key encodings as the same fields | `pushdrop.DecodeTagged`, `carrier.Decode`, `carrier.DecodeFunding` |
 | A CBOR record | the decoder checks every declared length against the bytes present before allocating, and bounds nesting at `MaxDepth` | `cbor.DecodeValue` |
 | A record's store references | `MaxRefs` (64 stores), `MaxRefMembers` (8 members per entry), `MaxRefName` (64 bytes), `MaxMembers` (1024 per manifest) bound the work one record can ask of a reader | `store` |
 | An HTTP response | every body is read to a bound before it is parsed, and most clients refuse one over the bound rather than parse a truncated answer | `headers`, `nodeapi`, `hostset`, `resolve`, `publish`, `wirewallet` |
@@ -290,6 +309,8 @@ to read what a producer wrote:
 | `carrier.DecodeFunding` | `decodeFunding` |
 | `carrier.Decode` with `Carrier.Validate`, `carrier.Commitment`, `carrier.LockTime` | `decodeCarrier` (and its steps `inspectScript`, `payloadRefusal`, `mineableRefusal`, `unlockingRefusal`, `lockRefusal`, `signatureRefusal`), `commitment`, `LockTime` |
 | `carrier.CheckUnlocking`, `carrier.SigHashType` | `unlockingRefusal`, `SigHashType` |
+| `guard.ParsePubKey`, `guard.ParsePubKeyHex` | `strictPublicKey`, `strictPublicKeyHex` (and `readerLockingKey` applies it to the identity) |
+| `pushdrop.CheckCanonical` | `decodeStrictPushDrop` (and `decodeFunding` and `inspectScript` apply it) |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
@@ -316,7 +337,9 @@ lookup service in the engine's own order.
 
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the RFC 6962
 functions, the network clients and `verify` have no TypeScript twin: a topic
-manager reads outputs, it does not build them.
+manager reads outputs, it does not build them. Nor does the BEEF guard: the
+package parses no BEEF itself, and a topic manager is handed transactions
+the overlay engine has already parsed.
 
 The runtime entry point imports nothing but its peer `@bsv/sdk`, pinned
 exactly at 2.7.1, and nothing from `node:`, so a browser can load it too.

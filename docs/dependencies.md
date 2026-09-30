@@ -33,8 +33,10 @@ packages actually link and `make licences` checks is current.
 go-sdk releases below v1.5.0 size a slice from a count the input declares
 while parsing a merkle path, so a few hostile bytes can ask for an allocation
 that ends the process with an out-of-memory no `recover` sees. v1.5.2 bounds
-those counts against the bytes present. The `guard` package checks a BUMP
-before the SDK sees it as a second line of defence, but the floor is the fix.
+those counts against the bytes present. The `guard` package walks every
+BUMP, BEEF and raw transaction the library parses before the SDK sees it,
+bounding each count by the bytes present, so the library's own protection
+does not rest on the pin; the floor is the SDK's.
 
 The pin is exact rather than a minimum because minimal version selection
 takes the higher of two requirements. A raised pin here would silently change

@@ -6,7 +6,7 @@ a producer wrote, tested against the same vectors as the Go packages.
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | `encode`/`decodeValue` (deterministic CBOR), `encodeRefs`/`decodeRefs` (store refs entries), `readerLockingKey` (the reader's BRC-42 derivation), `verifyFieldSignature`, `decodeFunding`, `decodeCarrier` and its rules, and the engine interfaces a module satisfies (`Module`, `ModuleHost`, `TopicManager`, `LookupService`, ...) |
+| `@lightwebinc/bcommon` | `encode`/`decodeValue` (deterministic CBOR), `encodeRefs`/`decodeRefs` (store refs entries), `readerLockingKey` (the reader's BRC-42 derivation), `strictPublicKey`/`strictPublicKeyHex` (a key only in its canonical encoding), `decodeStrictPushDrop` (a PushDrop only as the template writes it), `verifyFieldSignature`, `decodeFunding`, `decodeCarrier` and its rules, and the engine interfaces a module satisfies (`Module`, `ModuleHost`, `TopicManager`, `LookupService`, ...) |
 | `@lightwebinc/bcommon/testing` | `countingHost`, `row`, `fakeStorage`, `spends`, `wireParent`, `beefOf`, `atomicOf`, `minter`, hex helpers, and `engineOrder`, which calls a lookup service's callbacks in the order and with the payloads the engine uses |
 
 **Runtime rules.** Every file behind the runtime entry point imports nothing

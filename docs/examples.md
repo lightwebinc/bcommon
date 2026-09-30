@@ -176,18 +176,17 @@ The example then hands it the answers a hostile or broken host could give:
 | No output | `NO-TOKEN` |
 | Two outputs where one is allowed | `REFUSED-FORK` |
 
-The hostile BEEF is refused with go-sdk's own reason, `BEEF BUMPs count
-9223372036854775808 exceeds capacity of 0 remaining bytes`: go-sdk v1.5.2
-bounds every count a BEEF declares against the bytes present, which is why
-the library pins it exactly (see [dependencies.md](dependencies.md)), and no
-allocation is attempted. `ERROR` is kept apart from every refusal: it means
+The hostile BEEF is refused by the guard before go-sdk sees it, `guard:
+BEEF refused: declares 9223372036854775808 BUMPs, 0 bytes remain`:
+`guard.ParseBEEF` walks every BEEF the library parses and bounds every count
+it declares by the bytes present, and no allocation is attempted. `ERROR` is kept apart from every refusal: it means
 the reader could not decide, typically because the header source did not
 answer, so an outage is never read as a forgery. `ExampleCheck` shows
 `verify.Check` refusing a nil tracker rather than dialing a default.
 
 ## Guard a proof before the SDK parses it
 
-[`guard/example_test.go`](../guard/example_test.go), `ExampleParseBUMP`;
+[`guard/example_test.go`](../guard/example_test.go), `ExampleParseBUMP`, `ExampleParseBEEF`, `ExampleParsePubKey`;
 [`nodeapi/example_test.go`](../nodeapi/example_test.go), `ExampleProofFor`
 
 A BRC-74 BUMP from a service is walked by `guard.ParseBUMP`, allocating
@@ -208,6 +207,11 @@ hostile: bump level 0 declares 4294967295 leaves, 0 bytes remain
 trailing: bump has 1 trailing bytes
 over the bound: bump is 71 bytes, max 16
 ```
+
+`guard.ParseBEEF` and `guard.ParsePubKey` have examples beside it: a
+13-byte BEEF declaring 2^63 BUMPs and a transaction declaring four billion
+inputs are refused, and so is `02 || p+1`, a second encoding of the key with
+x = 1 that go-sdk reads.
 
 `nodeapi.ProofFor` runs the guard and then refuses a proof that does not
 name the transaction it was asked for (`proof does not contain the txid`),

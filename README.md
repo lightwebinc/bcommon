@@ -29,7 +29,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `carrier` | An unmineable carrier transaction that commits a payload, and the funding lock, decode and sweep it spends from |
 | `mint` | Builders for a state transition, a funding tree and a payment, with a fee loop that signs to measure the size and rebuilds at the rate until the fee covers it |
 | `funding` | Funding-tree state kept between runs, and the BEEF kept for transactions spent before they mine |
-| `guard` | A bounds check on a BRC-74 BUMP before the SDK allocates for it |
+| `guard` | A structural walk of a BRC-74 BUMP, a BEEF or a raw transaction before the SDK allocates for it, and a public key taken only in its canonical encoding |
 | `nodeapi` | A Teranode JSON-RPC and asset API client with bounded responses and a txid-in-proof check |
 | `bwallet` | An embedded BRC-100 wallet backend and coin pool, a Signer, and BRC-29 derivations, keyed by an application profile |
 | `wirewallet` | A BRC-100 wallet over the wallet wire, loopback only, and a handler that serves one |
