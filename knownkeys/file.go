@@ -26,6 +26,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // Kind distinguishes the three record forms.
@@ -140,6 +142,12 @@ func parseLine(t string) (Record, error) {
 	// thing every later answer is compared against.
 	if key[0] != 0x02 && key[0] != 0x03 {
 		return r, fmt.Errorf("key prefix 0x%02x: a compressed key starts 0x02 or 0x03, got %q", key[0], r.KeyHex)
+	}
+	// And only the one encoding of a point: a key whose x is at or above the
+	// field prime is a second spelling of another key, and a pin compared by
+	// its bytes would read the two as different keys.
+	if _, err := guard.ParsePubKey(key); err != nil {
+		return r, fmt.Errorf("key %q: %v", r.KeyHex, err)
 	}
 	for _, kv := range f[3:] {
 		k, v, ok := strings.Cut(kv, "=")

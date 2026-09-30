@@ -14,6 +14,7 @@ import (
 
 	"github.com/lightwebinc/bcommon/bwallet"
 	"github.com/lightwebinc/bcommon/funding"
+	"github.com/lightwebinc/bcommon/guard"
 	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/nodeapi"
 	"github.com/lightwebinc/bcommon/publish"
@@ -211,12 +212,16 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 		return p.Kept.Tx(o.TxID)
 	}
 	if o.Raw != "" {
-		tx, err := transaction.NewTransactionFromHex(o.Raw)
+		tx, err := rawTx(o.Raw)
 		if err != nil {
 			return nil, fmt.Errorf("wallet output %s: %w", o.Outpoint(), err)
 		}
 		if o.Bump != "" {
-			if tx.MerklePath, err = transaction.NewMerklePathFromHex(o.Bump); err != nil {
+			bump, err := hex.DecodeString(o.Bump)
+			if err == nil {
+				tx.MerklePath, err = guard.ParseBUMP(bump, guard.DefaultBound)
+			}
+			if err != nil {
 				return nil, fmt.Errorf("wallet output %s proof: %w", o.Outpoint(), err)
 			}
 			return tx, nil
@@ -230,7 +235,7 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 		if err != nil {
 			return nil, fmt.Errorf("fee input %s: fetching its parent, which an unmined spender must carry: %w", o.Outpoint(), err)
 		}
-		tx, err := transaction.NewTransactionFromBytes(raw)
+		tx, err := guard.ParseTransaction(raw, guard.DefaultBound)
 		if err != nil {
 			return nil, fmt.Errorf("fee input %s: parent does not parse: %w", o.Outpoint(), err)
 		}
@@ -244,7 +249,7 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 		tx.MerklePath = mp
 		return tx, nil
 	}
-	tx, err := transaction.NewTransactionFromHex(o.Raw)
+	tx, err := rawTx(o.Raw)
 	if err != nil || o.Raw == "" {
 		tx = transaction.NewTransaction()
 		for i := uint32(0); i <= o.Vout; i++ {
@@ -262,6 +267,15 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 		tx.SetTxHash(h)
 	}
 	return tx, nil
+}
+
+// rawTx parses a coin's parent as the pool holds it, through the guard.
+func rawTx(s string) (*transaction.Transaction, error) {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+	return guard.ParseTransaction(b, guard.DefaultBound)
 }
 
 // hashFromHex reads a txid in display order: the hex is byte-reversed

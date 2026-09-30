@@ -18,6 +18,8 @@ import (
 	"errors"
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // Tree is a funding tree and how much of it is unspent. Its JSON form is
@@ -69,14 +71,15 @@ func BumpHex(mp *transaction.MerklePath) string {
 // Rebuild rebuilds a transaction an application published: from its raw
 // bytes and proof when it has mined, or from the BEEF kept while it had not,
 // which carries its unproven ancestry. A proof wins over a kept BEEF, which
-// is then not read at all: a proven transaction needs no ancestry.
+// is then not read at all: a proven transaction needs no ancestry. Each is
+// walked by package guard before the SDK parses it.
 func Rebuild(rawHex, bumpHex, beefHex string) (*transaction.Transaction, error) {
 	if bumpHex == "" && beefHex != "" {
 		b, err := hex.DecodeString(beefHex)
 		if err != nil {
 			return nil, err
 		}
-		_, tx, _, err := transaction.ParseBeef(b)
+		_, tx, _, err := guard.ParseBEEF(b, guard.DefaultBound)
 		if err != nil {
 			return nil, err
 		}
@@ -85,12 +88,20 @@ func Rebuild(rawHex, bumpHex, beefHex string) (*transaction.Transaction, error) 
 		}
 		return tx, nil
 	}
-	tx, err := transaction.NewTransactionFromHex(rawHex)
+	raw, err := hex.DecodeString(rawHex)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := guard.ParseTransaction(raw, guard.DefaultBound)
 	if err != nil {
 		return nil, err
 	}
 	if bumpHex != "" {
-		if tx.MerklePath, err = transaction.NewMerklePathFromHex(bumpHex); err != nil {
+		bump, err := hex.DecodeString(bumpHex)
+		if err != nil {
+			return nil, err
+		}
+		if tx.MerklePath, err = guard.ParseBUMP(bump, guard.DefaultBound); err != nil {
 			return nil, err
 		}
 	}

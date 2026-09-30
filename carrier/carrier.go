@@ -35,6 +35,7 @@ import (
 	sdkpushdrop "github.com/bsv-blockchain/go-sdk/transaction/template/pushdrop"
 	"github.com/bsv-blockchain/go-sdk/wallet"
 
+	"github.com/lightwebinc/bcommon/guard"
 	"github.com/lightwebinc/bcommon/pushdrop"
 )
 
@@ -63,7 +64,8 @@ var (
 	// carrier can rewrite a looser unlocking script without the key, and the
 	// rewrite is a different txid spending the same funding output.
 	ErrUnlocking = errors.New("carrier: unlocking script is not one canonical signature push")
-	// ErrIdentity is what an identity key that does not parse wraps when the
+	// ErrIdentity is what an identity key that does not parse, or is not
+	// the one canonical compressed encoding (guard.ParsePubKey), wraps when the
 	// application names no sentinel of its own in Params.ErrIdentity.
 	ErrIdentity = errors.New("carrier: identity key does not parse")
 )
@@ -115,7 +117,9 @@ func Commitment(tx *transaction.Transaction) [32]byte {
 // Decode finds the one record output: a signed PushDrop of one field that
 // classify takes. A transaction with no record output is not a carrier; one
 // with two is refused as well, because the commitment would then name two
-// records at once.
+// records at once. A record output the classifier takes that is not the one
+// encoding the template writes (pushdrop.CheckCanonical) is refused as
+// ErrShape.
 func Decode(tx *transaction.Transaction, classify Classify) (*Carrier, error) {
 	if classify == nil {
 		return nil, errors.New("carrier: nil classifier")
@@ -137,6 +141,9 @@ func Decode(tx *transaction.Transaction, classify Classify) (*Carrier, error) {
 			continue
 		}
 		if err != nil {
+			return nil, fmt.Errorf("%w: output %d: %v", ErrShape, i, err)
+		}
+		if err := pushdrop.CheckCanonical(out.LockingScript); err != nil {
 			return nil, fmt.Errorf("%w: output %d: %v", ErrShape, i, err)
 		}
 		if found != nil {
@@ -190,7 +197,7 @@ func (c *Carrier) Validate(p Params, identityKey []byte) error {
 	if err := CheckUnlocking(c.Tx); err != nil {
 		return err
 	}
-	identity, err := ec.PublicKeyFromBytes(identityKey)
+	identity, err := guard.ParsePubKey(identityKey)
 	if err != nil {
 		// An application's own sentinel says only that a field is wrong, so
 		// the detail names the field; this package's own already does.
@@ -362,13 +369,17 @@ func FundingLock(ctx context.Context, w wallet.Interface, originator string, p P
 }
 
 // DecodeFunding reports whether s is a funding output under tag and returns
-// its locking key.
+// its locking key. Only the one encoding FundingLock writes is a funding
+// output (pushdrop.CheckCanonical).
 func DecodeFunding(s *script.Script, tag []byte) (*ec.PublicKey, bool) {
 	if s == nil {
 		return nil, false
 	}
 	d := sdkpushdrop.Decode(s)
 	if d == nil || d.LockingPublicKey == nil || len(d.Fields) != 1 || !bytes.Equal(d.Fields[0], tag) {
+		return nil, false
+	}
+	if pushdrop.CheckCanonical(s) != nil {
 		return nil, false
 	}
 	return d.LockingPublicKey, true

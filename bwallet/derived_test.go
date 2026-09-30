@@ -3,12 +3,16 @@ package bwallet
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // BRC-29 end to end between two wallets: the sender derives the recipient's
@@ -79,6 +83,25 @@ func TestDerivedUnlockerRefusesAnInputOutOfRange(t *testing.T) {
 		want := fmt.Sprintf("bwallet: input %d out of range", i)
 		if _, err := e.DerivedUnlocker(d).Sign(tx, i); err == nil || err.Error() != want {
 			t.Errorf("input %d: %v, want %q", i, err, want)
+		}
+	}
+}
+
+// A counterparty is often a sender's key taken from a payment, so only its
+// one canonical encoding is accepted: 02 || p+1, which go-sdk reads as the
+// point with x = 1, is refused, and so is an uncompressed key.
+func TestCounterpartyRefusesANonCanonicalKey(t *testing.T) {
+	x1 := "02" + strings.Repeat("00", 31) + "01"
+	if _, err := Counterparty(x1); err != nil {
+		t.Fatalf("x = 1: %v", err)
+	}
+	for _, bad := range []string{
+		"02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30",
+		"04" + strings.Repeat("00", 64),
+		"",
+	} {
+		if _, err := Counterparty(bad); !errors.Is(err, guard.ErrPubKey) {
+			t.Errorf("%q: %v", bad, err)
 		}
 	}
 }

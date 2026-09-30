@@ -138,12 +138,12 @@ func TestVerifyCarrierRefusals(t *testing.T) {
 			s := f.served(valid(4, 0))
 			s.items = []verify.Item{{Beef: []byte{1, 2, 3}}}
 			return s
-		}, "REFUSED-DECODE", "{what}: BEEF does not parse: invalid-version"},
+		}, "REFUSED-DECODE", "{what}: BEEF does not parse: guard: BEEF refused: ends mid-structure"},
 		{"BEEF holds no transaction", func() scene {
 			s := f.served(valid(5, 0))
 			s.items = []verify.Item{{Beef: []byte{0x01, 0x00, 0xbe, 0xef, 0x00, 0x00}}}
 			return s
-		}, "REFUSED-DECODE", "{what}: BEEF does not parse: <nil>"},
+		}, "REFUSED-DECODE", "{what}: BEEF does not parse: guard: BEEF refused: no transactions"},
 		{"no record output", func() scene {
 			return f.served(f.fund1)
 		}, "REFUSED-DECODE", "{what}: not a carrier: carrier: not a carrier: no record output"},
@@ -222,12 +222,14 @@ func TestVerifyCarrierRefusals(t *testing.T) {
 		{"Validate: mineable by a final input", func() scene {
 			return handed(payload(f.id1, 5), unmineable, 0xffffffff)
 		}, "REFUSED-MINEABLE", "{what}: carrier: mineable; the record could reach the chain: input 0 is final"},
-		{"Validate: no inputs", func() scene {
+		// A carrier of no inputs never reaches Validate: the guard refuses a
+		// transaction of no inputs inside any BEEF.
+		{"no inputs", func() scene {
 			tx := transaction.NewTransaction()
 			tx.LockTime = unmineable
 			tx.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: f.lock(f.w1, payload(f.id1, 5))})
 			return f.served(tx)
-		}, "REFUSED-DECODE", "{what}: carrier: not a carrier: no inputs"},
+		}, "REFUSED-DECODE", "{what}: BEEF does not parse: guard: BEEF refused: transaction 0: no inputs"},
 		{"Validate: a high-S unlocking script", func() scene {
 			return highS(valid(18, 0))
 		}, "REFUSED-UNLOCKING", "{what}: carrier: unlocking script is not one canonical signature push: S is high"},
@@ -255,7 +257,7 @@ func TestVerifyCarrierRefusals(t *testing.T) {
 			id := bytes.Clone(f.id1)
 			id[0] = 0x04
 			return handed(payload(id, 5), unmineable, nonFinal)
-		}, "REFUSED-DECODE", "{what}: carrier: identity key does not parse: invalid magic in compressed pubkey string: 4"},
+		}, "REFUSED-DECODE", "{what}: carrier: identity key does not parse: guard: public key refused: prefix 0x04, want 0x02 or 0x03"},
 		{"Validate: mineable before the identity key", func() scene {
 			id := bytes.Clone(f.id1)
 			id[0] = 0x04

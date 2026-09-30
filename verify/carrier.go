@@ -6,10 +6,10 @@ import (
 	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
-	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 
 	"github.com/lightwebinc/bcommon/carrier"
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // CarrierSpec is what makes a carrier an application's: the carrier's own
@@ -70,7 +70,7 @@ func VerifyCarrier(ctx context.Context, items []Item, want [32]byte, what string
 		return refuse(RefusedFork, fmt.Sprintf("%s: %d outputs answered for one carrier", what, len(items)))
 	}
 	it := items[0]
-	_, tx, txid, err := transaction.ParseBeef(it.Beef)
+	_, tx, txid, err := guard.ParseBEEF(it.Beef, guard.DefaultBound)
 	if err != nil || tx == nil {
 		return refuse(RefusedDecode, fmt.Sprintf("%s: BEEF does not parse: %v", what, err))
 	}

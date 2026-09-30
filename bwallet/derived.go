@@ -9,6 +9,8 @@ import (
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	sighash "github.com/bsv-blockchain/go-sdk/transaction/sighash"
 	"github.com/bsv-blockchain/go-sdk/wallet"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // PaymentProtocol is BRC-29's protocol: security level 2, the fixed name.
@@ -26,9 +28,11 @@ var PaymentProtocol = wallet.Protocol{SecurityLevel: wallet.SecurityLevelEveryAp
 // PaymentKeyID is BRC-29's key id for one output.
 func PaymentKeyID(prefix, suffix string) string { return prefix + " " + suffix }
 
-// Counterparty parses a compressed identity key into a counterparty.
+// Counterparty parses a compressed identity key into a counterparty. The key
+// is often a sender's, taken from a payment, so only its one canonical
+// encoding is accepted (guard.ParsePubKeyHex).
 func Counterparty(idHex string) (wallet.Counterparty, error) {
-	pub, err := ec.PublicKeyFromString(idHex)
+	pub, err := guard.ParsePubKeyHex(idHex)
 	if err != nil {
 		return wallet.Counterparty{}, fmt.Errorf("bwallet: counterparty %q: %w", idHex, err)
 	}

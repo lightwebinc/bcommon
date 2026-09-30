@@ -139,9 +139,9 @@ func ExampleVerifyCarrier() {
 	fmt.Println(code)
 
 	// A BEEF cut short in transit is refused as undecodable, and so is a
-	// hostile one: 13 bytes that declare 2^63 proofs. go-sdk v1.5.2 bounds
-	// every count a BEEF declares against the bytes present, so neither
-	// asks for an allocation it cannot back.
+	// hostile one: 13 bytes that declare 2^63 proofs. The guard walks every
+	// BEEF before the SDK parses it and bounds every count it declares by
+	// the bytes present, so neither asks for an allocation it cannot back.
 	_, code, _, _ = verify.VerifyCarrier(ctx, []verify.Item{{Beef: beef[:len(beef)/2]}}, want, "record", spec, tracker)
 	fmt.Println(code)
 	hostile := []byte{0x01, 0x00, 0xbe, 0xef, 0xff, 0, 0, 0, 0, 0, 0, 0, 0x80}
@@ -162,7 +162,7 @@ func ExampleVerifyCarrier() {
 	// VERIFIED "an object"
 	// REFUSED-COMMIT
 	// REFUSED-DECODE
-	// REFUSED-DECODE record: BEEF does not parse: BEEF BUMPs count 9223372036854775808 exceeds capacity of 0 remaining bytes
+	// REFUSED-DECODE record: BEEF does not parse: guard: BEEF refused: declares 9223372036854775808 BUMPs, 0 bytes remain
 	// REFUSED-BUMP
 	// NO-TOKEN
 	// REFUSED-FORK

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // ErrPermissions reports a store other users could write to. It is refused,
@@ -122,12 +124,30 @@ func Save(path, header string, recs []Record) error {
 	return syncDir(dir)
 }
 
+// canonicalKey refuses a key Pin or Rotate would write that Parse would not
+// read back, or that is not the one lower-case spelling of its point: pins
+// are compared as strings.
+func canonicalKey(keyHex string) error {
+	if _, err := guard.ParsePubKeyHex(keyHex); err != nil {
+		return fmt.Errorf("known_keys: %w", err)
+	}
+	if keyHex != strings.ToLower(keyHex) {
+		return fmt.Errorf("known_keys: key %q is not lower-case hex", keyHex)
+	}
+	return nil
+}
+
 // Pin records a first contact or an advance of an existing pin: the active
 // record for address becomes keyHex at seq, with first/last stamped. Any
 // previous active record for the address with the SAME key is replaced in
 // place; one with a DIFFERENT key is an error, because replacing it silently
-// is precisely what this file exists to prevent (use Rotate or Forget).
+// is precisely what this file exists to prevent (use Rotate or Forget). A
+// key that is not the one canonical compressed encoding of its point, in
+// lower-case hex, is refused.
 func Pin(recs []Record, address, keyHex string, seq uint64, fp string, now time.Time) ([]Record, error) {
+	if err := canonicalKey(keyHex); err != nil {
+		return nil, err
+	}
 	now = now.UTC()
 	for i, r := range recs {
 		if r.Address != address || r.Kind != Active {
@@ -149,7 +169,11 @@ func Pin(recs []Record, address, keyHex string, seq uint64, fp string, now time.
 // Rotate replaces the active key for address with newKeyHex after a verified
 // rotation: the old record becomes @rotated-from history with until_seq set
 // to the last sequence it covered, and a fresh active record is appended.
+// The new key is held to Pin's rule.
 func Rotate(recs []Record, address, newKeyHex string, seq uint64, fp string, now time.Time) ([]Record, error) {
+	if err := canonicalKey(newKeyHex); err != nil {
+		return nil, err
+	}
 	now = now.UTC()
 	out := make([]Record, 0, len(recs)+1)
 	var rotated bool

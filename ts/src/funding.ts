@@ -10,7 +10,8 @@
  * makes a later spend of one (a kill switch) visible: a funding output the
  * engine holds is one whose second spend the engine reports.
  */
-import { OP, PushDrop, type LockingScript, type PublicKey, type Script } from '@bsv/sdk'
+import { OP, type PublicKey, type Script } from '@bsv/sdk'
+import { decodeStrictPushDrop } from './pushdrop.js'
 
 function sameBytes(a: readonly number[], b: readonly number[]): boolean {
   return a.length === b.length && a.every((x, i) => x === b[i])
@@ -25,7 +26,8 @@ function sameBytes(a: readonly number[], b: readonly number[]): boolean {
  * OP_CHECKSIG or that a DROP follows, so a bare pay-to-public-key with a
  * trailing push would decode with one field too. The chunk shape is checked
  * first so that only the exact script a producer writes is a funding output;
- * the decode then supplies the key and the field.
+ * the decode then supplies the key and the field, and only in the one
+ * encoding the template writes (decodeStrictPushDrop).
  */
 export function decodeFunding(script: Script, tag: readonly number[]): PublicKey | undefined {
   const chunks = script.chunks
@@ -34,12 +36,7 @@ export function decodeFunding(script: Script, tag: readonly number[]): PublicKey
   if (key?.data === undefined || key.data.length !== 33) return undefined
   if (checksig?.op !== OP.OP_CHECKSIG || drop?.op !== OP.OP_DROP) return undefined
   if (tagChunk?.data === undefined || !sameBytes(tagChunk.data, tag)) return undefined
-  let decoded: { lockingPublicKey: PublicKey; fields: number[][] }
-  try {
-    decoded = PushDrop.decode(script as LockingScript, 'before')
-  } catch {
-    return undefined
-  }
-  if (decoded.fields.length !== 1) return undefined
+  const decoded = decodeStrictPushDrop(script)
+  if (decoded === undefined || decoded.fields.length !== 1) return undefined
   return decoded.lockingPublicKey
 }

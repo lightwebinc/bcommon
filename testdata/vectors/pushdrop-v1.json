@@ -1,0 +1,209 @@
+{
+  "fundingTagHex": "767802",
+  "stateTagHex": "767801",
+  "cases": [
+    {
+      "kind": "record",
+      "name": "canonical",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "the key pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "4c210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "the first field pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac4c1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "the last field pushed with OP_PUSHDATA2",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e654d4600304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "OP_NOP after the drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d61"
+    },
+    {
+      "kind": "record",
+      "name": "no drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b469690571"
+    },
+    {
+      "kind": "record",
+      "name": "the key uncompressed",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "410424d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e54463002980a735dca6d4e73435aa8814e3fc5c3bdc2cd27f083dc84c67e64c05ac9ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "the key replaced by x = 1",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "21020000000000000000000000000000000000000000000000000000000000000001ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "the key replaced by 02 || p+1, an alias of x = 1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
+    },
+    {
+      "kind": "record",
+      "name": "every field dropped with OP_DROP",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905717575"
+    },
+    {
+      "kind": "funding",
+      "name": "canonical",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac0376780275"
+    },
+    {
+      "kind": "funding",
+      "name": "the key pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "4c210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac0376780275"
+    },
+    {
+      "kind": "funding",
+      "name": "the first field pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac4c0376780275"
+    },
+    {
+      "kind": "funding",
+      "name": "the last field pushed with OP_PUSHDATA2",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac4d030076780275"
+    },
+    {
+      "kind": "funding",
+      "name": "OP_NOP after the drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac037678027561"
+    },
+    {
+      "kind": "funding",
+      "name": "no drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "210324d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e5446ac03767802"
+    },
+    {
+      "kind": "funding",
+      "name": "the key uncompressed",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "410424d6d6ee75173da1ca8d964d3889792c8911d66c3290a76c367413f5a68e54463002980a735dca6d4e73435aa8814e3fc5c3bdc2cd27f083dc84c67e64c05ac9ac0376780275"
+    },
+    {
+      "kind": "funding",
+      "name": "the key replaced by x = 1",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "21020000000000000000000000000000000000000000000000000000000000000001ac0376780275"
+    },
+    {
+      "kind": "funding",
+      "name": "the key replaced by 02 || p+1, an alias of x = 1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac0376780275"
+    },
+    {
+      "kind": "state",
+      "name": "canonical",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "the key pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "4c2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "the first field pushed with OP_PUSHDATA1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac4c0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "the last field pushed with OP_PUSHDATA2",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d240504d46003044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "OP_NOP after the drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d7561"
+    },
+    {
+      "kind": "state",
+      "name": "no drops",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba0"
+    },
+    {
+      "kind": "state",
+      "name": "the key uncompressed",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "4104792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814d2de0d35d3e7eb7835d0587659ae5ae42de6d2091c937a20cb5cb337d0ea31a53ac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "the key replaced by x = 1",
+      "accept": true,
+      "sdkDecodes": true,
+      "lockHex": "21020000000000000000000000000000000000000000000000000000000000000001ac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "the key replaced by 02 || p+1, an alias of x = 1",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
+    },
+    {
+      "kind": "state",
+      "name": "every field dropped with OP_DROP",
+      "accept": false,
+      "sdkDecodes": true,
+      "lockHex": "2103792fab9ef9ed4ec88b66bc082089c400b7cc64ae75e8ce3ab17241e34b1e814dac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba0757575"
+    }
+  ]
+}

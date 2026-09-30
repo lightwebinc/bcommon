@@ -17,6 +17,7 @@
  */
 import { PushDrop, type LockingScript, type PublicKey, type Script, type Transaction } from '@bsv/sdk'
 import { verifyFieldSignature } from './fieldsig.js'
+import { decodeStrictPushDrop } from './pushdrop.js'
 
 /**
  * 2100-01-01T00:00:00Z. With an input whose sequence is below the maximum, a
@@ -83,7 +84,9 @@ export type ScriptInspection<P> = { kind: 'carrier'; out: CarrierOutput<P> } | {
  * Decode one locking script as a record output. A script that is not a
  * two-field PushDrop, or whose first field the codec does not take, is simply
  * not a record output; one the codec takes and cannot decode is a bad
- * record, which refuses the whole carrier.
+ * record, which refuses the whole carrier, and so is one the codec takes
+ * that is not the one encoding the template writes (decodeStrictPushDrop),
+ * as the Go carrier.Decode refuses it.
  */
 export function inspectScript<P>(script: Script, codec: PayloadCodec<P>): ScriptInspection<P> {
   let decoded: { lockingPublicKey: PublicKey; fields: number[][] }
@@ -99,6 +102,7 @@ export function inspectScript<P>(script: Script, codec: PayloadCodec<P>): Script
   const insp = codec.inspect(payloadBytes)
   if (insp.kind === 'not-payload') return { kind: 'not-record' }
   if (insp.kind === 'bad-payload') return { kind: 'bad-record', detail: insp.detail }
+  if (decodeStrictPushDrop(script) === undefined) return { kind: 'bad-record', detail: 'the record output is not the canonical PushDrop' }
   return { kind: 'carrier', out: { payload: insp.payload, payloadBytes, lockingKey: decoded.lockingPublicKey, signature: [...sig] } }
 }
 

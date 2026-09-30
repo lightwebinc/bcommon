@@ -6,10 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
 	"github.com/lightwebinc/bcommon/funding"
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // A proven parent and an unproven child spending it: the shape of a
@@ -17,6 +19,9 @@ import (
 func unprovenChild(t *testing.T) (parent, child *transaction.Transaction) {
 	t.Helper()
 	parent = transaction.NewTransaction()
+	// The parent spends nothing real, but it has an input: the guard refuses
+	// a transaction of none.
+	parent.AddInput(&transaction.TransactionInput{SourceTXID: &chainhash.Hash{0x11}, UnlockingScript: &script.Script{}})
 	parent.AddOutput(&transaction.TransactionOutput{Satoshis: 1000, LockingScript: &script.Script{script.OpTRUE}})
 	mp, err := transaction.NewMerklePathFromCoinbaseTxid(parent.TxID(), 500)
 	if err != nil {
@@ -139,19 +144,30 @@ func TestRebuildRefusesWhatItCannotRead(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// A BEEF whose one entry is a bare txid passes the guard and parses,
+	// but holds no transaction to rebuild.
+	txidOnly := transaction.NewBeefV2()
+	txidOnly.MergeTxidOnly(child.TxID())
+	bare, err := txidOnly.Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
 	// With the raw bytes and the proof both bad, the raw bytes' error is the
 	// one reported: the check order reaches the user as text. The two texts
 	// must differ, or that row would pin nothing.
-	_, rawErr := transaction.NewTransactionFromHex("zz")
-	_, bumpErr := transaction.NewMerklePathFromHex("00")
+	_, rawErr := hex.DecodeString("zz")
+	_, bumpErr := guard.ParseBUMP([]byte{0}, guard.DefaultBound)
 	if rawErr == nil || bumpErr == nil || rawErr.Error() == bumpErr.Error() {
 		t.Fatalf("the order row cannot tell the checks apart: %v, %v", rawErr, bumpErr)
 	}
-	// The other texts are the underlying call's own, passed through unwrapped.
+	// The other texts are the underlying call's own, passed through
+	// unwrapped: the hex decoder's, or the guard's, which walks every BEEF,
+	// transaction and proof before the SDK parses it.
 	_, hexErr := hex.DecodeString("zz")
-	_, _, _, beefErr := transaction.ParseBeef([]byte{0})
-	_, shortErr := transaction.NewTransactionFromHex("00")
-	for _, err := range []error{hexErr, beefErr, shortErr} {
+	_, _, _, beefErr := guard.ParseBEEF([]byte{0}, guard.DefaultBound)
+	_, _, _, emptyErr := guard.ParseBEEF(empty, guard.DefaultBound)
+	_, shortErr := guard.ParseTransaction([]byte{0}, guard.DefaultBound)
+	for _, err := range []error{hexErr, beefErr, emptyErr, shortErr} {
 		if err == nil {
 			t.Fatal("an input meant to be refused was accepted by the call beneath Rebuild")
 		}
@@ -161,7 +177,8 @@ func TestRebuildRefusesWhatItCannotRead(t *testing.T) {
 	}{
 		{"beef not hex", child.Hex(), "", "zz", hexErr.Error()},
 		{"beef not a BEEF", child.Hex(), "", "00", beefErr.Error()},
-		{"beef with no subject", child.Hex(), "", hex.EncodeToString(empty), "kept BEEF names no subject transaction"},
+		{"beef with no subject", child.Hex(), "", hex.EncodeToString(empty), emptyErr.Error()},
+		{"beef of a bare txid", child.Hex(), "", hex.EncodeToString(bare), "kept BEEF names no subject transaction"},
 		{"raw not a transaction", "00", "", "", shortErr.Error()},
 		{"raw not hex", "zz", mp.Hex(), "", rawErr.Error()},
 		{"proof not a proof", child.Hex(), "00", "", bumpErr.Error()},

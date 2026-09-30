@@ -1,16 +1,22 @@
-// Package guard checks a BRC-74 BUMP someone else supplied before the SDK is
-// allowed to allocate for it.
+// Package guard checks bytes someone else supplied before the SDK is allowed
+// to allocate for them or to trust them: a BRC-74 BUMP, a BEEF (BRC-62,
+// BRC-96, and the Atomic BEEF of BRC-95 around either), a raw transaction,
+// and a compressed public key.
 //
-// A BUMP reader that sizes a slice from a wire count can be asked, by a
-// handful of bytes, for an allocation that ends the process with an
-// out-of-memory no recover() sees. go-sdk v1.5.2 bounds its leaf count
-// itself, which is why that version is the floor, but whoever serves a proof
-// is one more party choosing the bytes, and the rule for length-prefixed data
-// from any other party is that a declared length is a claim, checked against
-// the bytes present before it sizes memory.
+// A reader that sizes a slice from a wire count can be asked, by a handful
+// of bytes, for an allocation that ends the process with an out-of-memory no
+// recover() sees. go-sdk v1.5.2 bounds its own counts, which is why that
+// version is the floor, but the protection belongs in the library that reads
+// the bytes, not in a pin: the rule for length-prefixed data from any other
+// party is that a declared length is a claim, checked against the bytes
+// present before it sizes memory. Every walk here allocates nothing, bounds
+// every count and length by the bytes that remain, and must end exactly at
+// the last byte.
 //
-// There is no BEEF counterpart: go-sdk v1.5.2's BEEF parser bounds every
-// count against the bytes remaining.
+// A public key has the same shape of problem in another form: go-sdk accepts
+// a compressed key whose x coordinate is at or above the field prime and
+// keeps the alias bytes, so one point has two encodings. ParsePubKey accepts
+// only the one canonical encoding.
 package guard
 
 import (
@@ -49,7 +55,12 @@ const maxTreeHeight = 64
 // hash, so this is a floor, which is what makes the bound safe.
 const minLeafBytes = 2
 
-var errTruncated = errors.New("bump ends mid-structure")
+// errTruncated is any walk running out of bytes; errBUMPTruncated is how
+// ParseBUMP words it.
+var (
+	errTruncated     = errors.New("ends mid-structure")
+	errBUMPTruncated = errors.New("bump ends mid-structure")
+)
 
 type cursor struct {
 	b   []byte
@@ -64,6 +75,24 @@ func (c *cursor) skip(n int) error {
 	}
 	c.pos += n
 	return nil
+}
+
+// skipN skips a length read from the wire, which may be any uint64.
+func (c *cursor) skipN(n uint64) error {
+	if n > uint64(c.remaining()) {
+		return fmt.Errorf("declares %d bytes, %d remain", n, c.remaining())
+	}
+	c.pos += int(n)
+	return nil
+}
+
+func (c *cursor) uint32LE() (uint32, error) {
+	if c.remaining() < 4 {
+		return 0, errTruncated
+	}
+	v := binary.LittleEndian.Uint32(c.b[c.pos:])
+	c.pos += 4
+	return v, nil
 }
 
 func (c *cursor) byteAt() (byte, error) {
@@ -123,38 +152,11 @@ func guardBUMP(raw []byte, bound int) error {
 		return fmt.Errorf("bump is %d bytes, max %d", len(raw), bound)
 	}
 	c := &cursor{b: raw}
-	if _, err := c.varInt(); err != nil { // block height
+	if _, err := c.bump(); err != nil {
+		if errors.Is(err, errTruncated) {
+			return errBUMPTruncated
+		}
 		return err
-	}
-	treeHeight, err := c.byteAt()
-	if err != nil {
-		return err
-	}
-	if treeHeight > maxTreeHeight {
-		return fmt.Errorf("bump declares tree height %d, max %d", treeHeight, maxTreeHeight)
-	}
-	for lv := 0; lv < int(treeHeight); lv++ {
-		nLeaves, err := c.varInt()
-		if err != nil {
-			return err
-		}
-		if !c.fits(nLeaves, minLeafBytes) {
-			return fmt.Errorf("bump level %d declares %d leaves, %d bytes remain", lv, nLeaves, c.remaining())
-		}
-		for lf := uint64(0); lf < nLeaves; lf++ {
-			if _, err := c.varInt(); err != nil { // offset
-				return err
-			}
-			flags, err := c.byteAt()
-			if err != nil {
-				return err
-			}
-			if flags&1 == 0 { // not a duplicate: a 32-byte hash follows
-				if err := c.skip(32); err != nil {
-					return err
-				}
-			}
-		}
 	}
 	if c.remaining() != 0 {
 		// Trailing bytes are not "a bigger proof"; they are a body that is
@@ -162,4 +164,42 @@ func guardBUMP(raw []byte, bound int) error {
 		return fmt.Errorf("bump has %d trailing bytes", c.remaining())
 	}
 	return nil
+}
+
+// bump walks one BUMP from the cursor and returns its tree height.
+func (c *cursor) bump() (byte, error) {
+	if _, err := c.varInt(); err != nil { // block height
+		return 0, err
+	}
+	treeHeight, err := c.byteAt()
+	if err != nil {
+		return 0, err
+	}
+	if treeHeight > maxTreeHeight {
+		return 0, fmt.Errorf("bump declares tree height %d, max %d", treeHeight, maxTreeHeight)
+	}
+	for lv := 0; lv < int(treeHeight); lv++ {
+		nLeaves, err := c.varInt()
+		if err != nil {
+			return 0, err
+		}
+		if !c.fits(nLeaves, minLeafBytes) {
+			return 0, fmt.Errorf("bump level %d declares %d leaves, %d bytes remain", lv, nLeaves, c.remaining())
+		}
+		for lf := uint64(0); lf < nLeaves; lf++ {
+			if _, err := c.varInt(); err != nil { // offset
+				return 0, err
+			}
+			flags, err := c.byteAt()
+			if err != nil {
+				return 0, err
+			}
+			if flags&1 == 0 { // not a duplicate: a 32-byte hash follows
+				if err := c.skip(32); err != nil {
+					return 0, err
+				}
+			}
+		}
+	}
+	return treeHeight, nil
 }

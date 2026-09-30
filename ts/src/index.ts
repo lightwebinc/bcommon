@@ -20,6 +20,8 @@ export {
 } from './cbor.js'
 export { MaxRefMembers, MaxRefName, MaxRefs, StoreError, decodeRefs, encodeRefs, type Ref, type StoreErrorCode } from './store.js'
 export { readerLockingKey } from './derive.js'
+export { strictPublicKey, strictPublicKeyHex } from './pubkey.js'
+export { decodeStrictPushDrop } from './pushdrop.js'
 export { verifyFieldSignature } from './fieldsig.js'
 export { decodeFunding } from './funding.js'
 export {

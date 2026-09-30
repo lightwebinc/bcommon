@@ -280,3 +280,32 @@ func TestTheLastRetirementAnswers(t *testing.T) {
 		t.Fatalf("ActiveFor = %+v, want the later retirement", got)
 	}
 }
+
+// alias is 02 || p+1: go-sdk reads it as the point with x = 1 and writes it
+// back unreduced, so as bytes it is a second key for one point.
+const alias = "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30"
+
+// A key must be the one canonical encoding of a point on the curve, in the
+// file and in what Pin and Rotate would write to it.
+func TestKeyMustBeCanonical(t *testing.T) {
+	x1 := "02" + strings.Repeat("00", 31) + "01"
+	offCurve := "02" + strings.Repeat("00", 31) + "05"
+	for _, bad := range []string{alias, offCurve} {
+		if _, err := Parse(strings.NewReader("alice@example.com secp256k1 " + bad)); err == nil {
+			t.Fatalf("%s was parsed", bad)
+		}
+		if _, err := Pin(nil, "alice@example.com", bad, 1, "", time.Now()); err == nil {
+			t.Fatalf("%s was pinned", bad)
+		}
+		recs, err := Pin(nil, "alice@example.com", x1, 1, "", time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Rotate(recs, "alice@example.com", bad, 2, "", time.Now()); err == nil {
+			t.Fatalf("%s was rotated to", bad)
+		}
+	}
+	if _, err := Pin(nil, "alice@example.com", strings.ToUpper(k1), 1, "", time.Now()); err == nil {
+		t.Fatal("an upper-case key was pinned")
+	}
+}

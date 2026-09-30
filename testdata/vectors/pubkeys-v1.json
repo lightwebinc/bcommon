@@ -1,0 +1,100 @@
+{
+  "cases": [
+    {
+      "name": "the test identity key",
+      "accept": true,
+      "sdkParses": true,
+      "keyHex": "0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+    },
+    {
+      "name": "the test identity key with the other parity",
+      "accept": true,
+      "sdkParses": true,
+      "keyHex": "0224653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+    },
+    {
+      "name": "x = 1, prefix 02",
+      "accept": true,
+      "sdkParses": true,
+      "keyHex": "020000000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "name": "x = 1, prefix 03",
+      "accept": true,
+      "sdkParses": true,
+      "keyHex": "030000000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "name": "02 || p+1, an alias of x = 1",
+      "accept": false,
+      "sdkParses": true,
+      "keyHex": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30"
+    },
+    {
+      "name": "03 || p+1, an alias of x = 1",
+      "accept": false,
+      "sdkParses": true,
+      "keyHex": "03fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30"
+    },
+    {
+      "name": "02 || p",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+    },
+    {
+      "name": "02 || 2^256-1",
+      "accept": false,
+      "sdkParses": true,
+      "keyHex": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "name": "x = 5, not on the curve",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "020000000000000000000000000000000000000000000000000000000000000005"
+    },
+    {
+      "name": "the test identity key uncompressed",
+      "accept": false,
+      "sdkParses": true,
+      "keyHex": "0424653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c119fc5009a032aa9fe47f5e149bb8442f71f884ccb516590686d8ff6ab91c613"
+    },
+    {
+      "name": "the test identity key hybrid",
+      "accept": false,
+      "sdkParses": true,
+      "keyHex": "0724653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c119fc5009a032aa9fe47f5e149bb8442f71f884ccb516590686d8ff6ab91c613"
+    },
+    {
+      "name": "prefix 04 on 33 bytes",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "0424653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+    },
+    {
+      "name": "prefix 00",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "0024653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c"
+    },
+    {
+      "name": "32 bytes",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab"
+    },
+    {
+      "name": "34 bytes",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": "0324653eac434488002cc06bbfb7f10fe18991e35f9fe4302dbea6d2353dc0ab1c00"
+    },
+    {
+      "name": "empty",
+      "accept": false,
+      "sdkParses": false,
+      "keyHex": ""
+    }
+  ]
+}

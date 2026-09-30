@@ -7,8 +7,9 @@
  *
  * Every family a twin covers is read: CBOR, the manifest body (a CBOR value
  * the codec must reproduce), the refs entries, and the transactions' derived
- * keys, locks, field signatures, funding outputs and carriers, and the
- * carrier unlocking-script cases. RFC 6962 roots and the transaction
+ * keys, locks, field signatures, funding outputs and carriers, the
+ * carrier unlocking-script cases, the public-key cases and the PushDrop
+ * encoding cases. RFC 6962 roots and the transaction
  * builders have no twin here.
  */
 import { test } from 'node:test'
@@ -18,17 +19,20 @@ import {
   LockingScript,
   PrivateKey,
   ProtoWallet,
+  PublicKey,
   PushDrop,
   Script,
   Transaction,
   type WalletInterface,
   type WalletProtocol,
 } from '@bsv/sdk'
-import { LockTime, SigHashType, commitment, decodeCarrier, mineableRefusal, unlockingRefusal, type PayloadCodec } from './carrier.js'
+import { LockTime, SigHashType, commitment, decodeCarrier, inspectScript, mineableRefusal, unlockingRefusal, type PayloadCodec } from './carrier.js'
 import { CborMap, decodeValue, encode, type Value } from './cbor.js'
 import { readerLockingKey } from './derive.js'
 import { verifyFieldSignature } from './fieldsig.js'
 import { decodeFunding } from './funding.js'
+import { strictPublicKey } from './pubkey.js'
+import { decodeStrictPushDrop } from './pushdrop.js'
 import { decodeRefs, encodeRefs, type Ref } from './store.js'
 import { fromHex, toHex } from './testing/index.js'
 
@@ -356,4 +360,71 @@ test('transactions-v1: the funding tree\'s kept Atomic BEEF parses here to the t
   const coin = tree.inputs[0]?.sourceTransaction
   assert.equal(coin?.id('hex'), v.coin.txid)
   assert.equal(coin?.merklePath?.toHex(), v.coin.bumpHex)
+})
+
+interface PubkeyVector {
+  cases: Array<{ name: string; accept: boolean; sdkParses: boolean; keyHex: string }>
+}
+
+// The SDK takes the aliases the rule refuses, as go-sdk does, but it writes
+// the key back reduced: the alias is a second encoding of the point, which
+// is why the check is made on the bytes.
+test('pubkeys-v1: a key is taken exactly when the independent rule takes it, and the SDK takes the aliases', () => {
+  const v = vector<PubkeyVector>('pubkeys-v1.json')
+  let aliases = 0
+  for (const c of v.cases) {
+    const b = Array.from(fromHex(c.keyHex))
+    const k = strictPublicKey(b)
+    assert.equal(k !== undefined, c.accept, c.name)
+    if (k !== undefined) assert.equal(k.toString(), c.keyHex, `${c.name}: writes back as itself`)
+    if (!c.accept && c.sdkParses && b.length === 33) {
+      let sdk: PublicKey | undefined
+      try {
+        sdk = PublicKey.fromString(c.keyHex)
+      } catch {
+        sdk = undefined
+      }
+      if (sdk !== undefined) {
+        assert.notEqual(sdk.toString(), c.keyHex, `${c.name}: the SDK writes an alias back as it read it`)
+        aliases++
+      }
+    }
+  }
+  assert.ok(aliases > 0, 'the SDK takes no alias: the rule may be redundant here, but it is still the rule')
+})
+
+interface PushdropVector {
+  fundingTagHex: string
+  cases: Array<{ kind: string; name: string; accept: boolean; sdkDecodes: boolean; lockHex: string }>
+}
+
+test('pushdrop-v1: only the canonical encoding decodes, as a PushDrop, a funding output and a record output', () => {
+  const { v } = chain()
+  const pd = vector<PushdropVector>('pushdrop-v1.json')
+  const fundingTag = Array.from(fromHex(pd.fundingTagHex))
+  const payload = v.carriers[0]!.payloadHex
+  const codec: PayloadCodec<string> = {
+    inspect: (b) => (hex(b) === payload ? { kind: 'payload', payload } : { kind: 'not-payload' }),
+    validate: () => undefined,
+  }
+  const ran: Record<string, number> = {}
+  let malleable = 0
+  for (const c of pd.cases) {
+    const script = Script.fromHex(c.lockHex)
+    assert.equal(decodeStrictPushDrop(script) !== undefined, c.accept, `${c.kind}/${c.name}`)
+    if (c.kind === 'funding') assert.equal(decodeFunding(script, fundingTag) !== undefined, c.accept, `${c.kind}/${c.name}`)
+    if (c.kind === 'record') assert.equal(inspectScript(script, codec).kind, c.accept ? 'carrier' : 'bad-record', `${c.kind}/${c.name}`)
+    if (!c.accept && c.sdkDecodes) {
+      let decodes = true
+      try {
+        PushDrop.decode(LockingScript.fromHex(c.lockHex), 'before')
+      } catch {
+        decodes = false
+      }
+      if (decodes) malleable++
+    }
+    ran[c.kind] = (ran[c.kind] ?? 0) + 1
+  }
+  assert.ok((ran.record ?? 0) > 0 && (ran.funding ?? 0) > 0 && (ran.state ?? 0) > 0, JSON.stringify(ran))
+  assert.ok(malleable > 0, 'the SDK decodes none of the refused forms')
 })

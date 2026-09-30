@@ -364,7 +364,20 @@ func txFamilies() ([]family, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unlocking: %w", err)
 	}
-	return []family{{"transactions-v1.json", v}, {"unlocking-v1.json", u}}, nil
+	bf, err := beefs(v, parts)
+	if err != nil {
+		return nil, fmt.Errorf("beef: %w", err)
+	}
+	k, err := pubkeys(v)
+	if err != nil {
+		return nil, fmt.Errorf("pubkeys: %w", err)
+	}
+	pd, err := pushdrops(v)
+	if err != nil {
+		return nil, fmt.Errorf("pushdrop: %w", err)
+	}
+	return []family{{"transactions-v1.json", v}, {"unlocking-v1.json", u}, {"beef-v1.json", bf},
+		{"pubkeys-v1.json", k}, {"pushdrop-v1.json", pd}}, nil
 }
 
 // txParts is what the unlocking family is built from: the transactions

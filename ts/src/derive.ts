@@ -13,14 +13,18 @@
  * either orphans every object it ever locked.
  */
 import { KeyDeriver, type PublicKey, type WalletProtocol } from '@bsv/sdk'
+import { strictPublicKeyHex } from './pubkey.js'
 
 const anyone = new KeyDeriver('anyone')
 
 /**
- * Throws when identityHex does not parse as a public key. The SDK's parser
- * is lenient about the point itself, so callers treat a throw as one refusal
- * among others rather than as the whole of key validation.
+ * Throws when identityHex is not the canonical encoding of a public key
+ * (strictPublicKeyHex): 66 hex digits, the prefix 02 or 03, and an
+ * x below the field prime on the curve. The SDK would take an alias such as
+ * 02 || p+1 and derive from the point it names, so the check is made here,
+ * as the Go carrier.Validate makes it on the identity key.
  */
 export function readerLockingKey(protocol: WalletProtocol, keyID: string, identityHex: string): PublicKey {
+  if (strictPublicKeyHex(identityHex) === undefined) throw new Error('identity key is not a canonical compressed public key')
   return anyone.derivePublicKey(protocol, keyID, identityHex, false)
 }

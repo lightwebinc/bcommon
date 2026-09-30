@@ -31,6 +31,11 @@ type Tagged struct {
 // layout decodes, which is the layout Lock writes; a lock-after script from
 // some other producer is refused rather than guessed at. What the fields
 // after the tag must hold is the caller's to check.
+//
+// A script of the caller's tag that is not the one encoding Lock writes
+// (CheckCanonical) is refused with ErrNonCanonical, not ErrNotTagged: it is
+// the caller's output written another way, and a reader skipping it as
+// somebody else's would miss that.
 func DecodeTagged(s *script.Script, tag []byte, nfields int) (*Tagged, error) {
 	if nfields < 1 {
 		return nil, fmt.Errorf("pushdrop: %d fields asked for, but the tag is one", nfields)
@@ -50,6 +55,11 @@ func DecodeTagged(s *script.Script, tag []byte, nfields int) (*Tagged, error) {
 	}
 	if !bytes.Equal(d.Fields[0], tag) {
 		return nil, fmt.Errorf("%w: tag %x", ErrNotTagged, d.Fields[0])
+	}
+	// Only once the script is known to be the caller's: a foreign script is
+	// not tagged, while one of the caller's written another way is refused.
+	if err := CheckCanonical(s); err != nil {
+		return nil, err
 	}
 	return &Tagged{Fields: d.Fields[:nfields], LockingKey: d.LockingPublicKey, Signature: d.Fields[nfields]}, nil
 }
