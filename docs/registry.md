@@ -132,6 +132,36 @@ topic that starts with it. A stream's topic carries entropy under the rule
 above, because anyone can create a stream; with `tm_log_`, the separating
 underscore and the suffix taking 18 characters, `<name>` has at most 32.
 
+### bbox
+
+A message box replicated by overlay hosts: encrypted envelopes and signed
+receipts, each on an unmined carrier.
+**Provisional** until its first publish (not yet committed on chain;
+assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "bbox message"]` | Every bbox derivation (`[1, "bbox"]` is under five characters and cannot derive) |
+| Key id | `envelope` | The record output of every carrier (envelopes and receipts), its field signature, and funding outputs |
+| Key id | `signature` | The BRC-169 envelope signature carried in an envelope's content |
+| Key id | `fund` | The embedded wallet's funding key |
+| Tag | `bb` `0x02` | Funding-tree output |
+| Record magic | `bbe` `0x01` | Envelope record, version 1 |
+| Record magic | `bbr` `0x01` | Receipt record, version 1 |
+| Topics | `tm_bbox_<name>_<suffix>` | One topic per office; `<suffix>` is 10 random lowercase letters chosen when the office is created |
+| Lookup service | `ls_bbox` | Lookup service for every office on a host |
+| Host route | `<base>/ls_bbox/terms` | The host terms document for priced questions |
+| Baskets | `bbox fund`, `bbox envelope funding`, `bbox kill tombstone` | Wallet baskets |
+
+The prefix `bb` is registered to bbox. `0x65` and `0x72` are never assigned
+as tag type bytes under it, because `bb` `0x65` and `bb` `0x72` are the
+first three bytes of the record magics `bbe` and `bbr`.
+
+bbox owns the `tm_bbox_` topic namespace: no other application names a topic
+that starts with it. An office's topic carries entropy under the rule above,
+because anyone can create an office; with `tm_bbox_`, the separating
+underscore and the suffix taking 19 characters, `<name>` has at most 31.
+
 ## Not registered
 
 bcommon itself registers nothing: every package that derives, tags or names
