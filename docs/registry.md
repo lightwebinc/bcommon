@@ -53,6 +53,18 @@ an edit.
   a topic by its readable part alone; it holds the whole name, suffix and
   all.
 - **Baskets** start with the application's name.
+- **Certificate types** are BRC-52 type ids, made by BRC-169 section 4.5's
+  rule: the standard base64 of SHA-256 of a derivation string. The string
+  starts with the application's name, names the certificate and ends with a
+  version (`"<application> <certificate> v1"`), so two applications cannot
+  derive one type, and a change to a certificate's field names or meanings is
+  a new string and so a new type (BRC-52 gives one type one set of field
+  names and meanings). Record the string and the type it derives.
+- **Borrowed protocols** are protocols another specification defines and an
+  application uses as written, such as a BRC's own derivation. They are not
+  the application's and are not registered to it; a note under the
+  application records the use, so that a reviewer can see two applications
+  sharing one on purpose.
 
 An application registers its identifiers here before it freezes its contract,
 in the same change that adds them to its code, and a reviewer checks the new
@@ -161,6 +173,52 @@ bbox owns the `tm_bbox_` topic namespace: no other application names a topic
 that starts with it. An office's topic carries entropy under the rule above,
 because anyone can create an office; with `tm_bbox_`, the separating
 underscore and the suffix taking 19 characters, `<name>` has at most 31.
+
+### borg
+
+Organisations and groups replicated by overlay hosts: a membership roll and
+groups as chains of mined tokens, membership grants (BRC-52 certificates) and
+epoch-key wraps on unmined carriers.
+**Provisional** until its first publish (not yet committed on chain;
+assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "borg organisation"]` | Every borg derivation (`[1, "borg"]` is under five characters and cannot derive) |
+| Key id | `org` | An organisation token's lock and field signature |
+| Key id | `group` | A group token's lock and field signature |
+| Key id | `record` | A wrap carrier's record output and field signature, and the outputs of funding trees that fund wraps |
+| Key id | `grant` | A grant carrier's record output and field signature, and the outputs of funding trees that fund grants |
+| Key id | `chain` | The outputs of funding trees that pay for a chain's first token; never a carrier's |
+| Key id | `fund` | The embedded wallet's funding key |
+| Tag | `bo` `0x01` | Organisation token, first field |
+| Tag | `bo` `0x02` | Funding-tree output |
+| Tag | `bo` `0x03` | Group token, first field |
+| Record magic | `boo` `0x01` | Organisation record, version 1 |
+| Record magic | `bog` `0x01` | Group record, version 1 |
+| Record magic | `bom` `0x01` | Membership grant record, version 1 |
+| Record magic | `bow` `0x01` | Epoch-key wrap record, version 1 |
+| Topics | `tm_borg_<name>_<suffix>` | One topic per hall, shared by many organisations; `<suffix>` is 10 random lowercase letters chosen when the hall is created |
+| Lookup service | `ls_borg` | Lookup service for every hall on a host |
+| Host route | `<base>/ls_borg/terms` | The host terms document for priced questions |
+| Baskets | `borg fund`, `borg grant funding`, `borg record funding`, `borg chain funding`, `borg chain`, `borg kill tombstone` | Wallet baskets |
+| Certificate type | `poEEbYGwpJbTzKTeSRBJzV31s8PNknNycAbyjDV3ALc=` | A membership grant: base64 of SHA-256 of `"borg membership grant v1"` |
+
+The prefix `bo` is registered to borg. `0x67`, `0x6d`, `0x6f` and `0x77` are
+never assigned as tag type bytes under it, because `bo` `0x67`, `bo` `0x6d`,
+`bo` `0x6f` and `bo` `0x77` are the first three bytes of the record magics
+`bog`, `bom`, `boo` and `bow`. `0x00` is not assigned.
+
+borg owns the `tm_borg_` topic namespace: no other application names a topic
+that starts with it. A hall's topic carries entropy under the rule above,
+because anyone can create a hall; with `tm_borg_`, the separating underscore
+and the suffix taking 19 characters, `<name>` has at most 31.
+
+Borrowed, not registered: borg releases epoch keys under BRC-369's
+`[2, "keyed content release"]` with key id the standard base64 of
+`SHA-256(epoch id || epoch)`, as BRC-369 section 5.2 defines it. Every
+BRC-369 implementation shares that protocol; the key id separates each
+group's each epoch.
 
 ## Not registered
 
