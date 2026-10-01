@@ -378,6 +378,10 @@ func (p *Payer) Change(tx *transaction.Transaction, height uint32, mp *transacti
 // SettleAndWait does, unless Async is set; then it returns once the leg has
 // accepted tx, with no proof, and the proof is collected later. what names
 // tx in the notes and errors ("funding tree").
+//
+// With Asset set, a transaction one of whose inputs the node shows spent by
+// another transaction is refused, whatever the leg answered: the error wraps
+// ErrRefused and a *nodeapi.SpentError (errors.Is nodeapi.ErrDoubleSpent).
 func (p *Payer) Settle(ctx context.Context, what string, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
 	if !p.Async {
 		return p.SettleAndWait(ctx, what, tx)
@@ -388,6 +392,12 @@ func (p *Payer) Settle(ctx context.Context, what string, tx *transaction.Transac
 	p.note("%s %s: broadcasting via %s (%d bytes)", what, tx.TxID(), p.Settler.Name(), tx.Size())
 	if err := p.Settler.Submit(ctx, tx); err != nil {
 		return nil, 0, fmt.Errorf("%s: settle: %w", what, err)
+	}
+	// The leg's acceptance is not the node's view: arcade has accepted a
+	// transaction whose input was already spent and mined, and the tcp
+	// ingress answers nothing.
+	if err := p.Asset.SpentElsewhere(ctx, tx); err != nil {
+		return nil, 0, fmt.Errorf("%s: settle: %w: %w", what, ErrRefused, err)
 	}
 	p.note("%s %s: accepted; its proof is collected later", what, tx.TxID())
 	return nil, 0, nil
@@ -411,6 +421,11 @@ func (p *Payer) SettleAndWait(ctx context.Context, what string, tx *transaction.
 // gives tx its proof. It is the waiting half of SettleAndWait, for a
 // transaction that reached the network some other way, such as a wallet's
 // own broadcast.
+//
+// Each poll also asks Asset whether one of tx's inputs is spent by another
+// transaction (nodeapi.WaitSettled). Such a transaction never mines, so
+// Await returns at once with an error wrapping ErrRefused and a
+// *nodeapi.SpentError rather than waiting out Timeout.
 func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
 	if p.Asset == nil {
 		return nil, 0, fmt.Errorf("%s: waiting for a proof: no node to ask", what)
@@ -424,7 +439,10 @@ func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transact
 	}
 	wctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	mp, height, err := nodeapi.WaitMined(wctx, p.Asset, tx.TxID().String(), poll)
+	mp, height, err := nodeapi.WaitSettled(wctx, p.Asset, tx, poll)
+	if errors.Is(err, nodeapi.ErrDoubleSpent) {
+		return nil, 0, fmt.Errorf("%s: %w: %w", what, ErrRefused, err)
+	}
 	if err != nil {
 		return nil, 0, fmt.Errorf("%s: waiting for a proof: %w", what, err)
 	}

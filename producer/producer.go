@@ -63,7 +63,9 @@ import (
 
 // ErrRefused is a published transaction the network will not mine. It is
 // not an ordinary "not yet": hosts hold a state built on it that will never
-// be real, and the operator has to know.
+// be real, and the operator has to know. A refusal found in the node's view
+// of the transaction's inputs, whatever arcade said, also wraps a
+// *nodeapi.SpentError, so errors.Is finds nodeapi.ErrDoubleSpent too.
 var ErrRefused = errors.New("refused by the network")
 
 // Proofs asks whoever can answer whether a transaction has mined.
@@ -75,17 +77,48 @@ type Proofs struct {
 	Arcade *publish.Arcade
 	// Asset is the node's asset API. With neither set, nothing has mined.
 	Asset *nodeapi.Asset
+	// Tx, when set, returns the transaction Of is asked about (Kept.Tx is
+	// one), so that Of can hold a transaction that has not mined to the
+	// node's view of its inputs, as OfTx does. An error from it only skips
+	// that check.
+	Tx func(txid string) (*transaction.Transaction, error)
+}
+
+// OfTx is Of for a transaction the caller holds. While tx has not mined, and
+// with Asset set, an input the node shows spent by another transaction is a
+// refusal: arcade has answered ACCEPTED_BY_NETWORK for a transaction whose
+// input was already spent and mined, which never mines. The error then wraps
+// ErrRefused and a *nodeapi.SpentError.
+func (p Proofs) OfTx(ctx context.Context, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
+	mp, height, err := p.of(ctx, tx.TxID().String())
+	if errors.Is(err, nodeapi.ErrNotMined) && p.Asset != nil {
+		if serr := p.Asset.SpentElsewhere(ctx, tx); serr != nil {
+			return nil, 0, fmt.Errorf("%w: %w", ErrRefused, serr)
+		}
+	}
+	return mp, height, err
 }
 
 // Of returns txid's proof and block height if it has mined. It returns
 // nodeapi.ErrNotMined when it has not yet, and an error wrapping ErrRefused
-// when arcade reports that the network refused it.
+// when arcade reports that the network refused it, or, with Tx and Asset set,
+// when the node shows one of its inputs spent by another transaction (see
+// OfTx).
 //
 // Arcade's proof is held to the checks a node's is: it must parse through
 // the BUMP guard, name the transaction asked about, and agree with the block
 // height arcade reported. A proof of some other transaction verifies
 // perfectly and proves nothing.
 func (p Proofs) Of(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
+	if p.Tx != nil && p.Asset != nil {
+		if tx, err := p.Tx(txid); err == nil && tx != nil && tx.TxID().String() == txid {
+			return p.OfTx(ctx, tx)
+		}
+	}
+	return p.of(ctx, txid)
+}
+
+func (p Proofs) of(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
 	if p.Arcade != nil {
 		st, err := p.Arcade.Status(ctx, txid)
 		switch {

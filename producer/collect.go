@@ -130,10 +130,20 @@ func (c *Collector) Collect(ctx context.Context, items []Pending, skip ...string
 }
 
 func (c *Collector) collect(ctx context.Context, it Pending) {
-	mp, height, err := c.Proofs.Of(ctx, it.Txid)
+	// The kept copy is what an unmined item is held to the node's view of
+	// its inputs by (Proofs.OfTx); one that does not rebuild is asked about
+	// by txid alone.
+	tx, terr := funding.Rebuild(it.RawHex, "", it.BeefHex)
+	var mp *transaction.MerklePath
+	var height uint32
+	var err error
+	if terr == nil && tx.TxID().String() == it.Txid {
+		mp, height, err = c.Proofs.OfTx(ctx, tx)
+	} else {
+		mp, height, err = c.Proofs.Of(ctx, it.Txid)
+	}
 	switch {
 	case err == nil:
-		tx, terr := funding.Rebuild(it.RawHex, "", it.BeefHex)
 		if terr != nil {
 			if it.Unbuilt != nil {
 				it.Unbuilt(terr)

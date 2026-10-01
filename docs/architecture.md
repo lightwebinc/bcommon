@@ -187,7 +187,10 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   a producer whose trees must mine before they are published does not wait
   for a block when the current tree runs out; the tree minted ahead is
   adopted and published only when a spend switches to it. `Proofs` asks arcade, then the node,
-  whether a transaction mined, holding arcade's proof to the node's checks,
+  whether a transaction mined, holding arcade's proof to the node's checks
+  and arcade's acceptance to the node's view of the inputs (an input spent
+  by another transaction is a refusal, since arcade can accept a double
+  spend),
   and `Collector` collects every proof still owed, records it, publishes
   the proven transaction again so every host upgrades its copy, stamps the
   journal and releases held change. The application keeps its own state and

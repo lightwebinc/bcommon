@@ -166,6 +166,13 @@ type testChain struct {
 	// rawAnswers answers /api/v1/tx in the raw form; by default it is
 	// answered in Extended Format, as a Teranode asset API answers.
 	rawAnswers bool
+	// verdict is arcade's status for what it took and has not mined; empty
+	// is SEEN_ON_NETWORK.
+	verdict string
+	// spentBy is the node's UTXO view: the transaction that spent each
+	// outpoint, txid.vout, of a known transaction. What it does not name is
+	// unspent.
+	spentBy map[string]string
 }
 
 type submission struct {
@@ -176,7 +183,7 @@ type submission struct {
 func newTestChain(t testing.TB) *testChain {
 	t.Helper()
 	l := &testChain{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
-		mined: map[string]uint32{}, refused: map[string]string{}, height: 700}
+		mined: map[string]uint32{}, refused: map[string]string{}, spentBy: map[string]string{}, height: 700}
 	l.srv = httptest.NewServer(http.HandlerFunc(l.serve))
 	t.Cleanup(l.srv.Close)
 	return l
@@ -206,6 +213,20 @@ func (l *testChain) know(txs ...*transaction.Transaction) {
 	for _, tx := range txs {
 		l.known[tx.TxID().String()] = tx
 	}
+}
+
+// spend records in the node's view that by spent output vout of txid.
+func (l *testChain) spend(txid string, vout uint32, by string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.spentBy[fmt.Sprintf("%s.%d", txid, vout)] = by
+}
+
+func (l *testChain) accepting() string {
+	if l.verdict != "" {
+		return l.verdict
+	}
+	return "SEEN_ON_NETWORK"
 }
 
 func (l *testChain) submissions() []submission {
@@ -249,7 +270,7 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 			l.height++
 			l.mined[id] = l.height
 		}
-		_ = json.NewEncoder(w).Encode(map[string]any{"txid": id, "txStatus": "SEEN_ON_NETWORK"})
+		_ = json.NewEncoder(w).Encode(map[string]any{"txid": id, "txStatus": l.accepting()})
 	case r.Method == http.MethodGet && strings.HasPrefix(path, "/arc/tx/"):
 		l.arcadeCalls++
 		id := strings.TrimPrefix(path, "/arc/tx/")
@@ -262,7 +283,7 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if l.accepted[id] {
-			_ = json.NewEncoder(w).Encode(map[string]any{"txid": id, "txStatus": "SEEN_ON_NETWORK"})
+			_ = json.NewEncoder(w).Encode(map[string]any{"txid": id, "txStatus": l.accepting()})
 			return
 		}
 		http.NotFound(w, r)
@@ -274,6 +295,22 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		fmt.Fprintf(w, `{"blockHashes":[%q],"blockHeights":[%d],"subtreeIdxs":[0],"mainChainIndex":0}`, fmt.Sprintf("%064x", h), h)
+	case strings.HasPrefix(path, "/node/api/v1/utxos/"):
+		id := strings.TrimSuffix(strings.TrimPrefix(path, "/node/api/v1/utxos/"), "/json")
+		tx, ok := l.known[id]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+		outs := []map[string]any{}
+		for i := range tx.Outputs {
+			o := map[string]any{"txid": id, "vout": i, "status": "OK"}
+			if by, ok := l.spentBy[fmt.Sprintf("%s.%d", id, i)]; ok {
+				o["status"], o["spendingData"] = "SPENT", map[string]any{"txId": by, "vin": 0}
+			}
+			outs = append(outs, o)
+		}
+		_ = json.NewEncoder(w).Encode(outs)
 	case strings.HasPrefix(path, "/node/api/v1/merkle_proof/"):
 		mp, _, ok := l.proof(strings.TrimPrefix(path, "/node/api/v1/merkle_proof/"))
 		if !ok {

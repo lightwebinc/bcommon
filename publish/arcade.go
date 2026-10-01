@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/nodeapi"
 )
 
 // Arcade settles through an arcade installation's ARC-compatible API: the
@@ -42,6 +44,12 @@ type Arcade struct {
 	// Note, when set, receives a line a caller may want to show: a verdict
 	// that did not arrive inside the bound, or a backoff.
 	Note func(format string, args ...any)
+	// Asset, when set, is the node arcade's verdict is held to. Arcade has
+	// answered ACCEPTED_BY_NETWORK for a transaction whose input was already
+	// spent and mined; with Asset set, an input the node shows spent by
+	// another transaction is a refusal (errors.Is nodeapi.ErrDoubleSpent)
+	// whatever arcade says, and is checked while Submit waits too.
+	Asset *nodeapi.Asset
 }
 
 // DefaultVerdict is long enough for a network to see a transaction in the
@@ -127,6 +135,10 @@ func (a *Arcade) note(format string, args ...any) {
 // to anyone. No verdict inside the bound is not an error: the transaction is
 // in arcade's hands and its later status will say, and a publisher that
 // waited for it would be back to waiting for a block.
+//
+// With Asset set, acceptance is not taken at arcade's word: an input the node
+// shows spent by another transaction is the network's refusal, an error that
+// wraps a *nodeapi.SpentError.
 func (a *Arcade) Submit(ctx context.Context, tx *transaction.Transaction) error {
 	if tx == nil {
 		return errors.New("publish: nil transaction")
@@ -147,9 +159,21 @@ func (a *Arcade) Submit(ctx context.Context, tx *transaction.Transaction) error 
 		return fmt.Errorf("publish: arcade refused %s: %s", want, st.Why())
 	}
 	if st.Accepted() {
+		return a.spentElsewhere(ctx, tx)
+	}
+	return a.awaitVerdict(ctx, tx)
+}
+
+// spentElsewhere is the node's word on tx's inputs, as a refusal, or nil
+// with no Asset or when the node shows none spent by another transaction.
+func (a *Arcade) spentElsewhere(ctx context.Context, tx *transaction.Transaction) error {
+	if a.Asset == nil {
 		return nil
 	}
-	return a.awaitVerdict(ctx, want)
+	if err := a.Asset.SpentElsewhere(ctx, tx); err != nil {
+		return fmt.Errorf("publish: the network refused %s: %w", tx.TxID(), err)
+	}
+	return nil
 }
 
 // post is POST /tx, retrying the one answer arcade documents as safe to
@@ -192,8 +216,10 @@ func (a *Arcade) post(ctx context.Context, ef []byte) (*ArcadeStatus, error) {
 }
 
 // awaitVerdict polls the transaction's status until the network accepts or
-// refuses it, or the bound passes.
-func (a *Arcade) awaitVerdict(ctx context.Context, txid string) error {
+// refuses it, or the bound passes. With Asset set, each poll also asks the
+// node whether an input is spent by another transaction.
+func (a *Arcade) awaitVerdict(ctx context.Context, tx *transaction.Transaction) error {
+	txid := tx.TxID().String()
 	bound, poll := a.Verdict, a.Poll
 	if bound <= 0 {
 		bound = DefaultVerdict
@@ -217,8 +243,8 @@ func (a *Arcade) awaitVerdict(ctx context.Context, txid string) error {
 		if st.Refused() {
 			return fmt.Errorf("publish: the network refused %s: %s", txid, st.Why())
 		}
-		if st.Accepted() {
-			return nil
+		if err := a.spentElsewhere(ctx, tx); err != nil || st.Accepted() {
+			return err
 		}
 	}
 	a.note("arcade holds %s as %s; the network's verdict had not arrived after %s", txid, last, bound)

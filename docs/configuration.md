@@ -212,7 +212,11 @@ the other end.
 | `Base` | none | the asset API root with no path suffix, for example `http://node.example.com:20090`; requests go to `<Base>/api/v1/...` |
 | `Client` | 30 s timeout, no proxy, TLS 1.2 minimum | |
 
-`WaitMined(ctx, asset, txid, poll)` polls every `poll`; 0 means 2 s. Every
+`WaitMined(ctx, asset, txid, poll)` polls every `poll`; 0 means 2 s.
+`WaitSettled(ctx, asset, tx, poll)` is the same wait for a transaction the
+caller holds, and returns a `*SpentError` (`ErrDoubleSpent`) as soon as the
+node shows one of its inputs spent by another transaction (`Spender`,
+`SpentElsewhere`, read from `/api/v1/utxos/<txid>/json`). Every
 response body is bounded at 1 MiB, and a 429 from either API is retried after
 200 ms, 1 s and 3 s. `ProofFor(raw, txid)` holds a supplied proof to the same
 bound.
@@ -231,6 +235,7 @@ bound.
 | `Arcade.Verdict` | `DefaultVerdict` (15 s) | how long `Submit` waits for the network's verdict; no verdict inside it is not an error |
 | `Arcade.Poll` | 1 s | interval between status checks while waiting |
 | `Arcade.Note` | nil | receives lines a caller may show: a verdict that did not arrive, a backoff |
+| `Arcade.Asset` | nil | the node arcade's acceptance is held to: an input it shows spent by another transaction is a refusal wrapping `nodeapi.ErrDoubleSpent`, whatever arcade answered |
 | `Facade.Base` | none | the overlay host's root; the BEEF goes to `<Base>/submit` |
 | `Facade.HTTP` | 30 s timeout, no proxy | |
 | `Journal.Dir` | none | one `<seq>-<txid>.json` file per transition attempt, mode 0600, created on first write |
@@ -301,7 +306,7 @@ its own history.
 
 | Field | Default | |
 |---|---|---|
-| `Proofs` | nothing mined | `producer.Proofs{Arcade, Asset}`: arcade first, when it is the settlement leg, then the node |
+| `Proofs` | nothing mined | `producer.Proofs{Arcade, Asset, Tx}`: arcade first, when it is the settlement leg, then the node; an unmined transaction one of whose inputs the node shows spent by another is refused (`OfTx`, or `Of` with `Tx`) |
 | `Kept`, `Pool`, `Journal` | nil | the copy handed out gets the proof; held change is released; journal entries are stamped |
 | `Facade`, `Topic` | nil | where a proven transaction is published again; nil publishes nothing |
 | `Retry` | empty | ends the note about a proof that could not be published with how to send it again |

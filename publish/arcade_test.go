@@ -15,6 +15,8 @@ import (
 
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/nodeapi"
 )
 
 // efTx is a transaction that EF-encodes: its one input carries its source.
@@ -233,6 +235,37 @@ func TestArcadeStatusTellsUnknownFromMinedAndSendsTheKey(t *testing.T) {
 	for _, h := range f.auth {
 		if h != "Bearer secret" {
 			t.Fatalf("a request went without the key: %q", h)
+		}
+	}
+}
+
+// Arcade's acceptance is held to the node's view when Asset is set: an input
+// the node shows spent by another transaction is a refusal, while Submit
+// still waits for a verdict and after arcade answers ACCEPTED_BY_NETWORK.
+func TestArcadeSubmitHeldToTheNodeRefusesADoubleSpend(t *testing.T) {
+	other := strings.Repeat("e7", 32)
+	for _, statuses := range [][]string{{"RECEIVED"}, {"ACCEPTED_BY_NETWORK"}} {
+		tx := efTx(t)
+		f := &fakeArcade{post: []func(http.ResponseWriter, string){accepted("RECEIVED")}, statuses: statuses}
+		a, _ := arcadeFor(t, f, tx)
+		a.Verdict = 30 * time.Second
+		src := tx.Inputs[0].SourceTXID.String()
+		node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/api/v1/utxos/"+src+"/json" {
+				http.NotFound(w, r)
+				return
+			}
+			_, _ = fmt.Fprintf(w, `[{"vout":0,"status":"SPENT","spendingData":{"txId":%q,"vin":0}}]`, other)
+		}))
+		t.Cleanup(node.Close)
+		a.Asset = &nodeapi.Asset{Base: node.URL}
+		start := time.Now()
+		err := a.Submit(context.Background(), tx)
+		if !errors.Is(err, nodeapi.ErrDoubleSpent) || !strings.Contains(err.Error(), "the network refused") || !strings.Contains(err.Error(), other) {
+			t.Fatalf("%v: %v", statuses, err)
+		}
+		if d := time.Since(start); d > 5*time.Second {
+			t.Fatalf("%v: refused after %s", statuses, d)
 		}
 	}
 }
