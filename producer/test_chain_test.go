@@ -163,6 +163,9 @@ type testChain struct {
 	facadeDown bool
 	// arcadeCalls counts status requests.
 	arcadeCalls int
+	// rawAnswers answers /api/v1/tx in the raw form; by default it is
+	// answered in Extended Format, as a Teranode asset API answers.
+	rawAnswers bool
 }
 
 type submission struct {
@@ -284,7 +287,11 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		_, _ = w.Write(tx.Bytes())
+		if l.rawAnswers {
+			_, _ = w.Write(tx.Bytes())
+			return
+		}
+		_, _ = w.Write(l.ef(tx))
 	case r.Method == http.MethodPost && path == "/host/submit":
 		if l.facadeDown {
 			http.Error(w, "down", http.StatusServiceUnavailable)
@@ -297,6 +304,28 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.NotFound(w, r)
 	}
+}
+
+// ef is tx in Extended Format, each input carrying the output it spends,
+// or a zero output where the test chain does not hold it, as a node writes
+// for a coinbase.
+func (l *testChain) ef(tx *transaction.Transaction) []byte {
+	cp, err := transaction.NewTransactionFromBytes(tx.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	for _, in := range cp.Inputs {
+		out := &transaction.TransactionOutput{LockingScript: &script.Script{}}
+		if src, ok := l.known[in.SourceTXID.String()]; ok && int(in.SourceTxOutIndex) < len(src.Outputs) {
+			out = src.Outputs[in.SourceTxOutIndex]
+		}
+		in.SetSourceTxOutput(out)
+	}
+	b, err := cp.EF()
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 // subjectOf parses a submitted BEEF's subject transaction.

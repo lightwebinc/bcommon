@@ -11,7 +11,10 @@ import (
 	"testing"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
+	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // Fixture bodies are written to the JSON shapes a Teranode node answers,
@@ -207,7 +210,7 @@ func TestProofForGuardsTheProofBeforeTheTxid(t *testing.T) {
 func TestBlockAndTxRaw(t *testing.T) {
 	srv := route(t, map[string]http.HandlerFunc{
 		"/api/v1/block/abc/json": text(fixtureBlock),
-		"/api/v1/tx/" + txidHex:  func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0}) },
+		"/api/v1/tx/" + txidHex:  func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(coinbase.Bytes()) },
 	})
 	a := &Asset{Base: srv.URL}
 	b, err := a.Block(context.Background(), "abc")
@@ -219,8 +222,57 @@ func TestBlockAndTxRaw(t *testing.T) {
 		t.Fatalf("block: %+v", b)
 	}
 	raw, err := a.TxRaw(context.Background(), txidHex)
-	if err != nil || len(raw) != 10 || raw[0] != 1 {
+	if err != nil || !bytes.Equal(raw, coinbase.Bytes()) {
 		t.Fatalf("txraw: %x %v", raw, err)
+	}
+}
+
+// coinbase is a coinbase as a node holds it: its one input spends nothing,
+// and in Extended Format carries a zero previous output.
+var coinbase = func() *transaction.Transaction {
+	tx := transaction.NewTransaction()
+	tx.AddInput(&transaction.TransactionInput{SourceTXID: &chainhash.Hash{}, SourceTxOutIndex: 0xffffffff,
+		UnlockingScript: &script.Script{0x02, 0x01, 0x02}, SequenceNumber: transaction.MaxTxInSequenceNum})
+	tx.Inputs[0].SetSourceTxOutput(&transaction.TransactionOutput{LockingScript: &script.Script{}})
+	tx.AddOutput(&transaction.TransactionOutput{Satoshis: 5000, LockingScript: &script.Script{script.OpTRUE}})
+	return tx
+}()
+
+// A node answering in Extended Format, as a Teranode asset API does, is
+// read as the raw transaction it extends; a malformed answer in either
+// form is the guard's refusal.
+func TestTxRawReadsExtendedFormat(t *testing.T) {
+	ef, err := coinbase.EF()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, c := range map[string]struct {
+		body []byte
+		ok   bool
+	}{
+		"extended format":        {ef, true},
+		"raw":                    {coinbase.Bytes(), true},
+		"truncated EF":           {ef[:len(ef)-1], false},
+		"EF of 2^32-1 inputs":    {append([]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0xef, 0xfe, 0xff, 0xff, 0xff, 0xff}, make([]byte, 64)...), false},
+		"raw with trailing byte": {append(coinbase.Bytes(), 0), false},
+	} {
+		srv := route(t, map[string]http.HandlerFunc{
+			"/api/v1/tx/" + txidHex: func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(c.body) },
+		})
+		raw, err := (&Asset{Base: srv.URL}).TxRaw(context.Background(), txidHex)
+		if !c.ok {
+			if !errors.Is(err, guard.ErrTransaction) || raw != nil {
+				t.Fatalf("%s: %x %v, want the guard's refusal", name, raw, err)
+			}
+			continue
+		}
+		if err != nil || !bytes.Equal(raw, coinbase.Bytes()) {
+			t.Fatalf("%s: %x %v", name, raw, err)
+		}
+		tx, err := guard.ParseTransaction(raw, guard.DefaultBound)
+		if err != nil || !tx.TxID().IsEqual(coinbase.TxID()) {
+			t.Fatalf("%s: %v", name, err)
+		}
 	}
 }
 

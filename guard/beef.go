@@ -103,7 +103,8 @@ func ParseBEEF(b []byte, bound int) (beef *transaction.Beef, tx *transaction.Tra
 
 // ParseTransaction walks one raw transaction of at most bound bytes as
 // CheckBEEF walks each of a BEEF's, refusing as ErrTransaction, then parses
-// it with the SDK under a recover.
+// it with the SDK under a recover. An Extended Format transaction is refused
+// as one of no inputs; RawTransaction turns it into the raw form first.
 func ParseTransaction(b []byte, bound int) (tx *transaction.Transaction, err error) {
 	if len(b) > bound {
 		return nil, fmt.Errorf("%w: %d bytes, max %d", ErrTransaction, len(b), bound)

@@ -418,10 +418,10 @@ refuse a nil `tracker` with `ErrNoTracker`.
 
 ## Parse guard: `guard`
 
-`ParseBUMP(b, bound)`, `CheckBEEF(b, bound)`, `ParseBEEF(b, bound)` and
-`ParseTransaction(b, bound)` take the caller's bound on the input's size, in
-bytes; a bound of zero or less admits nothing. `nodeapi` uses its 1 MiB body
-bound for a proof. `verify.VerifyCarrier`, `funding.Rebuild` and
+`ParseBUMP(b, bound)`, `CheckBEEF(b, bound)`, `ParseBEEF(b, bound)`,
+`ParseTransaction(b, bound)` and `RawTransaction(b, bound)` take the caller's
+bound on the input's size, in bytes; a bound of zero or less admits nothing.
+`nodeapi` uses its 1 MiB body bound for a proof and for a transaction. `verify.VerifyCarrier`, `funding.Rebuild` and
 `producer.Payer` pass `DefaultBound`, 64 MiB, the bound `hostset` puts on a
 whole lookup answer. `ParsePubKey` and `ParsePubKeyHex` take no setting.
 

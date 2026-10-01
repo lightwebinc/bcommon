@@ -1,7 +1,7 @@
 // Package guard checks bytes someone else supplied before the SDK is allowed
 // to allocate for them or to trust them: a BRC-74 BUMP, a BEEF (BRC-62,
-// BRC-96, and the Atomic BEEF of BRC-95 around either), a raw transaction,
-// and a compressed public key.
+// BRC-96, and the Atomic BEEF of BRC-95 around either), a raw transaction
+// or the Extended Format (BRC-30) of one, and a compressed public key.
 //
 // A reader that sizes a slice from a wire count can be asked, by a handful
 // of bytes, for an allocation that ends the process with an out-of-memory no

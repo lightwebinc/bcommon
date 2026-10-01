@@ -130,9 +130,22 @@ func (a *Asset) TxMeta(ctx context.Context, txid string) (*TxMeta, error) {
 	return m, nil
 }
 
-// TxRaw returns a transaction's standard serialisation as the node stores it.
+// TxRaw returns a transaction's raw serialisation. A node may answer in the
+// raw form or in Extended Format (BRC-30), the raw form with each input's
+// previous output added, as a Teranode asset API does; either is walked by
+// guard.RawTransaction and the raw form returned, so a caller always gets
+// bytes guard.ParseTransaction reads. The previous outputs an Extended
+// Format answer carries are dropped.
 func (a *Asset) TxRaw(ctx context.Context, txid string) ([]byte, error) {
-	return a.get(ctx, "/api/v1/tx/"+txid)
+	b, err := a.get(ctx, "/api/v1/tx/"+txid)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := guard.RawTransaction(b, maxBody)
+	if err != nil {
+		return nil, fmt.Errorf("tx %s: %w", txid, err)
+	}
+	return raw, nil
 }
 
 // MerkleProof returns the BRC-74 BUMP for a mined transaction, parsed.

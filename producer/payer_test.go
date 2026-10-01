@@ -373,6 +373,38 @@ func TestParentRebuildsWhatTheSpenderCarries(t *testing.T) {
 	}
 }
 
+// A coinbase coin's parent is fetched from the node in either form it
+// answers: Extended Format, as a Teranode asset API answers, and raw. The
+// parent is the coinbase itself, under its own txid, with its proof.
+func TestParentReadsANodeAnsweringEF(t *testing.T) {
+	for _, raw := range []bool{false, true} {
+		ctx := context.Background()
+		l := newTestChain(t)
+		l.rawAnswers = raw
+		pool := poolIn(t)
+		own := signerOf(t, newKey(t))
+		coin := coinbaseIn(t, l, pool, own, 5000, 0x61)
+		p := payerFor(l, pool, own, &notes{})
+		lock, err := own.FundScript()
+		if err != nil {
+			t.Fatal(err)
+		}
+		cb := bwallet.Output{TxID: coin.TxID().String(), Vout: 0, Satoshis: 5000, LockingScript: lock.String(), Height: 90}
+		tx, err := p.Parent(ctx, cb)
+		if err != nil {
+			t.Fatalf("raw answers %v: %v", raw, err)
+		}
+		if tx.TxID().String() != cb.TxID || tx.MerklePath == nil || len(tx.Inputs) != 1 || tx.Outputs[0].Satoshis != 5000 {
+			t.Fatalf("raw answers %v: parent %s", raw, tx.TxID())
+		}
+		// The coin spends: what Take hands out signs against that parent.
+		in, err := p.Take(ctx)
+		if err != nil || in.Tx.TxID().String() != cb.TxID || len(in.Tx.Inputs) != 1 {
+			t.Fatalf("raw answers %v: take: %v", raw, err)
+		}
+	}
+}
+
 // Async settles on the leg's acceptance and leaves the proof for later.
 func TestSettleAsyncReturnsOnAcceptance(t *testing.T) {
 	ctx := context.Background()
