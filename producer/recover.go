@@ -27,9 +27,11 @@ const (
 	// settlement leg just before the run stopped can still land: see
 	// Recover.
 	CoinReturned RecoveryOutcome = iota + 1
-	// CoinSpent: the node knows no such tree and shows the fee coin spent
-	// by another transaction, named in Recovery.By. The coin is out of the
-	// pool, nothing is left to recover, and the application drops the
+	// CoinSpent: the node shows the fee coin spent by another transaction,
+	// named in Recovery.By, and has no proof for the tree: the tree never
+	// reached the chain, or reached the node and lost a double spend, which
+	// a node may go on serving. The coin is out of the pool, nothing is
+	// adopted, nothing is left to recover, and the application drops the
 	// record.
 	CoinSpent
 	// TreeAdopted: the tree is on the chain. Its fee coin is out of the
@@ -78,12 +80,21 @@ type Recovery struct {
 // adopting. An application runs it on its next start, once for each such
 // record, before the first Spend, with tree and coin as Prepare received
 // them. It asks the Payer's Asset, which must be set, what became of the
-// tree:
+// tree: whether the node serves it, then, when it does, for its proof, and
+// then, for a tree with no proof, which transaction spent the coin. A proof
+// settles it, since a mined tree is on the chain whatever else the node
+// shows. Without one, that the node serves the tree's transaction is not
+// enough, because a node may keep a transaction that lost a double spend,
+// and the coin's spender decides:
 //
-//   - The node knows the tree, or shows the coin spent by it: the tree is
-//     on the chain. Its fee coin is spent, so it is taken out of the pool
-//     if an earlier CoinReturned put it there. Its proof is taken as Settle
-//     would take it (waited for, or with Async asked for once), the change
+//   - The tree has a proof, or the node shows the coin spent by it: the
+//     tree is on the chain. So is a tree the node serves while it shows the
+//     coin unspent, which is a node that has the tree and has not yet
+//     recorded what it spends. Its fee coin is spent, so it is taken out of
+//     the pool if an earlier CoinReturned put it there. Its proof is taken
+//     as Settle would take it (waited for, or with Async not waited for:
+//     the tree is adopted on the node's word that it spent the coin, and
+//     its proof is collected later), the change
 //     it pays the Payer's keys goes into the pool unless the node shows
 //     that change already spent, and the tree is adopted and published
 //     (TreeAdopted). When the current tree is locked to Identity and still
@@ -97,9 +108,13 @@ type Recovery struct {
 //   - The node does not know the tree and shows the coin unspent: the tree
 //     has not reached the chain. The coin goes back to the pool
 //     (CoinReturned).
-//   - The node does not know the tree and shows the coin spent by another
-//     transaction (CoinSpent). The coin is taken out of the pool if it is
-//     there.
+//   - The tree has no proof and the node shows the coin spent by another
+//     transaction (CoinSpent, with that transaction in Recovery.By),
+//     whether or not the node serves the tree: a tree that never reached
+//     the chain, or one that lost a double spend and never mines. The coin
+//     is taken out of the pool if it is there, and nothing is adopted, held
+//     or published. The answer is the same when the coin is spent while
+//     Recover waits for the tree's proof, and on every later Recover.
 //
 // The application's half is its record. Its Adopt drops the record of the
 // tree it is given, in the same save, so TreeAdopted needs nothing more and
@@ -111,7 +126,11 @@ type Recovery struct {
 //
 // An error with no outcome means the node could not answer, or the tree has
 // not mined within the Payer's Timeout: the tree is neither adopted nor
-// held, the record stays, and the next start asks again. The fee coin of a
+// held, the record stays, and the next start asks again. A node that
+// serves an unproven tree and cannot say who spent its coin is such an
+// error with Async, so that no tree is adopted without a proof or the
+// node's word on its coin; without Async the wait for the proof decides,
+// and adopts only a tree that mines. The fee coin of a
 // tree the node knows is out of the pool even so, which is right, since the
 // node holds it spent. Recover may be run again for the same record: a coin
 // the pool holds is not added twice, and a tree that is already the current
@@ -202,33 +221,56 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 	if err != nil {
 		return Recovery{}, fmt.Errorf("funding tree %s: recover: %w", tree.Txid, err)
 	}
-	if !known {
-		by, err := asset.Spender(ctx, coin.TxID, coin.Vout)
-		if err != nil {
-			return Recovery{}, fmt.Errorf("funding tree %s: recover: whether its fee coin %s is spent: %w", tree.Txid, coin.Outpoint(), err)
+	var mp *transaction.MerklePath
+	var height uint32
+	proven := false
+	if known {
+		// The node holds the tree, so its fee coin is spent, by the tree or
+		// by the transaction that displaced it. An earlier recovery that
+		// asked before the tree landed put the coin back in the pool; it
+		// comes out before anything else is done, so that it pays for
+		// nothing while the proof is waited for.
+		if err := t.spent(tree.Txid, coin); err != nil {
+			return Recovery{}, err
 		}
+		// A proof settles it: a mined tree is on the chain whatever else the
+		// node shows.
+		mp, height, err = asset.Proof(ctx, tree.Txid)
 		switch {
+		case err == nil:
+			proven = true
+		case !errors.Is(err, nodeapi.ErrNotMined):
+			return Recovery{}, fmt.Errorf("funding tree %s: recover: %w", tree.Txid, err)
+		}
+	}
+	if !proven {
+		// Without a proof, that the node serves the tree does not put it on
+		// the chain: a node keeps a transaction that lost a double spend.
+		// The coin's spender decides.
+		by, err := asset.Spender(ctx, coin.TxID, coin.Vout)
+		switch {
+		case err != nil && known && !t.Payer.Async:
+			// The wait below adopts nothing without a proof, and asks again
+			// on every poll.
+		case err != nil:
+			return Recovery{}, fmt.Errorf("funding tree %s: recover: whether its fee coin %s is spent: %w", tree.Txid, coin.Outpoint(), err)
+		case by != "" && !strings.EqualFold(by, tree.Txid):
+			return t.coinSpent(tree.Txid, coin, by, known)
+		case known:
 		case by == "":
 			if err := t.Payer.Pool.Return(coin); err != nil {
 				return Recovery{}, fmt.Errorf("funding tree %s: recover: returning its fee coin: %w", tree.Txid, err)
 			}
 			t.Payer.note("funding tree %s never reached the chain: its fee coin %s is unspent and back in the pool", tree.Txid, coin.Outpoint())
 			return Recovery{Outcome: CoinReturned}, nil
-		case !strings.EqualFold(by, tree.Txid):
+		default:
+			// The node does not serve the tree and shows the coin spent by
+			// it: the tree is on the chain, and the coin comes out of the
+			// pool as it does for a tree the node serves.
 			if err := t.spent(tree.Txid, coin); err != nil {
 				return Recovery{}, err
 			}
-			t.Payer.note("funding tree %s never reached the chain: its fee coin %s is spent by %s", tree.Txid, coin.Outpoint(), by)
-			return Recovery{Outcome: CoinSpent, By: by}, nil
 		}
-	}
-
-	// The tree is on the chain, so its fee coin is spent. An earlier
-	// recovery that asked before the tree landed put the coin back in the
-	// pool; it comes out before anything else is done, so that it pays for
-	// nothing while the proof is waited for.
-	if err := t.spent(tree.Txid, coin); err != nil {
-		return Recovery{}, err
 	}
 
 	// The tree is rebuilt over its fee coin's parent, so that the BEEF it is
@@ -238,18 +280,25 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 		return Recovery{}, fmt.Errorf("funding tree %s: recover: %w", tree.Txid, err)
 	}
 	fee.SourceTransaction = parent
-	var mp *transaction.MerklePath
-	var height uint32
-	if t.Payer.Async {
-		if mp, height, err = asset.Proof(ctx, tree.Txid); errors.Is(err, nodeapi.ErrNotMined) {
-			mp, height, err = nil, 0, nil
+	switch {
+	case proven:
+		if !t.Payer.Async {
+			t.Payer.note("funding tree %s: mined at height %d", tree.Txid, height)
 		}
 		tx.MerklePath = mp
-	} else {
+	case t.Payer.Async:
+		// Asked once, above: the proof is collected later.
+	default:
 		mp, height, err = t.Payer.Await(ctx, "funding tree", tx)
-	}
-	if err != nil {
-		return Recovery{}, fmt.Errorf("funding tree %s: recover: %w", tree.Txid, err)
+		// The coin can be spent by another transaction while the proof is
+		// waited for, and the wait says so.
+		var se *nodeapi.SpentError
+		if errors.As(err, &se) && se.Outpoint == coin.Outpoint() {
+			return t.coinSpent(tree.Txid, coin, se.By, known)
+		}
+		if err != nil {
+			return Recovery{}, fmt.Errorf("funding tree %s: recover: %w", tree.Txid, err)
+		}
 	}
 	// Change the pool was already given may have paid a fee since, so only
 	// change the node shows unspent is taken.
@@ -287,6 +336,22 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 		return Recovery{}, err
 	}
 	return Recovery{Outcome: TreeAdopted, Tree: rec}, nil
+}
+
+// coinSpent answers CoinSpent for a tree whose fee coin the node shows spent
+// by another transaction, by: the coin leaves the pool and nothing is
+// adopted. known says the node still serves the tree, which lost the double
+// spend and never mines.
+func (t *Trees) coinSpent(tree string, coin bwallet.Output, by string, known bool) (Recovery, error) {
+	if err := t.spent(tree, coin); err != nil {
+		return Recovery{}, err
+	}
+	if known {
+		t.Payer.note("funding tree %s lost a double spend: the node still serves it, without a proof, and its fee coin %s is spent by %s", tree, coin.Outpoint(), by)
+	} else {
+		t.Payer.note("funding tree %s never reached the chain: its fee coin %s is spent by %s", tree, coin.Outpoint(), by)
+	}
+	return Recovery{Outcome: CoinSpent, By: by}, nil
 }
 
 // spent takes a fee coin the node shows spent out of the pool, where an
