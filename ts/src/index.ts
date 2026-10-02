@@ -22,6 +22,34 @@ export { MaxRefMembers, MaxRefName, MaxRefs, StoreError, decodeRefs, encodeRefs,
 export { readerLockingKey } from './derive.js'
 export { strictPublicKey, strictPublicKeyHex } from './pubkey.js'
 export { decodeStrictPushDrop } from './pushdrop.js'
+export { firstPush, minimalPushBytes, pushDropScript, pushFields } from './script.js'
+export { MaxKeys, ascending, claimsRecord, recordReader, type RecordFields, type RecordReader, type RecordReason } from './record.js'
+export {
+  BeefRefusal,
+  DefaultMaxBEEF,
+  aloneShape,
+  anyTxidOnly,
+  carrierShape,
+  checkBEEF,
+  mergedPath,
+  mined,
+  minimalPath,
+  readTokenOutput,
+  readWire,
+  storedToken,
+  subjectTx,
+  tokenBEEF,
+  tokenLockedTo,
+  tokenShape,
+  tokenSigned,
+  tokenSignedBy,
+  tokenSpends,
+  verifyField,
+  type TokenOutput,
+  type TokenSpend,
+  type Wire,
+  type WireEntry,
+} from './wire.js'
 export { verifyFieldSignature } from './fieldsig.js'
 export { decodeFunding } from './funding.js'
 export {
@@ -35,6 +63,7 @@ export {
   mineableRefusal,
   payloadRefusal,
   signatureRefusal,
+  strictSignature,
   unlockingRefusal,
   type Carrier,
   type CarrierOutput,

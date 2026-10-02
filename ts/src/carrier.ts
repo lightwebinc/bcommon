@@ -164,9 +164,11 @@ function toBigInt(b: Uint8Array): bigint {
 
 /**
  * A strict DER ECDSA signature under BIP 66's rules, with R in [1, n-1] and
- * S in [1, n/2].
+ * S in [1, n/2]: 8 to 72 bytes, and the one encoding of its (r, s). A
+ * signature with another encoding verifies as well as the strict one, so a
+ * host that took it would take two byte strings for one signature.
  */
-function strictSignature(der: Uint8Array): boolean {
+export function strictSignature(der: Uint8Array): boolean {
   if (der.length < 8 || der.length > 72) return false
   if (der[0] !== 0x30 || der[1] !== der.length - 2) return false
   const lenR = der[3]!

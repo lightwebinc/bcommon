@@ -129,8 +129,11 @@ test('the package imports nothing outside src/ and @bsv/sdk, and runtime files n
     'fieldsig.ts',
     'funding.ts',
     'index.ts',
+    'record.ts',
+    'script.ts',
     'store.ts',
     'testing/index.ts',
+    'wire.ts',
   ]) {
     assert.ok(files.includes(want), `${want} was not scanned`)
   }
