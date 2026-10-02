@@ -341,9 +341,80 @@ most 64 KiB (submit) and 1 MiB (status) before they are parsed.
 | `Note` | discard | receives each progress line |
 
 `Take` returns `*producer.NoCoinError` when the pool has no coin it may
-spend (`Held` counts the transactions whose change is waiting for a proof)
-and `*producer.NoKeyError` for a coin none of the keys holds, so the
+spend (`Held` counts the transactions whose change is waiting for a proof,
+`Minting` the trees minted ahead that still hold a coin; see below) and
+`*producer.NoKeyError` for a coin none of the keys holds, so the
 application can say what its users should do.
+
+#### A fee while a tree is minted ahead
+
+A tree minted ahead (`Trees.Ahead`) takes its coin when the mint starts,
+and its change reaches the pool only when the mint is collected. A wallet
+with one coin has none in between. A take the pool cannot cover in that
+time waits for the mint instead of failing:
+
+| | |
+|---|---|
+| Which calls wait | `Payer.Take`, `Payer.TakeAtLeast`, and the tree `Trees.Spend` mints on demand, on any `Payer` over the same `*bwallet.Pool` the mint took its coin from |
+| When | only when the pool has no coin for the take and a pool-paid mint ahead is uncollected; a take the pool can cover answers at once, as before |
+| What they do | wait for the mint, collect it exactly as `Trees.Wait` does (its notes go to the `Note` of the `Trees`' `Payer`, its change into the pool, or its unspent coin back), and take again |
+| For how long | until the mint ends, the context ends, or the `Timeout` of the `Payer` the take was called on has passed (`DefaultTimeout`, 10 min, when zero), whichever is first; several mints, by several `Trees` over one pool, are collected one at a time under that one bound, with a take after each |
+| What never waits | a mint ahead looking for its own coin, which is skipped with a note and minted when needed; a tree paid through `Fund`, which takes no pool coin |
+
+What the collected mint leaves decides the second take:
+
+- a tree that settled with its proof leaves proven change, and the take is
+  paid from it;
+- with `Async` on the `Trees`' `Payer` the change is unproven until its
+  block, so the take answers `*NoCoinError` with `Held` counting it, unless
+  `Allow` lets it through: the wait for a block an application already
+  handles;
+- a mint that failed before the settlement leg returns its coin, and the
+  take is paid from it; one that failed after it leaves nothing, and the
+  take answers `*NoCoinError`;
+- when the wait ends first, the mint is still in flight and the
+  `*NoCoinError` counts it in `Minting`. A later take waits again.
+
+The take collects the mint on the goroutine that called it, so every
+`Payer` and `Trees` over one pool belongs to one goroutine, as the package
+already requires of a `Payer` and its `Trees`. Collecting calls the `Note`
+of the `Trees`' `Payer` and saves the pool, and nothing else of the
+application's (no `TreeState`, no `Prepare`, no leg), and takes no coin
+itself, so a take inside a `Spend`, or under a lock the application holds
+around its own state, cannot wait on itself. An application that called
+`Trees.Wait` before each fee to get this no longer needs to; `Wait` is
+still how an ending run collects the mint.
+
+#### A refusal for a coin already spent
+
+A transaction whose fee coin another transaction has spent never mines,
+and the coin must not go back to the pool, where it would be handed out
+again to fail the next build. When the settlement leg refuses a transaction
+at `Submit`, or the node's view refuses it afterwards (`producer.ErrRefused`
+with `nodeapi.ErrDoubleSpent`), the coin is dropped, not returned, when
+either:
+
+- the refusal names another transaction as the coin's spender, a
+  `*nodeapi.SpentError` for its outpoint, as `publish.Arcade` with `Asset`
+  set answers; or
+- `Payer.Asset`, when set, shows the coin spent by a transaction other than
+  the one refused.
+
+Dropped means forgotten by the `Payer` and taken out of the pool
+(`bwallet.Pool.Remove`), with a note naming the spender. A refusal for any
+other reason, a coin the node shows unspent or spent by the refused
+transaction itself, and a coin the node cannot answer for keep the coin as
+before.
+
+| Transaction | Where | The coin when it is not spent elsewhere |
+|---|---|---|
+| a funding tree `Trees.Spend` mints on demand | when `Spend` returns the refusal | back in the pool before `Spend` returns |
+| a funding tree minted ahead | when the mint is collected (`Spend`, `Wait`, or a take that waits) | back in the pool at that collection |
+| any transaction paid with `Take` | in `Payer.Settle`, `SettleAndWait` and `Await`, for each coin that `Payer`'s `Take` reserved and the transaction spends | still reserved, and returned by the caller's `GiveBack` |
+
+A carrier pays no fee from the pool, since it spends a funding tree's
+output, so it has no coin to settle here. A dropped tree's `Prepare` record
+is left alone; `Recover` answers `CoinSpent` for it on the next start.
 
 ### `producer.Trees`
 
@@ -368,11 +439,16 @@ reservation never races another `Take`; only the settlement, or `Fund` when
 it is set, runs in the background, under the context of the `Spend` that
 started it, so pass the producer's run context. `Wait` collects the result,
 as every `Spend` also does without waiting: the held notes go to `Note`, the
-change goes into the pool, and `Prepared` answers the tree's record. When
-the current tree cannot cover a spend, `Spend` waits for a mint in flight
+change goes into the pool, and `Prepared` answers the tree's record. Until
+then the coin the mint took is out of the pool, and a fee the pool cannot
+pay meanwhile waits for the mint: see
+[a fee while a tree is minted ahead](#a-fee-while-a-tree-is-minted-ahead).
+When the current tree cannot cover a spend, `Spend` waits for a mint in flight
 and switches to the tree minted ahead, which is adopted and then published
-exactly as a new tree is; a mint that failed is reported and the tree is
-minted on demand. The tree minted ahead is in no state until the switch, so
+exactly as a new tree is; a mint that failed is reported, its unspent coin
+goes back to the pool (or is dropped when another transaction spent it; see
+[a refusal for a coin already spent](#a-refusal-for-a-coin-already-spent)),
+and the tree is minted on demand. The tree minted ahead is in no state until the switch, so
 a crash before it strands its funding outputs (its change is already in the
 pool); an application that wants a sweep to take them records `Prepared` in
 its own history.
@@ -513,15 +589,19 @@ What remains uncovered:
 - Between the start that answered `CoinReturned` and the next, the coin is
   in the pool. If the tree lands in that time and the coin is taken to pay
   for a transaction, that transaction is refused (`producer.ErrRefused`)
-  and is built again. No coin or tree is lost; if the refused transaction
+  and is built again. The refusal takes the spent coin out of the pool
+  when the node shows the tree as its spender (see
+  [a refusal for a coin already spent](#a-refusal-for-a-coin-already-spent)).
+  No coin or tree is lost; if the refused transaction
   was a funding tree, its own record is answered `CoinSpent`.
 - `CoinReturned` puts the coin back on every start the record is kept. If
   the application has since spent the coin in a transaction of its own, and
   that transaction reached the leg an instant before a stop, the node can
   show the coin unspent once more, and the coin goes back to the pool
   though it is spent. A transaction that then takes it is refused, or,
-  reaching the node first, displaces the earlier one. The next `Recover`
-  that answers `CoinSpent` takes the coin out again.
+  reaching the node first, displaces the earlier one. That refusal takes
+  the coin out again when the node names its spender by then, and
+  otherwise the next `Recover` that answers `CoinSpent` does.
 - An application that drops the record at `CoinReturned` is, for a tree
   that lands late, where it was without `Prepare`: the tree, its change and
   its outputs are lost to it, and the spent coin stays in its pool.
