@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
@@ -94,16 +95,43 @@ type Trees struct {
 	Prepare func(tree funding.Tree, coin bwallet.Output) error
 
 	// ahead delivers the result of the mint in flight, nil when none is;
-	// prepared is the tree minted ahead and not yet used; aheadFor is the
-	// current tree the last mint ahead was started for, so a failure is not
-	// retried on every spend from the same tree.
+	// held is every tree that is settled and not yet used, in the order
+	// Spend switches to them: the tree minted ahead, and each tree Recover
+	// found on the chain while the current tree had outputs left; aheadFor
+	// is the current tree the last mint ahead was started for, so a failure
+	// is not retried on every spend from the same tree.
 	ahead    chan aheadResult
-	prepared *preparedTree
+	held     []*preparedTree
 	aheadFor string
 }
 
-// preparedTree is a tree minted ahead: settled, its change taken, and its
-// record built, but not adopted and not published.
+// ErrPublish is what errors.Is matches a *PublishError by: a funding tree
+// that is adopted into the state and was not published.
+var ErrPublish = errors.New("producer: funding tree adopted but not published")
+
+// PublishError is the error of Spend and Recover when TreeState.Adopt took
+// a tree and the publish that follows it failed. The tree is recorded, it
+// is the current tree, and its Prepare record is dropped: nothing is left
+// to mint, settle or recover, and only the publish has to be repeated,
+// which Trees.Publish does with Tree. Until it is, the hosts have not
+// admitted the tree's outputs. errors.Is(err, ErrPublish) matches it,
+// errors.As gives the tree, and Unwrap gives the cause.
+type PublishError struct {
+	// Tree is the record the tree was adopted as.
+	Tree funding.Tree
+	// Err is why the publish failed.
+	Err error
+}
+
+func (e *PublishError) Error() string { return e.Err.Error() }
+
+func (e *PublishError) Unwrap() error { return e.Err }
+
+// Is matches ErrPublish.
+func (e *PublishError) Is(target error) bool { return target == ErrPublish }
+
+// preparedTree is a held tree: settled, its change taken, and its record
+// built, but not adopted and not published.
 type preparedTree struct {
 	tx  *transaction.Transaction
 	rec funding.Tree
@@ -145,6 +173,13 @@ type aheadResult struct {
 // Its funding.Tree, with the BEEF it is kept as while it is unmined, is
 // adopted into the state before the tree is published, so a crash after the
 // publish never leaves a tree on the plane the state does not know.
+//
+// That order means a publish can fail with the tree already adopted. Spend
+// then returns a *PublishError (errors.Is ErrPublish) and no tree: the tree
+// is the current one, and a later Spend answers it without publishing it,
+// so the application repeats the publish with Publish, in this run or a
+// later one, and then calls Spend again. Any other error leaves no tree
+// adopted.
 //
 // With Ahead set, and not DryRun, a spend that leaves Ahead outputs or
 // fewer on the tree it answers starts minting the next one, of Count
@@ -208,15 +243,20 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 			return nil, 0, err
 		}
 	}
-	if pt := t.prepared; pt != nil {
+	// The held trees are tried in order. One too small for this spend keeps
+	// its place for a later switch.
+	for i := 0; i < len(t.held); {
+		pt := t.held[i]
 		switch {
 		case pt.rec.IdentityKeyHex != t.Identity:
-			t.prepared = nil
+			t.held = slices.Delete(t.held, i, i+1)
 			t.Payer.note("funding tree %s minted ahead is locked to another identity and is not used", pt.rec.Txid)
 		case pt.rec.Count >= need:
-			t.prepared = nil
+			t.held = slices.Delete(t.held, i, i+1)
 			t.Payer.note("switching to funding tree %s, minted ahead", pt.rec.Txid)
 			return t.adopt(ctx, pt.tx, pt.rec, need)
+		default:
+			i++
 		}
 	}
 	// A tree at least as large as the spend needs, and never smaller than
@@ -330,11 +370,43 @@ func (t *Trees) adopt(ctx context.Context, tree *transaction.Transaction, rec fu
 }
 
 // adoptAndPublish records a tree in the state and then publishes it, in
-// that order.
+// that order. A failure once the state has the tree is a *PublishError.
 func (t *Trees) adoptAndPublish(ctx context.Context, tree *transaction.Transaction, rec funding.Tree) error {
 	if err := t.State.Adopt(rec); err != nil {
 		return err
 	}
+	if err := t.publish(ctx, tree); err != nil {
+		return &PublishError{Tree: rec, Err: err}
+	}
+	return nil
+}
+
+// Publish publishes a tree the state already holds, on Facade and Topic,
+// as Spend publishes a new one. It is how an application repeats the
+// publish after a *PublishError, with the error's Tree, and it may be
+// called for any adopted tree: the hosts answer a tree they already hold
+// as a duplicate, which is not an error. The tree is rebuilt from its
+// record (funding.Rebuild), so an unmined tree needs the BEEF it is kept
+// as. A failure is again a *PublishError.
+func (t *Trees) Publish(ctx context.Context, tree funding.Tree) error {
+	if t.Payer == nil {
+		return errors.New("producer: Trees needs a Payer")
+	}
+	tx, err := funding.Rebuild(tree.RawHex, tree.BumpHex, tree.BeefHex)
+	if err == nil && tx.TxID().String() != tree.Txid {
+		err = fmt.Errorf("the record's bytes are transaction %s", tx.TxID())
+	}
+	if err != nil {
+		return &PublishError{Tree: tree, Err: fmt.Errorf("publish funding tree %s: %w", tree.Txid, err)}
+	}
+	if err := t.publish(ctx, tx); err != nil {
+		return &PublishError{Tree: tree, Err: err}
+	}
+	return nil
+}
+
+// publish submits a tree to the object leg.
+func (t *Trees) publish(ctx context.Context, tree *transaction.Transaction) error {
 	tb, err := funding.BEEF(tree)
 	if err != nil {
 		return err
@@ -357,7 +429,7 @@ func (t *Trees) adoptAndPublish(ctx context.Context, tree *transaction.Transacti
 // leaves on the tree curTxid, is at or below Ahead, and no mint is in
 // flight, waiting unused, or already tried for that tree.
 func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
-	if t.Ahead == 0 || t.DryRun || left > t.Ahead || t.ahead != nil || t.prepared != nil || t.aheadFor == curTxid {
+	if t.Ahead == 0 || t.DryRun || left > t.Ahead || t.ahead != nil || len(t.held) > 0 || t.aheadFor == curTxid {
 		return
 	}
 	t.aheadFor = curTxid
@@ -498,7 +570,7 @@ func (t *Trees) collect(ctx context.Context, wait bool) error {
 		}
 		var rec funding.Tree
 		if rec, r.err = t.record(r.tx, r.mp, r.height, r.count, r.id, r.funder); r.err == nil {
-			t.prepared = &preparedTree{tx: r.tx, rec: rec}
+			t.hold(r.tx, rec)
 			t.Payer.note("funding tree %s is minted ahead and waits for the switch", rec.Txid)
 			return nil
 		}
@@ -521,13 +593,40 @@ func (t *Trees) Wait(ctx context.Context) error {
 // nil when there is none: none was started, it is still in flight (see
 // Wait), it failed, or Spend has switched to it. The tree is in no state
 // until the switch; an application that wants a sweep to take its outputs
-// after a crash keeps this record in its own history.
+// after a crash keeps this record in its own history. When more than one
+// tree is held, which Recover can bring about, it is the first of them,
+// and Held answers them all.
 func (t *Trees) Prepared() *funding.Tree {
-	if t.prepared == nil {
+	if len(t.held) == 0 {
 		return nil
 	}
-	rec := t.prepared.rec
+	rec := t.held[0].rec
 	return &rec
+}
+
+// Held returns the record of every tree that is settled and waits for a
+// switch, in the order they were held: the tree minted ahead, and each
+// tree Recover answered TreeHeld for. It is empty when there is none. When
+// the current tree cannot cover a spend, Spend switches to the first of
+// them that is locked to Identity and large enough, and adopts and
+// publishes it then; one too small for that spend keeps its place. No tree
+// is minted ahead while one is held.
+func (t *Trees) Held() []funding.Tree {
+	out := make([]funding.Tree, 0, len(t.held))
+	for _, pt := range t.held {
+		out = append(out, pt.rec)
+	}
+	return out
+}
+
+// hold puts a settled tree behind the trees already held, once.
+func (t *Trees) hold(tx *transaction.Transaction, rec funding.Tree) {
+	for _, pt := range t.held {
+		if pt.rec.Txid == rec.Txid {
+			return
+		}
+	}
+	t.held = append(t.held, &preparedTree{tx: tx, rec: rec})
 }
 
 // mint builds and signs a tree the pool pays for. The count and value are

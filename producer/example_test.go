@@ -396,14 +396,21 @@ func ExampleTrees_Recover() {
 	})
 	for txid, rec := range state.prepared {
 		got, err := next.Recover(ctx, rec.Tree, rec.Coin)
+		if errors.Is(err, producer.ErrPublish) {
+			// The tree is adopted and its record dropped: only the publish
+			// is repeated, now or, with got.Tree noted, on a later start.
+			err = next.Publish(ctx, got.Tree)
+		}
 		if err != nil {
 			fmt.Println(err) // undecided: the record stays for the next start
 			continue
 		}
 		fmt.Println("recovered:", got.Outcome)
-		if got.Outcome == producer.CoinReturned || got.Outcome == producer.CoinSpent {
+		if got.Outcome == producer.CoinSpent {
 			delete(state.prepared, txid) // no tree: the application drops the record
 		}
+		// A CoinReturned record is kept for the next start: the tree may
+		// still land.
 	}
 	fmt.Println("trees adopted:", len(state.all), "records kept:", len(state.prepared), "coins in the pool:", pool.Count())
 	hex := regexp.MustCompile(`[0-9a-f]{64}`)
