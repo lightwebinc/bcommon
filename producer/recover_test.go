@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -122,6 +123,19 @@ func (c *crashLeg) Submit(ctx context.Context, tx *transaction.Transaction) erro
 		}
 	}
 	panic(errCrash)
+}
+
+// answeredLeg closes answered when its first Submit returns.
+type answeredLeg struct {
+	publish.Settler
+	answered chan struct{}
+	once     sync.Once
+}
+
+func (a *answeredLeg) Submit(ctx context.Context, tx *transaction.Transaction) error {
+	err := a.Settler.Submit(ctx, tx)
+	a.once.Do(func() { close(a.answered) })
+	return err
 }
 
 // restart is the next start of tr's application: a new Trees over the same
@@ -453,13 +467,20 @@ func TestRecoverACrashWithAMintAheadInFlight(t *testing.T) {
 	l.mu.Unlock()
 	run, stop := context.WithCancel(context.Background())
 	defer stop()
+	leg := &answeredLeg{Settler: tr.Payer.Settler, answered: make(chan struct{})}
+	tr.Payer.Settler = leg
 	if _, _, err := tr.Spend(run, 1); err != nil { // 2 left: minted ahead, never mined in this run
 		t.Fatal(err)
 	}
 	st.cur.Next++
 	rec := ps.only(t)
-	for deadline := time.Now().Add(5 * time.Second); settled(l) != 2 && time.Now().Before(deadline); {
-		time.Sleep(5 * time.Millisecond)
+	// The run stops once the leg has answered for the tree. Stopped while
+	// the leg's answer is still on its way, the mint counts the tree as
+	// never sent and puts the coin back, which is another case.
+	select {
+	case <-leg.answered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the leg never answered for the tree minted ahead")
 	}
 	stop()
 	if err := tr.Wait(context.Background()); err == nil || settled(l) != 2 {
