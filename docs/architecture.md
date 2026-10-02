@@ -246,7 +246,23 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   next tree in the background once a spend leaves the current one low, so
   a producer whose trees must mine before they are published does not wait
   for a block when the current tree runs out; the tree minted ahead is
-  adopted and published only when a spend switches to it. `Proofs` asks arcade, then the node,
+  adopted and published only when a spend switches to it. Between the
+  moment a tree's fee coin leaves the pool and the moment the tree is
+  adopted, a run that stops leaves a tree that may be on the chain and that
+  no state records, and a pool saved without the coin. `Prepare`, when set,
+  closes that gap: it is called on the caller's goroutine with the tree's
+  record and its fee coin once the tree is signed and before it reaches the
+  settlement leg (for a tree minted ahead, before its background half), the
+  application saves both, and its error aborts the mint with the coin back
+  in the pool. On the next start `Recover` asks the node what became of each
+  record: a tree the node knows is adopted and published, or held as the
+  tree minted ahead while the current tree still has outputs, with whatever
+  of its change is unspent taken into the pool; a tree the node does not
+  know, whose coin is unspent, never reached the chain, and the coin goes
+  back to the pool. A tree paid through `Fund` cannot be covered: the wallet
+  behind it chooses the coins, signs and broadcasts in one call, so there is
+  no moment before the broadcast to record it in and no pool coin to
+  return. `Proofs` asks arcade, then the node,
   whether a transaction mined, holding arcade's proof to the node's checks
   and arcade's acceptance to the node's view of the inputs (an input spent
   by another transaction is a refusal, since arcade can accept a double

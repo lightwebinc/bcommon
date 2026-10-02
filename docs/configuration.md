@@ -342,6 +342,7 @@ application can say what its users should do.
 | `DryRun` | false | build a pool-paid tree and record, settle and publish nothing |
 | `Facade`, `Topic` | none | the object leg a new tree is published on |
 | `Ahead` | 0, off | outputs left on the current tree at or below which the next tree is minted and settled in the background; see below |
+| `Prepare` | nil, off | called with each pool-paid tree's record and fee coin before the tree reaches the settlement leg, so a run that stops before `Adopt` can be recovered; see below |
 
 With `Ahead` above zero, and not `DryRun`, a spend that leaves the current
 tree with `Ahead` outputs or fewer starts minting the next one, of `Count`
@@ -359,6 +360,67 @@ minted on demand. The tree minted ahead is in no state until the switch, so
 a crash before it strands its funding outputs (its change is already in the
 pool); an application that wants a sweep to take them records `Prepared` in
 its own history.
+
+#### `Prepare` and `Recover`
+
+A tree's fee coin leaves the pool, which is saved without it, when the tree
+is signed, and the tree is adopted only once it has settled; a tree minted
+ahead is adopted later still, at the switch. A run that stops in between
+leaves a tree that may be on the chain and that the state does not record:
+the coin, the tree's change and its outputs are lost to the application.
+
+With `Prepare` set, `Spend` calls it for every tree the pool pays for, once
+the tree is signed and before it reaches the settlement leg, on the
+goroutine that called `Spend`; for a tree minted ahead that is before the
+background half starts. It receives:
+
+- the tree's `funding.Tree` record: `Txid`, `RawHex`, `Count`, `Sats`,
+  `IdentityKeyHex` and `Funder`, with no proof, height or kept BEEF yet;
+- the fee coin, a `bwallet.Output`, as it was taken from the pool.
+
+The application saves both in its state before it returns. An error aborts
+the mint: the coin goes back to the pool and nothing reaches the leg. Its
+`Adopt` drops the record of the tree it is given, in the same save. With
+`Prepare` nil nothing changes. It is not called for a `DryRun`.
+
+On the next start, before the first `Spend`, the application calls
+`Recover(ctx, tree, coin)` for each record still in its state. `Recover`
+asks the Payer's `Asset` and answers one of four outcomes:
+
+| Outcome | What the node showed | What `Recover` did | The application's record |
+|---|---|---|---|
+| `TreeAdopted` | it knows the tree, or shows the coin spent by it | took the proof as `Settle` would, took the tree's unspent change into the pool, adopted and published the tree | dropped by `Adopt` |
+| `TreeHeld` | the same, while the current tree is locked to `Identity` and has outputs left | took the proof and the unspent change, and holds the tree as the tree minted ahead (`Prepared` answers it) until a spend switches to it | kept until `Adopt` names its txid, so a later start recovers it again |
+| `CoinReturned` | it does not know the tree, and the coin is unspent | put the coin back in the pool | drop it |
+| `CoinSpent` | it does not know the tree, and the coin is spent by another transaction, `Recovery.By` | nothing | drop it |
+
+An error decides nothing: the node could not answer, or the tree did not
+mine within `Timeout`. The record stays and the next start asks again.
+`Recover` may be repeated for the same record: a coin the pool already
+holds is not added twice, change the node shows spent is not taken, and a
+tree that is already the current one is answered `TreeAdopted` with nothing
+done.
+
+A record also outlives a mint that failed after `Prepare`, where `Spend`
+already put the coin back; `Recover` then answers `CoinReturned`, or
+`CoinSpent` once the coin has paid for something else. Do not drop a record
+on `Spend`'s error, which may come after the tree reached the leg.
+
+Two limits:
+
+- The node's view is a moment's view. A tree handed to the leg an instant
+  before the run stopped may not have reached the node when `Recover` asks,
+  and is answered `CoinReturned`; if it lands afterwards, the returned coin
+  is spent, the transaction that next takes it is refused
+  (`producer.ErrRefused`), and the tree is lost as it would be without
+  `Prepare`. An application that restarts at once waits a moment before it
+  recovers.
+- A tree paid through `Fund` is not covered. A wallet that funds and
+  broadcasts a tree itself does both inside one call, so `Prepare` has no
+  moment before the broadcast to be called in, there is no pool coin to
+  return, and `Recover` has no record to work from. A run that stops after
+  `Fund` has broadcast and before `Adopt` leaves a tree only that wallet
+  knows.
 
 ### `producer.Collector` and `producer.Pending`
 

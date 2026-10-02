@@ -540,6 +540,65 @@ switching to funding tree <tree 2>, minted ahead
 funding tree published: admitted 1 output(s)
 ```
 
+### Recover a tree a stopped run left behind
+
+[`producer/example_test.go`](../producer/example_test.go), `ExampleTrees_Recover`
+
+A tree's fee coin leaves the pool when the tree is signed, and the tree is
+adopted only once it has settled, so a run that stops in between leaves a
+tree on the chain that the state does not record. With `Prepare` set the
+application is handed the tree's record and the coin before the tree
+reaches the settlement leg, and saves both; its `Adopt` drops the record.
+On the next start it calls `Recover` for each record left. In the example
+the run stops while its tree waits for a block, the block arrives, and the
+next start adopts and publishes the tree and takes its change.
+
+```go
+func (s *state) Prepare(tree funding.Tree, coin bwallet.Output) error {
+	s.prepared[tree.Txid] = prepared{tree, coin}
+	return s.save()
+}
+
+func (s *state) Adopt(t funding.Tree) error {
+	delete(s.prepared, t.Txid)
+	s.cur, s.all = &t, append(s.all, t)
+	return s.save()
+}
+
+trees := &producer.Trees{
+	Payer: payer, State: state, Identity: signer.IdentityHex(), Count: 4, Sats: 1000, Funder: "pool",
+	Lock: lock, Change: signer.FundScript, Facade: facade, Topic: topic,
+	Prepare: state.Prepare,
+}
+
+// On every start, before the first Spend:
+for txid, rec := range state.prepared {
+	got, err := trees.Recover(ctx, rec.Tree, rec.Coin)
+	if err != nil {
+		continue // undecided: the record stays for the next start
+	}
+	if got.Outcome == producer.CoinReturned || got.Outcome == producer.CoinSpent {
+		delete(state.prepared, txid) // no tree: drop the record
+	}
+}
+```
+
+Output, with the settlement line left out:
+
+```text
+the run stopped: true
+trees adopted: 0 records kept: 1 coins in the pool: 0
+recovered: tree adopted
+trees adopted: 1 records kept: 0 coins in the pool: 1
+funding tree <tree>: 4 output(s) of 1000 sat
+funding tree <tree>: mined at height 701
+funding tree <tree> is recovered
+funding tree published: admitted 1 output(s)
+```
+
+The four outcomes, and why a tree paid through `Fund` cannot be covered,
+are in [configuration.md](configuration.md#prepare-and-recover).
+
 ## Filter text for a terminal
 
 [`termsafe/example_test.go`](../termsafe/example_test.go), `ExampleSanitize`
