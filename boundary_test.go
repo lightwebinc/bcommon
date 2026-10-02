@@ -483,3 +483,111 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 		t.Errorf("termsafe imports more than the standard library: %v", bad)
 	}
 }
+
+// layers is what each package added for shared application code may import
+// from this module: module in its production code, and tests beside that in
+// its tests. A package that is not listed is held only to the module's
+// rule. These are listed because their place in the graph is the point of
+// them: record reads bytes and needs no SDK; keyed is keys and one cipher
+// form over the SDK alone; chaintoken reads a BEEF through the guard and a
+// script through pushdrop, and decides nothing an application's record
+// enters; testchain serves the wire formats the clients read without
+// importing a client, and its tests drive it through those clients.
+var layers = map[string]struct {
+	module []string
+	tests  []string
+	sdk    bool
+}{
+	"record":     {module: []string{"cbor"}},
+	"keyed":      {tests: []string{"goldentest"}, sdk: true},
+	"chaintoken": {module: []string{"guard", "pushdrop"}, tests: []string{"goldentest", "mint"}, sdk: true},
+	"chainview":  {module: []string{"nodeapi"}, sdk: true},
+	"testchain":  {tests: []string{"goldentest", "headers", "nodeapi", "publish"}, sdk: true},
+}
+
+// testOnly are the packages that exist for tests and local trials. No
+// production file of this module imports one: a library that linked its
+// stand-in chain or its fixed test key into an application's binary would
+// put test code on the path of real value.
+var testOnly = []string{"goldentest", "testchain"}
+
+func listPackage(t *testing.T, pkg string) listed {
+	t.Helper()
+	gomod := strings.TrimSpace(string(goCmd(t, ".", "env", "GOMOD")))
+	out := goCmd(t, filepath.Dir(gomod), "list", "-json=ImportPath,Imports,TestImports,XTestImports", modulePath+"/"+pkg)
+	var p listed
+	if err := json.Unmarshal(out, &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.ImportPath != modulePath+"/"+pkg {
+		t.Fatalf("go list answered %q for %s", p.ImportPath, pkg)
+	}
+	return p
+}
+
+// TestLayers holds each listed package to its own imports from this module
+// and, where it needs none of it, to no go-sdk.
+func TestLayers(t *testing.T) {
+	for pkg, rule := range layers {
+		p := listPackage(t, pkg)
+		production := map[string]bool{pkg: true}
+		for _, m := range rule.module {
+			production[m] = true
+		}
+		inTests := map[string]bool{}
+		for m := range production {
+			inTests[m] = true
+		}
+		for _, m := range rule.tests {
+			inTests[m] = true
+		}
+		check := func(how string, imports []string, allowedIn map[string]bool) {
+			for _, imp := range imports {
+				switch {
+				case within(imp, sdkPath):
+					if !rule.sdk {
+						t.Errorf("%s %s %s: it needs nothing of go-sdk", pkg, how, imp)
+					}
+				case within(imp, modulePath):
+					name, _, _ := strings.Cut(strings.TrimPrefix(imp, modulePath+"/"), "/")
+					if !allowedIn[name] {
+						t.Errorf("%s %s %s, which is not on its layer", pkg, how, imp)
+					}
+				}
+			}
+		}
+		check("imports", p.Imports, production)
+		check("test imports", p.TestImports, inTests)
+		check("external test imports", p.XTestImports, inTests)
+	}
+}
+
+// TestHelpersStayInTests fails on a production import of a test helper
+// anywhere in the module.
+func TestHelpersStayInTests(t *testing.T) {
+	gomod := strings.TrimSpace(string(goCmd(t, ".", "env", "GOMOD")))
+	out := goCmd(t, filepath.Dir(gomod), "list", "-json=ImportPath,Imports", modulePath+"/...")
+	seen := 0
+	dec := json.NewDecoder(bytes.NewReader(out))
+	for {
+		var p listed
+		err := dec.Decode(&p)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("decoding go list output: %v", err)
+		}
+		seen++
+		for _, imp := range p.Imports {
+			for _, h := range testOnly {
+				if imp == modulePath+"/"+h {
+					t.Errorf("%s imports %s outside a test", p.ImportPath, imp)
+				}
+			}
+		}
+	}
+	if seen < 20 {
+		t.Fatalf("go list reported %d packages; nothing was checked", seen)
+	}
+}
