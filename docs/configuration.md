@@ -389,38 +389,105 @@ asks the Payer's `Asset` and answers one of four outcomes:
 
 | Outcome | What the node showed | What `Recover` did | The application's record |
 |---|---|---|---|
-| `TreeAdopted` | it knows the tree, or shows the coin spent by it | took the proof as `Settle` would, took the tree's unspent change into the pool, adopted and published the tree | dropped by `Adopt` |
-| `TreeHeld` | the same, while the current tree is locked to `Identity` and has outputs left | took the proof and the unspent change, and holds the tree as the tree minted ahead (`Prepared` answers it) until a spend switches to it | kept until `Adopt` names its txid, so a later start recovers it again |
-| `CoinReturned` | it does not know the tree, and the coin is unspent | put the coin back in the pool | drop it |
-| `CoinSpent` | it does not know the tree, and the coin is spent by another transaction, `Recovery.By` | nothing | drop it |
+| `TreeAdopted` | it knows the tree, or shows the coin spent by it | took the fee coin out of the pool if it was there, took the proof as `Settle` would, took the tree's unspent change into the pool, adopted and published the tree | dropped by `Adopt` |
+| `TreeHeld` | the same, while the current tree is locked to `Identity` and has outputs left | took the fee coin out of the pool if it was there, took the proof and the unspent change, and holds the tree behind any tree already held (`Held` answers them in order, `Prepared` the first) until a spend switches to it | kept until `Adopt` names its txid, so a later start recovers it again |
+| `CoinReturned` | it does not know the tree, and the coin is unspent | put the coin back in the pool | keep it, and recover it again on the next start; see below |
+| `CoinSpent` | it does not know the tree, and the coin is spent by another transaction, `Recovery.By` | took the coin out of the pool if it was there | drop it |
 
-An error decides nothing: the node could not answer, or the tree did not
-mine within `Timeout`. The record stays and the next start asks again.
-`Recover` may be repeated for the same record: a coin the pool already
-holds is not added twice, change the node shows spent is not taken, and a
-tree that is already the current one is answered `TreeAdopted` with nothing
-done.
+An error with no outcome decides nothing about the tree: the node could not
+answer, or the tree did not mine within `Timeout`. The record stays and the
+next start asks again. The fee coin of a tree the node knows is out of the
+pool even then, since the node holds it spent. `Recover` may be repeated
+for the same record: a coin the pool already holds is not added twice,
+change the node shows spent is not taken, and a tree that is already the
+current one, or already held, is answered `TreeAdopted` or `TreeHeld` with
+nothing done.
+
+Any number of trees are held. Each tree `Recover` finds on the chain while
+the current tree has outputs left goes behind the ones already held, in the
+order `Recover` was asked. When the current tree cannot cover a spend,
+`Spend` switches to the first held tree that is large enough for it, which
+is adopted and published at that switch; one too small keeps its place. So
+a second record found on the chain strands nothing: the current tree is
+spent first, then each held tree in turn. `Held` answers the held records
+in order, and no tree is minted ahead while one is held.
 
 A record also outlives a mint that failed after `Prepare`, where `Spend`
 already put the coin back; `Recover` then answers `CoinReturned`, or
 `CoinSpent` once the coin has paid for something else. Do not drop a record
 on `Spend`'s error, which may come after the tree reached the leg.
 
-Two limits:
+#### A publish that fails after `Adopt`
 
-- The node's view is a moment's view. A tree handed to the leg an instant
-  before the run stopped may not have reached the node when `Recover` asks,
-  and is answered `CoinReturned`; if it lands afterwards, the returned coin
-  is spent, the transaction that next takes it is refused
-  (`producer.ErrRefused`), and the tree is lost as it would be without
-  `Prepare`. An application that restarts at once waits a moment before it
-  recovers.
+`Adopt` is called before the tree is published, so that a crash after the
+publish never leaves a tree on the plane that the state does not know. The
+publish can therefore fail with the tree already adopted. `Spend` and
+`Recover` then return a `*producer.PublishError`, which `errors.Is` matches
+with `producer.ErrPublish`, which carries the adopted record in `Tree`, and
+which unwraps to the cause. `Recover` returns it together with the
+`TreeAdopted` outcome and `Recovery.Tree`; `Spend` returns it with no tree.
+Either way the tree is the current tree and its `Prepare` record is
+dropped, so nothing is left to mint, settle or recover. Only the publish is
+repeated:
+
+```go
+got, err := trees.Recover(ctx, rec.Tree, rec.Coin)
+if errors.Is(err, producer.ErrPublish) {
+	err = trees.Publish(ctx, got.Tree)
+}
+```
+
+`Publish(ctx, tree)` publishes a tree the state already holds, rebuilt from
+its record, on `Facade` and `Topic`. It needs only the record, so an
+application that cannot repeat the publish in the same run notes the tree
+in its state and calls `Publish` on a later start. A host that already
+holds the tree answers a duplicate, which is not an error. Calling `Spend`
+or `Recover` again does not publish the tree: it is the current one by
+then, and both answer it as it is. Any other error from `Spend` or
+`Recover` leaves no tree adopted.
+
+#### Keep a `CoinReturned` record
+
+The node's view is a moment's view. A tree handed to the leg an instant
+before the run stopped may not have reached the node when `Recover` asks,
+and is answered `CoinReturned`, with the coin back in the pool. The tree can
+still land afterwards, and then the pool holds a coin the tree has spent.
+
+So keep a `CoinReturned` record until a later `Recover` answers `CoinSpent`
+or `TreeAdopted` for it (a `TreeHeld` record is kept until `Adopt`, as
+always), or until the application has itself spent the coin in a
+transaction that mined. On the next start `Recover` asks again: if the tree
+landed, it takes the spent coin out of the pool, takes the tree's change,
+and adopts or holds the tree, and nothing is lost. A record whose coin
+simply stays unspent is answered `CoinReturned` on each start and costs one
+question to the node.
+
+What remains uncovered:
+
+- Between the start that answered `CoinReturned` and the next, the coin is
+  in the pool. If the tree lands in that time and the coin is taken to pay
+  for a transaction, that transaction is refused (`producer.ErrRefused`)
+  and is built again. No coin or tree is lost; if the refused transaction
+  was a funding tree, its own record is answered `CoinSpent`.
+- `CoinReturned` puts the coin back on every start the record is kept. If
+  the application has since spent the coin in a transaction of its own, and
+  that transaction reached the leg an instant before a stop, the node can
+  show the coin unspent once more, and the coin goes back to the pool
+  though it is spent. A transaction that then takes it is refused, or,
+  reaching the node first, displaces the earlier one. The next `Recover`
+  that answers `CoinSpent` takes the coin out again.
+- An application that drops the record at `CoinReturned` is, for a tree
+  that lands late, where it was without `Prepare`: the tree, its change and
+  its outputs are lost to it, and the spent coin stays in its pool.
 - A tree paid through `Fund` is not covered. A wallet that funds and
   broadcasts a tree itself does both inside one call, so `Prepare` has no
   moment before the broadcast to be called in, there is no pool coin to
   return, and `Recover` has no record to work from. A run that stops after
   `Fund` has broadcast and before `Adopt` leaves a tree only that wallet
   knows.
+
+An application that restarts at once waits a moment before it recovers,
+which makes the first two rarer.
 
 ### `producer.Collector` and `producer.Pending`
 

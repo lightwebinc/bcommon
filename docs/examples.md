@@ -574,12 +574,19 @@ trees := &producer.Trees{
 // On every start, before the first Spend:
 for txid, rec := range state.prepared {
 	got, err := trees.Recover(ctx, rec.Tree, rec.Coin)
+	if errors.Is(err, producer.ErrPublish) {
+		// The tree is adopted and its record dropped: only the publish
+		// is repeated, now or, with got.Tree noted, on a later start.
+		err = trees.Publish(ctx, got.Tree)
+	}
 	if err != nil {
 		continue // undecided: the record stays for the next start
 	}
-	if got.Outcome == producer.CoinReturned || got.Outcome == producer.CoinSpent {
+	if got.Outcome == producer.CoinSpent {
 		delete(state.prepared, txid) // no tree: drop the record
 	}
+	// A CoinReturned record is kept for the next start: the tree may
+	// still land.
 }
 ```
 
@@ -596,8 +603,9 @@ funding tree <tree> is recovered
 funding tree published: admitted 1 output(s)
 ```
 
-The four outcomes, and why a tree paid through `Fund` cannot be covered,
-are in [configuration.md](configuration.md#prepare-and-recover).
+The four outcomes, why a `CoinReturned` record is kept, what a publish
+that fails after `Adopt` returns, and why a tree paid through `Fund` cannot
+be covered, are in [configuration.md](configuration.md#prepare-and-recover).
 
 ## Filter text for a terminal
 

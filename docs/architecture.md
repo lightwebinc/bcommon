@@ -255,11 +255,15 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   settlement leg (for a tree minted ahead, before its background half), the
   application saves both, and its error aborts the mint with the coin back
   in the pool. On the next start `Recover` asks the node what became of each
-  record: a tree the node knows is adopted and published, or held as the
-  tree minted ahead while the current tree still has outputs, with whatever
-  of its change is unspent taken into the pool; a tree the node does not
-  know, whose coin is unspent, never reached the chain, and the coin goes
-  back to the pool. A tree paid through `Fund` cannot be covered: the wallet
+  record: a tree the node knows is adopted and published, or held, behind
+  any tree already held, while the current tree still has outputs, with its
+  spent fee coin taken out of the pool and whatever of its change is unspent
+  taken in; a tree the node does not know, whose coin is unspent, has not
+  reached the chain, and the coin goes back to the pool, with the record
+  kept for the next start in case the tree lands late. A publish that fails
+  once `Adopt` has the tree is a `*PublishError` (`ErrPublish`), from
+  `Spend` and `Recover` alike, and `Publish` repeats the publish alone. A
+  tree paid through `Fund` cannot be covered: the wallet
   behind it chooses the coins, signs and broadcasts in one call, so there is
   no moment before the broadcast to record it in and no pool coin to
   return. `Proofs` asks arcade, then the node,
