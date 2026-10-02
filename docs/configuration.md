@@ -190,6 +190,22 @@ answers true for; `Refuse` refuses a transaction with the reason it
 returns; `Busy` answers 503 to the RPC and the broadcaster. `Maturity` (100)
 and `CoinbaseValue` are fixed. It is for tests and local trials only.
 
+`Send` takes a transaction the chain already holds again, with nothing done
+and no error. A node's `sendrawtransaction` may instead refuse one it
+already has, and `RefuseKnown` (off by default; `SetRefuseKnown` while the
+chain serves) models that: `Send`, and so the RPC and the ingress, refuse
+such a transaction with `ErrAlreadyKnown`, whose text is
+`txn-already-known`. The broadcaster under `/arcade` answers the status of
+a transaction it holds either way, as an ARC-compatible broadcaster does.
+
+`SpendElsewhere(txid, vout, by)` marks an output spent by a transaction the
+chain took from someone else. A transaction the chain already holds that
+spends the same output is displaced: the chain keeps it and goes on serving
+it under `/api/v1/tx/`, as a node may, while the UTXO view names `by` as the
+spender. That is the case `producer.Trees.Recover` answers `CoinSpent` for.
+The chain does not drop a displaced transaction from the ones `Mine` mines,
+so a test of that case does not call `Mine` afterwards.
+
 ## Wallet: `bwallet`
 
 ### `bwallet.Profile`
@@ -385,18 +401,27 @@ the mint: the coin goes back to the pool and nothing reaches the leg. Its
 
 On the next start, before the first `Spend`, the application calls
 `Recover(ctx, tree, coin)` for each record still in its state. `Recover`
-asks the Payer's `Asset` and answers one of four outcomes:
+asks the Payer's `Asset` whether the node serves the tree, then, when it
+does, for the tree's proof, and then, for a tree with no proof, which
+transaction spent the coin. A proof settles it: a mined tree is on the
+chain whatever else the node shows. Without a proof the coin's spender
+decides, whether or not the node serves the tree. `Recover` answers one of
+four outcomes:
 
 | Outcome | What the node showed | What `Recover` did | The application's record |
 |---|---|---|---|
-| `TreeAdopted` | it knows the tree, or shows the coin spent by it | took the fee coin out of the pool if it was there, took the proof as `Settle` would, took the tree's unspent change into the pool, adopted and published the tree | dropped by `Adopt` |
+| `TreeAdopted` | the tree has a proof, or the coin is spent by the tree, or the node serves the tree and shows the coin unspent | took the fee coin out of the pool if it was there, took the proof as `Settle` would, took the tree's unspent change into the pool, adopted and published the tree | dropped by `Adopt` |
 | `TreeHeld` | the same, while the current tree is locked to `Identity` and has outputs left | took the fee coin out of the pool if it was there, took the proof and the unspent change, and holds the tree behind any tree already held (`Held` answers them in order, `Prepared` the first) until a spend switches to it | kept until `Adopt` names its txid, so a later start recovers it again |
 | `CoinReturned` | it does not know the tree, and the coin is unspent | put the coin back in the pool | keep it, and recover it again on the next start; see below |
-| `CoinSpent` | it does not know the tree, and the coin is spent by another transaction, `Recovery.By` | took the coin out of the pool if it was there | drop it |
+| `CoinSpent` | the tree has no proof, and the coin is spent by another transaction, `Recovery.By`, whether or not the node serves the tree | took the coin out of the pool if it was there; adopted, held and published nothing | drop it |
 
 An error with no outcome decides nothing about the tree: the node could not
 answer, or the tree did not mine within `Timeout`. The record stays and the
-next start asks again. The fee coin of a tree the node knows is out of the
+next start asks again. A node that serves an unproven tree and cannot say
+who spent its coin is such an error with `Async`, so that no tree is adopted
+without a proof or the node's word on its coin; without `Async` the wait
+for the proof decides, and adopts only a tree that mines. The fee coin of a
+tree the node knows is out of the
 pool even then, since the node holds it spent. `Recover` may be repeated
 for the same record: a coin the pool already holds is not added twice,
 change the node shows spent is not taken, and a tree that is already the
@@ -416,6 +441,27 @@ A record also outlives a mint that failed after `Prepare`, where `Spend`
 already put the coin back; `Recover` then answers `CoinReturned`, or
 `CoinSpent` once the coin has paid for something else. Do not drop a record
 on `Spend`'s error, which may come after the tree reached the leg.
+
+#### A tree that lost a double spend
+
+A node may go on serving a transaction that can no longer mine: one it
+took, unmined, whose input another transaction then spent. A tree in that
+state has no proof and never gets one, and the node's UTXO view names the
+other transaction as the spender of its fee coin. `Recover` answers
+`CoinSpent` for it, with that transaction in `Recovery.By`: the coin is
+taken out of the pool, in memory and on disk, and nothing is adopted, held
+or published. The answer is the same with `Async` and without, when the
+coin is spent while `Recover` waits for the tree's proof, and on every
+later `Recover`. The application drops the record, as for any `CoinSpent`.
+
+Before v0.6.3 the node serving the tree was taken as the tree being on the
+chain. Without `Async`, `Recover` then returned an error wrapping
+`producer.ErrRefused` and `nodeapi.ErrDoubleSpent` with no outcome, on
+every start, so an application that keeps its record on an error kept it
+for ever. With `Async` the tree was adopted with no proof and no question
+about its coin. An application that adopted such a tree under v0.6.2 holds
+a current tree that never mines. A `producer.Collector` given the tree as a
+`Pending` with its `RawHex` reports it through `Refused`.
 
 #### A publish that fails after `Adopt`
 
