@@ -10,7 +10,8 @@ bcommon is a Go library of building blocks for BSV overlay applications that
 publish and verify committed records: the codec a record is written in, the
 roots and store references it commits to, the derivation and PushDrop outputs
 that lock it, the carrier and mined transactions that put it on chain, the
-clients a producer and a reader talk to, and the SPV check a reader runs. An
+BEEF a host admits them in, the clients a producer and a reader talk to, and
+the SPV check a reader runs. An
 application supplies its own schema, derivation, tags and wallet profile as
 parameters; nothing here names one.
 
@@ -23,10 +24,13 @@ change between v0 minor versions. One tag versions both languages. See
 | Package | What it provides |
 |---|---|
 | `cbor` | Deterministic CBOR, an RFC 8949 subset; the decoder refuses anything non-canonical |
+| `record` | The bounded, ordered reading of an application record: a canonical CBOR map with integer keys, a magic and preserved unknown keys, refused for the first rule it breaks |
 | `commit` | RFC 6962 Merkle roots, inclusion paths and their verification |
 | `store` | Store reference entries, manifests, and the rule that computes a store's root from its entry and its members' commitments |
-| `pushdrop` | BRC-42/43 derivation under counterparty Anyone, and tagged PushDrop locks, unlockers and decoding |
+| `pushdrop` | BRC-42/43 derivation under counterparty Anyone, tagged PushDrop locks, unlockers and decoding, and a lock read leniently and rebuilt canonically from raw script bytes |
 | `carrier` | An unmineable carrier transaction that commits a payload, and the funding lock, decode and sweep it spends from |
+| `chaintoken` | The BEEF a host admits a mined chain token, an unmined carrier and a mined sweep in, read exactly as declared on the wire and held to exactly what the object needs, and a token output held to its key |
+| `keyed` | The content key of BRC-369 keyed content, its symmetric key and commitment, the check on an unwrapped key, and BRC-2's symmetric form |
 | `mint` | Builders for a state transition, a funding tree and a payment, with a fee loop that signs to measure the size and rebuilds at the rate until the fee covers it |
 | `funding` | Funding-tree state kept between runs, and the BEEF kept for transactions spent before they mine |
 | `guard` | A structural walk of a BRC-74 BUMP, a BEEF or a raw transaction before the SDK allocates for it, and a public key taken only in its canonical encoding |
@@ -35,6 +39,8 @@ change between v0 minor versions. One tag versions both languages. See
 | `wirewallet` | A BRC-100 wallet over the wallet wire, loopback only, and a handler that serves one |
 | `publish` | The settlement leg (EF to an ingress, hex to a node RPC, arcade) and the BEEF object leg to an overlay host, which never share a socket, plus a transition journal |
 | `producer` | A producer's orchestration: fee inputs and change from a coin pool, settlement, the funding-tree lifecycle, the one kept copy of each unproven transaction, and proof collection that republishes what has mined |
+| `chainview` | Whether a transaction can still mine: a settlement leg's error read as a definitive refusal or as transient, and the input another transaction spent |
+| `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
 | `headers` | A chain tracker over WhatsOnChain, chaintracks or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
@@ -43,6 +49,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `verify` | The refusal vocabulary, SPV verdicts on one transaction, and the carrier check a reader runs |
 | `termsafe` | Text someone else wrote, filtered before it reaches a terminal, and the same rules checked before a producer publishes text |
 | `goldentest` | Test helpers: a fixed key, hex and transaction parsing that fail the test, and a stub chain tracker |
+| `testchain` | A local stand-in chain for tests: it mines what it is sent and serves a node's RPC and asset API, a broadcaster, an ingress and a header source |
 
 The TypeScript package under [ts/](ts/), `@lightwebinc/bcommon`, holds the
 twins an overlay topic manager or lookup service needs, tested against the
@@ -50,7 +57,7 @@ same vectors as the Go packages. It has two entry points:
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | Deterministic CBOR, store refs entries, the reader's BRC-42 derivation, PushDrop field signatures, the funding decode, the carrier check, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
+| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
 
 ## Install
@@ -111,8 +118,9 @@ const key = readerLockingKey([1, 'example app'], 'record', identityHex)
 [docs/examples.md](docs/examples.md) walks through deriving and decoding a
 PushDrop lock, building a funding tree and a carrier on an in-process test
 chain, verifying a carrier from a BEEF, guarding a proof, RFC 6962 proofs,
-stores and CBOR, paying fees and minting the next funding tree as a
-producer, and filtering text for a terminal. Every Go example there is an
+stores and CBOR, reading an application record, admitting a mined token
+from its BEEF, committing to a key and wrapping it, paying fees and minting
+the next funding tree as a producer, and filtering text for a terminal. Every Go example there is an
 `Example` test that `go test` compiles and checks.
 
 ## Documentation

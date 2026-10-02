@@ -295,6 +295,136 @@ trailing bytes: cbor: trailing bytes
 truncated string: cbor: truncated
 ```
 
+## Read an application record
+
+[`record/example_test.go`](../record/example_test.go), `ExampleDecode` and
+`ExampleReason`
+
+An application's record is a canonical CBOR map with unsigned-integer keys,
+key 0 its magic. `record.Decode` holds the bytes to the steps every record
+shares, and the application then reads its own keys in its own order. A key
+above the last one this version defines is preserved, so a reader of this
+version writes back what a later version added.
+
+```go
+f, err := record.Decode(b, sampleMax, sampleLast, sampleMagic)
+name, err := f.Text(1)
+count, err := f.Uint(2, 1, 100)
+again, err := record.Encode(cbor.Map{
+	{Key: uint64(0), Val: sampleMagic},
+	{Key: uint64(1), Val: name},
+	{Key: uint64(2), Val: count},
+}, f.Extra, sampleMax) // the same bytes
+```
+
+A record is refused for the first rule it breaks, and `record.Reason` gives
+each refusal the fixed label a host counts it by:
+
+```text
+over the bound, whatever it is: too-large
+not CBOR: cbor
+an array: cbor
+a text key: key-type
+another magic: magic
+key 1 missing: missing
+key 1 a number: type
+key 2 out of range: range
+```
+
+## Admit a mined token from its BEEF
+
+[`chaintoken/example_test.go`](../chaintoken/example_test.go),
+`ExampleWire_Token`
+
+A chain of two tokens on a test chain, and what a host does with the
+second. A replayer, or the publisher, assembles the one BEEF a token is
+admitted in from the token and its parent. The host reads the BEEF as
+declared, holds it to the token's shape, finds the parent in it, and reads
+the predecessor from the parent, never from what it holds.
+
+```go
+beef, err := chaintoken.TokenBEEF(second, first)
+
+wire, err := chaintoken.ReadWire(beef, chaintoken.DefaultMaxBEEF)
+tx := wire.SubjectTx()
+parent, err := wire.Token(tx) // exactly the token and its parent, each proven minimally
+mined := chaintoken.Mined(ctx, tx, tracker) && chaintoken.Mined(ctx, parent.Tx, tracker)
+
+out, ok := chaintoken.ReadOutput(tx.Outputs[0], 0, 2) // two fields, a signature, 1 satoshi
+locked := out.LockedTo(*tx.Outputs[0].LockingScript, lockingKey)
+signed := out.SignedBy(lockingKey)
+
+for _, s := range chaintoken.Spends(tx, parent) {
+	pred, isToken := chaintoken.ReadOutput(s.Output, s.Vout, 2)
+	// ...
+}
+```
+
+```text
+a token and its parent: true parent is the first token: true
+both mined: true
+two fields and a signature of 1 satoshi: true
+record "state 1", canonical lock true, signed true
+input 0 spends output 0: the predecessor, record "state 0"
+input 1 spends output 1: not a token
+alone: true
+stored: true <nil>
+```
+
+The last two lines are the second token alone, as a host stores it: it is
+not admissible without its parent (`ErrBEEF`), and a reader reads it with
+`chaintoken.Stored`. The record, the tag, the derivation and the rules a
+token's record must keep against its predecessor are the application's.
+
+## Commit to a key and wrap it
+
+[`keyed/example_test.go`](../keyed/example_test.go), `ExampleCheckOpened`
+
+A publisher draws a key (`keyed.SampleKey`), publishes its commitment, and
+wraps the key to each holder in BRC-2's symmetric form. A holder that opens
+a wrap checks the key against the commitment before anything uses it, so a
+wrong key names whoever wrapped it and not whoever encrypted under it.
+
+```go
+commitment := keyed.Commitment(k)
+wrap, err := keyed.SymmetricSeal(shared[:], iv, k[:]) // 80 bytes
+opened, err := keyed.SymmetricOpen(shared[:], wrap)
+got, err := keyed.CheckOpened(opened, commitment) // 32 bytes, a scalar, the committed one
+```
+
+A wallet's `Encrypt` writes the same form with an IV it draws itself, and
+its `Decrypt` opens what `SymmetricSeal` wrote under the key it derives.
+
+## Run a chain inside a test
+
+[`testchain/example_test.go`](../testchain/example_test.go), `ExampleChain`
+
+`testchain.Chain` mines what it is sent, each transaction in a block of its
+own, and refuses what a node refuses. It is a chain tracker, and an
+`http.Handler` that serves a node's RPC and asset API, a broadcaster and a
+header source, so the clients are tested against something they share no
+code with.
+
+```go
+c := testchain.New(700)
+c.Generate(testchain.Maturity+1, addr.AddressString)
+err := c.Send(tx)                          // mined in a block of its own
+mp, height, mined := c.Proof(tx.TxID().String())
+ok, err := mp.Verify(ctx, tx.TxID(), c)    // the chain as a tracker
+srv := httptest.NewServer(c)               // and as a node for the clients
+```
+
+```text
+tip: 801
+young coinbase: input 0 spends immature coinbase
+mature coinbase: <nil>
+mined: true at 802 proof verifies: true <nil>
+the same output spent by another transaction: true
+```
+
+It is for tests and local trials only; there is no proof of work and no
+real block.
+
 ## Pay a fee from the pool, as a producer
 
 [`producer/example_test.go`](../producer/example_test.go), `ExamplePayer_Take`
@@ -467,6 +597,49 @@ to 0, `refused: mineable`; given another identity, `refused: bad-lock`. The
 package's own tests (`make ts-test`) check the twins against the shared
 vectors; see [vectors.md](vectors.md).
 
+## Read a record and a token's BEEF in TypeScript
+
+A topic manager reads a record with the reader made for its own refusal
+type, and a mined token from the BEEF it was submitted in:
+
+```ts
+import { BeefRefusal, readTokenOutput, readWire, recordReader, subjectTx, tokenShape, tokenSpends } from '@lightwebinc/bcommon'
+
+class Refusal extends Error {
+  constructor(readonly reason: string, detail?: string) {
+    super(detail === undefined ? reason : `${reason}: ${detail}`)
+  }
+}
+const rec = recordReader((reason, detail) => new Refusal(reason, detail))
+const magic = Uint8Array.of(0x76, 0x78, 0x72, 0x01) // "vxr", version 1
+
+export function readName(record: Uint8Array): string {
+  const f = rec.decode(record, 256, 2, magic)
+  return rec.text(f, 1)
+}
+
+export function admitToken(beef: Uint8Array): string {
+  try {
+    const w = readWire(beef) // the structural walk, then the read
+    const tx = subjectTx(w)
+    const parent = tokenShape(w, tx)
+    const lock = Uint8Array.from(tx.outputs[0]!.lockingScript.toBinary())
+    const out = readTokenOutput(lock, tx.outputs[0]!.satoshis, 0, 2)
+    if (out === undefined) return 'refused: shape'
+    return `${readName(out.fields[1]!)} spends ${tokenSpends(tx, parent).length} output(s) of ${parent.txid}`
+  } catch (e) {
+    if (e instanceof BeefRefusal) return `refused: beef: ${e.message}`
+    if (e instanceof Refusal) return `refused: ${e.reason}`
+    throw e
+  }
+}
+```
+
+The lock and the field signature are then held to the key the record names
+(`tokenLockedTo`, `tokenSignedBy`), both proofs to the host's headers
+(`mined`), and the record to the application's own rules against its
+predecessor.
+
 ## Other offline examples
 
 | Example | Shows |
@@ -478,6 +651,8 @@ vectors; see [vectors.md](vectors.md).
 | [`publish`](../publish/example_test.go) `ExampleFacade_Submit` | the object leg refusing a body that is not a BEEF, and a topic list, before it sends anything |
 | [`producer`](../producer/example_test.go) `ExampleCollector_Collect` | a pending item's shape, reported pending while nothing has mined |
 | [`termsafe`](../termsafe/example_test.go) `ExampleUTF8Locale` | the locale read through the application's lookup, and a key abbreviated for a message |
+| [`chainview`](../chainview/example_test.go) `ExampleRefusedAnswer` | a settlement leg's error read as the network's definitive refusal or as transient |
+| [`purse`](../purse/example_test.go) `ExampleRemittance` | a payment's remittance from what a host's ledger recorded, and the forms it refuses |
 
 ## Not covered offline
 
@@ -489,7 +664,8 @@ settlement, proof collection and published trees (`producer.Payer.Settle`,
 `SettleAndWait`, `Await`, `producer.Proofs`, `producer.Collector` with a
 proof source), overlay lookups
 (`lookup.Query`), domain discovery (`resolve.FetchManifest`,
-`resolve.ResolveHandle`), the header service (`headers.Client`) and a wallet
-over the wire (`wirewallet.Dial`). Their parameters are in
+`resolve.ResolveHandle`), the header service (`headers.Client`), a wallet
+over the wire (`wirewallet.Dial`) and the payment actions (`purse.Purse`,
+which pays from a funded pool and settles through a leg). Their parameters are in
 [configuration.md](configuration.md); the packages' own tests exercise them
 against local stand-ins.

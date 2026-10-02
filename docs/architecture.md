@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: twenty-one Go packages under one module,
+bcommon is a library, not a service: twenty-seven Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -55,23 +55,33 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `wirewallet` | none | yes |
 | 0 | `goldentest` | none | yes |
 | 0 | `termsafe` | none | no |
+| 0 | `keyed` | none | yes |
+| 0 | `testchain` | none | yes |
 | 1 | `store` | `cbor`, `commit` | no |
+| 1 | `record` | `cbor` | no |
 | 1 | `knownkeys` | `guard` | no |
 | 1 | `pushdrop` | `guard` | yes |
 | 1 | `funding` | `guard` | yes |
 | 1 | `nodeapi` | `guard` | yes |
 | 1 | `lookup` | `hostset` | no |
 | 2 | `carrier` | `guard`, `pushdrop` | yes |
+| 2 | `chaintoken` | `guard`, `pushdrop` | yes |
+| 2 | `chainview` | `nodeapi` | yes |
 | 2 | `bwallet` | `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
+| 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
 
 Every edge inside the module:
 
 ```text
+  purse    ──▶ producer, bwallet, chainview, funding, guard, mint, nodeapi,
+               publish, termsafe
   producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
   verify   ──▶ carrier ──▶ pushdrop ──▶ guard
+  chaintoken ▶ pushdrop, guard
+  chainview ─▶ nodeapi
   verify   ──▶ guard
   carrier  ──▶ guard
   bwallet  ──▶ pushdrop
@@ -81,13 +91,19 @@ Every edge inside the module:
   knownkeys ─▶ guard
   publish  ──▶ nodeapi
   store    ──▶ cbor, commit
+  record   ──▶ cbor
   lookup   ──▶ hostset
 ```
 
 The graph is shallow on purpose. `mint` takes every lock script and every
 unlocker as a parameter, so it needs neither `pushdrop` nor `carrier`, and
 `producer` takes the funding lock the same way, so it needs neither either.
-`termsafe` imports only the standard library.
+`termsafe` imports only the standard library. `record` reads bytes and
+needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
+chain serves the wire formats the clients read without importing a client,
+so a test of a client is a test against something it shares no code with.
+`TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview` and
+`testchain` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -122,6 +138,18 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   manifest order. An entry carrying a member this version does not define is
   kept verbatim and makes that one store unreadable, never the whole record.
 
+- **`record`** owns the bounded, ordered reading of one application
+  record: a canonical CBOR map with unsigned-integer keys, whose key 0 is
+  the record's magic and whose keys above the last one a version defines are
+  preserved and ignored. A record is refused for the first rule it breaks,
+  in one order: the bound, before anything is decoded; one canonical CBOR
+  map; at most `MaxKeys` (64) entries; unsigned-integer keys; the magic;
+  then each defined key as the application reads it (missing, type, range
+  or list). `Reason` gives each refusal the fixed label a host counts it
+  by. `Claims` is the first look a classifier takes: a map head, key 0 and
+  the magic, and nothing else. The application supplies the bound, the last
+  defined key and the magic, and reads its own fields.
+
 ### Keys and outputs
 
 - **`pushdrop`** owns the BRC-42/43 derivation every output is locked under
@@ -131,7 +159,11 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   `ExpectedLockingKey` and checks the embedded field signature.
   `CheckCanonical` takes a lock only as the one script the template writes
   for its key and fields, every push minimal and the key in its canonical
-  encoding, and `DecodeTagged` applies it.
+  encoding, and `DecodeTagged` applies it. A host that must decide on raw
+  script bytes has the same rule in three steps: `FirstPush` reads the one
+  push a classifier needs, `Fields` reads the pushes leniently, and
+  `Script` rebuilds the one canonical script from them, to be compared byte
+  for byte with what was read.
 - **`carrier`** owns the carrier transaction: one input spending a funding
   output, one signed PushDrop record output carrying the payload, nLockTime
   4102444800 (2100-01-01) with a non-final input so it cannot be mined, and
@@ -141,6 +173,34 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   then the lock derivation, then the signature. `Decode` and
   `DecodeFunding` take a lock only in its canonical encoding, and `Validate`
   parses the identity key with `guard.ParsePubKey`.
+
+- **`chaintoken`** owns the BEEF a host admits a mined chain token in, and
+  the token's own output. A chain token is a mined PushDrop output that the
+  next token spends; a host reads the predecessor from the parent the
+  submission's BEEF carries, never from what the topic holds, so a verdict
+  depends on the submission's bytes and the host's headers alone. `ReadWire`
+  reads a BEEF exactly as declared on the wire, before any parser merges two
+  proofs of one block or collapses a transaction listed twice, so a rule
+  counts what was sent. `MinimalPath` and `MergedPath` hold a Merkle path to
+  exactly the leaves a proof needs. `Wire.Token`, `Wire.Carrier` and
+  `Wire.Alone` are the three shapes: a token with its parent, a carrier
+  with its funding tree, and a mined transaction alone. `TokenBEEF`
+  assembles the first from a stored token and its parent, which is how a
+  replayer brings a chain to another host. `ReadOutput`, `Output.LockedTo`
+  and `Output.SignedBy` read a token output and hold it to the canonical
+  script and a strict field signature (`CheckDER`, `VerifyField`), and
+  `Spends` lists what a token spends of its parent. The application
+  supplies its tags, its record codec, its derivation and its transition
+  rules; the package decides no admission.
+- **`keyed`** owns the part of BRC-369 keyed content that every
+  application keyed under a random scalar shares: the content key
+  (`SampleKey`, `CheckScalar`), its symmetric key and its commitment
+  (BRC-369 sections 2.1 and 2.2), the check a holder runs on a key it has
+  just unwrapped (`CheckOpened`: 32 bytes, a scalar, the committed one, in
+  that order), and BRC-2's symmetric form (`SymmetricSeal`,
+  `SymmetricOpen`), in which a key is wrapped and a certificate field is
+  encrypted. What a key encrypts, who it is released to and how a release
+  is framed are the application's.
 
 ### Producer
 
@@ -198,6 +258,25 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   `Kept.Load` and `Pending`'s callbacks, reports progress through a `Note`
   function, and returns the refusals an application may word itself as
   typed errors (`NoCoinError`, `NoKeyError`) or through `Pending`'s hooks.
+- **`chainview`** owns the answer to whether a transaction can still mine,
+  from the network's own words and the node's view of outputs:
+  `RefusedAnswer` reads a settlement leg's error as the network's
+  definitive refusal or as transient, and `SpentElsewhere` names the first
+  input another transaction spent. A leg that accepted a transaction, or
+  that answers nothing, cannot be taken at its word, so a sender's sweep
+  and a payee's payment both ask.
+- **`purse`** owns the two payment actions the embedded wallet does not
+  implement, for a priced question a host answers with 402 (BRC-105). On
+  the client leg `CreateAction` pays exactly one P2PKH output of at most
+  `MaxPay` from the pool, unbroadcast, as Atomic BEEF, which is what the
+  SDK's AuthFetch asks a wallet for; `Settle` keeps the payment the host
+  accepted and `Refund` returns every coin when none was. On the payee leg
+  `InternalizeAction` (or its halves `Check`, `Broadcast`, `Await`, `Take`)
+  takes a BRC-29 payment to this identity: each output must pay the key
+  the identity derives for the remittance and the sender, and the
+  transaction must verify against the headers, before it is broadcast and
+  pooled with its derivation. A payment the network will never mine is a
+  `RefusedError`.
 
 ### Reader
 
@@ -246,6 +325,18 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   test key (32 bytes of 0x42, never for real use), hex and transaction
   parsing that fail the test, and a chain tracker that knows only the roots a
   test hands it. No binary should import it.
+- **`testchain`** holds a local stand-in chain for tests and local trials:
+  it mines what it is sent, each transaction in a block of its own, and
+  serves a node's JSON-RPC and asset API, an ARC-compatible broadcaster, a
+  fabric ingress and a header source, and is itself a chain tracker. It
+  refuses what a node refuses in the ways that matter to a test: a missing
+  or spent input, immature coinbase, a script that fails, a non-final
+  transaction. A test sets `Hold`, `Refuse` and `Busy` to stage what a
+  network does. There is no proof of work and no real block; nothing that
+  moves value should import it.
+
+`TestHelpersStayInTests` fails on a production import of either anywhere in
+the module.
 
 ## Parse and guard before trusting
 
@@ -267,6 +358,10 @@ Where the library applies it:
 | A public key from the wire | `guard.ParsePubKey` takes 33 bytes, prefix 0x02 or 0x03, x below the field prime and on the curve, and nothing else. go-sdk takes a compressed key whose x is at or above the prime and writes it back unreduced, a second encoding of one point | `carrier.Validate`, `bwallet.Counterparty`, `knownkeys`, and every PushDrop lock through `pushdrop.CheckCanonical` |
 | A PushDrop lock | `pushdrop.CheckCanonical`: the lock is exactly the script the template writes for its key and fields; go-sdk's decoder reads wider pushes, trailing opcodes and other key encodings as the same fields | `pushdrop.DecodeTagged`, `carrier.Decode`, `carrier.DecodeFunding` |
 | A CBOR record | the decoder checks every declared length against the bytes present before allocating, and bounds nesting at `MaxDepth` | `cbor.DecodeValue` |
+| An application record | `record.Decode` checks the record's own bound before the decoder runs, then the entry count against `MaxKeys`; `Fields.Array` and `Fields.List32` check a list's length before the caller allocates for its elements | `record` |
+| A BEEF a host is asked to admit | `chaintoken.ReadWire` applies the caller's bound and `guard.CheckBEEF` before it reads anything, so every count it then follows fits the bytes present; the TypeScript `readWire` runs the same walk (`checkBEEF`) before the SDK's readers | `chaintoken`, `wire.ts` |
+| A locking script | `pushdrop.FirstPush` and `pushdrop.Fields` hold every declared push length to the bytes present and return slices of the script, allocating nothing for the data | `pushdrop`, `chaintoken.ReadOutput` |
+| A payment handed to a wallet | `guard.ParseBEEF` under `guard.DefaultBound` before anything is derived or broadcast | `purse.Check` |
 | A record's store references | `MaxRefs` (64 stores), `MaxRefMembers` (8 members per entry), `MaxRefName` (64 bytes), `MaxMembers` (1024 per manifest) bound the work one record can ask of a reader | `store` |
 | An HTTP response | every body is read to a bound before it is parsed, and most clients refuse one over the bound rather than parse a truncated answer | `headers`, `nodeapi`, `hostset`, `resolve`, `publish`, `wirewallet` |
 
@@ -315,6 +410,11 @@ to read what a producer wrote:
 | `carrier.CheckUnlocking`, `carrier.SigHashType` | `unlockingRefusal`, `SigHashType` |
 | `guard.ParsePubKey`, `guard.ParsePubKeyHex` | `strictPublicKey`, `strictPublicKeyHex` (and `readerLockingKey` applies it to the identity) |
 | `pushdrop.CheckCanonical` | `decodeStrictPushDrop` (and `decodeFunding` and `inspectScript` apply it) |
+| `pushdrop.FirstPush`, `pushdrop.Fields`, `pushdrop.Script` | `firstPush`, `pushFields`, `pushDropScript` (and `minimalPushBytes`) |
+| `record.Decode` and its steps, the `Fields` readers, `record.CheckExtra`, `record.Encode`, `record.Claims`, `record.MaxKeys` | `recordReader` (`decode`, `decodeMap`, `split`, `checkMagic`, the readers, `checkExtra`, `encode`), `claimsRecord`, `MaxKeys` |
+| `guard.CheckBEEF` | `checkBEEF` |
+| `chaintoken.ReadWire`, `Wire.Token`, `Wire.Carrier`, `Wire.Alone`, `MinimalPath`, `MergedPath`, `TokenBEEF`, `Stored`, `Mined` | `readWire`, `tokenShape`, `carrierShape`, `aloneShape`, `minimalPath`, `mergedPath`, `tokenBEEF`, `storedToken`, `mined` |
+| `chaintoken.ReadOutput`, `Output.LockedTo`, `Output.Signed`, `Output.SignedBy`, `Spends`, `VerifyField`, `CheckDER` | `readTokenOutput`, `tokenLockedTo`, `tokenSigned`, `tokenSignedBy`, `tokenSpends`, `verifyField`, `strictSignature` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
@@ -339,11 +439,26 @@ The package also carries the overlay engine's module interfaces (`TopicManager`,
 `@lightwebinc/bcommon/testing` entry point, Node test helpers that drive a
 lookup service in the engine's own order.
 
+The Go record reader returns sentinel errors, which an application counts
+by `record.Reason`. The TypeScript `recordReader` takes the error to throw
+instead, a function from a label and a detail to the application's own
+refusal, so that a record refusal is one of the application's refusals and
+not a second kind its callers must tell apart. The steps, their order and
+their labels are the same.
+
+A topic manager that admits a mined token must read the BEEF it was
+submitted in, as declared, because what the BEEF holds is part of the rule.
+`readWire` does that, after the same structural walk the Go guard makes
+(`checkBEEF`): every count and length the bytes declare is held to the
+bytes present before the SDK's readers follow it. The SDK's own readers
+refuse some paths the Go reader reads and a shape then refuses, a path
+listing one offset twice for one; either way the BEEF is refused as a BEEF,
+and the vectors hold both languages to the same verdict on every case.
+
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the RFC 6962
-functions, the network clients and `verify` have no TypeScript twin: a topic
-manager reads outputs, it does not build them. Nor does the BEEF guard: the
-package parses no BEEF itself, and a topic manager is handed transactions
-the overlay engine has already parsed.
+functions, the network clients, `verify`, `keyed`, `purse`, `chainview` and
+`testchain` have no TypeScript twin: a topic manager reads outputs, it does
+not build them, pay for them, or hold a key.
 
 The runtime entry point imports nothing but its peer `@bsv/sdk`, pinned
 exactly at 2.7.1, and nothing from `node:`, so a browser can load it too.
@@ -373,4 +488,6 @@ logging, the environment, the user's configuration directories, the
 standard streams, other processes or the process's exit.
 `TestNoProcessConcerns` reads every library file for them, and
 `TestTermsafeImportsOnlyTheStandardLibrary` keeps the terminal filter free
-of go-sdk.
+of go-sdk. `TestLayers` holds the packages of shared application code to
+their place in the graph, and `TestHelpersStayInTests` keeps the test
+helpers out of every production import.

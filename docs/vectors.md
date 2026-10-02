@@ -21,8 +21,16 @@ and nothing in the library imports it:
   its scripts run, and its ancestry proves against the two stand-in blocks
   the generator builds. The unlocking cases record go-sdk's SPV verdict
   instead of requiring a pass, since most of them are meant to fail it.
-- The BEEF, public-key and PushDrop cases are built from the transaction
-  family's bytes, by hand where a case breaks one thing. Each verdict is
+- The BEEF, public-key, PushDrop and chain-token cases are built from the
+  transaction family's bytes, by hand where a case breaks one thing. The
+  chain-token family's blocks are merkle trees the generator computes
+  itself; every path is cut from one and checked to give its root before it
+  is written, and the merged path of two transactions in one block is
+  checked against what go-sdk's own merge gives.
+- The keyed family uses the standard library alone: SHA-256, `math/big` and
+  AES-256-GCM with a 32-byte nonce. It recomputes the symmetric key and the
+  commitment BRC-369 prints for its content key and fails if either stops
+  matching. Each verdict is
   the case's construction, and the key verdicts come from the generator's
   own range and curve check with `math/big`. Each case also records what
   go-sdk makes of it, so a case the library refuses and the SDK takes is
@@ -50,10 +58,14 @@ needed to rebuild it, as well as the bytes.
 | `refs-v1.json` | A refs array of three entries: one without a head, a one-member store whose root is the leaf hash of its head, and one with two members the format does not define. | `store`; `store.ts` |
 | `rfc6962-v1.json` | Seventeen fixed leaves, the root of the first n for every n from 1 to 17, and the audit path of every leaf in each tree. | `commit` |
 | `transactions-v1.json` | A mined coin, a funding tree of four outputs spending it, two carriers spending the tree, a state token created and then updated, a payment, and two sweeps of the tree: one the tree pays for, and one with a fee input and change. Also the derived keys, the locks, the tree's kept BEEF, and both proofs. | `pushdrop`, `carrier`, `mint`, `funding`; `derive.ts`, `fieldsig.ts`, `funding.ts`, `carrier.ts` |
-| `beef-v1.json` | The first carrier as Atomic BEEF V2, BEEF V1 and BEEF V2, V2 with its parent as a bare txid, the kept funding tree, and a V1 and a V2 built by hand; then 13 bytes declaring 2^63 BUMPs, a BUMP declaring 2^32-1 leaves at one level, 2^32-1 transactions, a transaction declaring 2^32-1 inputs, input and output scripts longer than the bytes, a transaction of no inputs, no transactions, BUMP tree heights 65 and 0, a has-BUMP byte of 2, BUMP indexes past the BUMPs in V1 and V2, V2 data format 3, an unknown version, Atomic around Atomic, one byte short, one trailing byte, and nothing. Each records whether the guard admits it and whether go-sdk parses it. | `guard`; no TypeScript twin |
+| `beef-v1.json` | The first carrier as Atomic BEEF V2, BEEF V1 and BEEF V2, V2 with its parent as a bare txid, the kept funding tree, and a V1 and a V2 built by hand; then 13 bytes declaring 2^63 BUMPs, a BUMP declaring 2^32-1 leaves at one level, 2^32-1 transactions, a transaction declaring 2^32-1 inputs, input and output scripts longer than the bytes, a transaction of no inputs, no transactions, BUMP tree heights 65 and 0, a has-BUMP byte of 2, BUMP indexes past the BUMPs in V1 and V2, V2 data format 3, an unknown version, Atomic around Atomic, one byte short, one trailing byte, and nothing. Each records whether the guard admits it and whether go-sdk parses it. | `guard`; `wire.ts` (the structural walk) |
 | `pubkeys-v1.json` | The test identity key, its other parity, x = 1 under both prefixes, then 02 and 03 \|\| p+1 (aliases of x = 1), 02 \|\| p, 02 \|\| 2^256-1, x = 5 (off the curve), the identity key uncompressed and hybrid, prefixes 04 and 00 on 33 bytes, 32 and 34 bytes, and nothing. Each records the strict verdict and whether go-sdk parses it. | `guard`; `pubkey.ts` |
 | `pushdrop-v1.json` | The first carrier's record lock, the funding lock and the created state token's lock, each canonical and rewritten: the key with `OP_PUSHDATA1`, the first field with `OP_PUSHDATA1`, the last with `OP_PUSHDATA2`, `OP_NOP` after the drops, no drops, every field dropped with `OP_DROP`, the key uncompressed, the key replaced by x = 1 (canonical, so taken) and by 02 \|\| p+1. Each records the verdict and whether go-sdk's decoder reads the canonical fields from it. | `pushdrop`, `carrier`; `pushdrop.ts`, `funding.ts`, `carrier.ts` |
 | `unlocking-v1.json` | The first carrier of `transactions-v1.json` with its one unlocking script rewritten: the canonical script, which alone is accepted, and a high S, `OP_PUSHDATA1` and `OP_PUSHDATA2` for a short push, `OP_0` or a byte pushed before the signature, the signature pushed twice, `OP_NOP` after or before it, R or S padded with a zero, a negative R, a sequence length one too long, a byte after the sequence, a zero S, R equal to the group order, the sighash bytes 0x01 and 0xc1, no sighash byte, an empty script, and a carrier of two inputs. Each case records its txid and whether go-sdk's interpreter still accepts the spend: the ones it accepts are spends anyone could make without the key. | `carrier`; `carrier.ts` |
+
+| `record-v1.json` | One sample record under the test magic `vxr` `0x01`, item by item, with the plan a reader follows over its keys, and the ways a record is refused, each for the first rule it breaks: over its bound, not canonical CBOR, not a map, more than 64 entries, a key that is not an unsigned integer, the wrong magic, a key missing, of the wrong type, out of range, or a list over its bound, out of order or with a wrong element; cases that break two rules, to pin the order; records with preserved keys and at each bound; and what claims a record from its head alone. The accepted records come from the independent encoder; the malformed ones are written by hand. | `record`; `record.ts` |
+| `keyed-v1.json` | The content key BRC-369 prints, with the symmetric key and commitment the document prints for it, recomputed with SHA-256 alone; keys at and past each end of the scalar range; plaintexts a holder checks against a commitment, each refused for the first check it fails; and BRC-2's symmetric form, sealed with the standard library's AES-256-GCM under a 32-byte nonce, with the ways a sealed value fails to open. | `keyed`; no TypeScript twin |
+| `chaintoken-v1.json` | The state token of the transaction family, created and updated, in stand-in blocks of two, four and eight transactions, and the BEEF each shape needs, built by hand: a token and its parent as V1 and V2, in two blocks or one (one path, the union of the two minimal paths, with and without the siblings a reader computes, and with the two each other's sibling); a carrier and its funding tree as go-sdk writes them and by hand; a sweep alone. Then each broken one way: an Atomic BEEF of a token, a token alone, an unrelated transaction riding along or in the parent's place, a parent or a token unproven, a bare txid, a path with a leaf it does not need, one leaf twice, two paths of one block, a third txid flag, a sibling missing, a BUMP nothing names, and bytes that are no BEEF with its subject. Also the BEEF a replayer assembles from two stored tokens, a token output read and held to its key (wrong value, wrong field count, a wider push, a trailing opcode, a high-S signature, a signature over other bytes, another key, another tag), and signature encodings, strict or not. | `chaintoken`, `pushdrop`; `wire.ts`, `script.ts` |
 
 The transaction family is built under a derivation and tags that belong to
 no application: protocol `vector sample` at security level 1, key ids
@@ -103,8 +115,17 @@ case is taken or refused by `strictPublicKey` as by `guard.ParsePubKey`, and
 every PushDrop case by `decodeStrictPushDrop` (with `decodeFunding` and
 `inspectScript` on the funding and record cases) as by
 `pushdrop.CheckCanonical`. The TypeScript SDK takes the key aliases too, and
-writes them back reduced. The BEEF cases have no TypeScript reader: the
-package parses no BEEF. The SDK's own
+writes them back reduced. Every BEEF case is admitted or refused by
+`checkBEEF` as by `guard.CheckBEEF`. Every record case is accepted or
+refused by `recordReader` for the reason the Go `record` gives, read whole
+and one step at a time, and an accepted one re-encodes to its bytes. Every
+chain-token shape is accepted or refused as the Go `chaintoken` decides it,
+with the same subject, parent, spends and proofs; a case the vector refuses
+may be refused at the read in one language and at the shape in the other,
+because the TypeScript SDK refuses some paths (one offset listed twice) that
+go-sdk reads, and either way it is refused as a BEEF. `tokenBEEF` assembles
+each replay byte for byte, and every token output and signature case reads
+as it does in Go. The SDK's own
 PushDrop is also checked to write the vector's locks byte for byte. The
 kept BEEF is read rather than compared, because go-sdk writes Atomic BEEF
 V2 and the TypeScript SDK writes V1. The transaction builders have no

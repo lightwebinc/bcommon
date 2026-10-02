@@ -32,6 +32,8 @@ orphans what was already published: it is a new value, never an edit.
 | Derivation protocol (security level and name) and key id | `pushdrop.Derivation`, `carrier.Params.Derivation` | Hashed into every derived locking key (BRC-43) |
 | Output tags (funding tag, state tag, any other type byte) | `carrier.Params.FundingTag`, the fields passed to `Derivation.Lock` | What a topic manager admits outputs by |
 | Record magic, topic and lookup service names | the application's own code | What hosts and readers key on; see [registry.md](registry.md) |
+| A record's bound, its last defined key and the meaning of each key | the arguments to `record.Decode` and the application's own reads | A reader accepts every record within the bound and preserves keys above the last; lowering a bound or re-using a key refuses or misreads records already published |
+| The content key's domain strings | `keyed.DomainSymmetric`, `keyed.DomainCommitment` (constants, BRC-369 section 2) | Hashed into every symmetric key and commitment |
 | Carrier nLockTime 4102444800 and input sequence 0 | `carrier.LockTime`, `carrier.Sequence` (constants) | A reader refuses a carrier with a lower locktime |
 | RFC 6962 leaf and node prefixes, the store root rule | `commit`, `store.Root` (fixed) | Every reader recomputes roots with them |
 | Canonical CBOR encoding | `cbor` (fixed) | A record's commitment covers its exact bytes |
@@ -131,6 +133,62 @@ belong to the application: the codec works on the array value alone.
 `store.MemberOverhead` is the measured encoded cost of one member apart from
 its name and type, for sizing a manifest before minting its members; it is
 read-only.
+
+## Application records: `record`
+
+| Argument | Where | |
+|---|---|---|
+| `max` | `Decode`, `DecodeMap`, `Encode` | the record's bound in bytes, checked before the decoder runs and on what the encoder wrote; the application's, per record kind |
+| `last` | `Decode`, `Split`, `CheckExtra`, `CheckExtraKeys` | the last key this version defines; keys above it are preserved in `Fields.Extra` |
+| `magic` | `Decode`, `Fields.CheckMagic`, `Claims` | key 0's value, four bytes: the application's tag prefix, a letter and a version byte |
+| `defined` | `CheckExtra` | how many defined pairs the record writes, so that they and the preserved ones are at most `MaxKeys` together |
+
+`MaxKeys` (64) bounds the entries of every record map and is fixed. Each
+reader takes the key's own bounds: `Uint(k, lo, hi)`, `BytesN(k, n)`,
+`BytesRange(k, lo, hi)`, `Array(k, max)`, `List32(k, max)`.
+
+## Chain tokens: `chaintoken`
+
+`ReadWire(b, bound)` and `Stored(b, bound)` take the host's BEEF bound in
+bytes; zero means `DefaultMaxBEEF`, 256 KiB, which is also the floor a host
+should keep its own bound at or above, so that every host admits what any
+conforming publisher sends. `ReadOutput(o, vout, nfields)` takes the number
+of fields before the signature the application's token carries. The tag,
+the record codec, the derivation (`pushdrop.Derivation`) and the rules a
+token keeps against its predecessor are the application's; `Mined` takes
+the host's own header source.
+
+## Payments: `purse.Purse`
+
+| Field | Type | Default | |
+|---|---|---|---|
+| `Embedded` | `*bwallet.Embedded` | none | the wallet: identity key and coin pool |
+| `NewPayer` | `func() *producer.Payer` | none | a payer over the wallet's pool, for a payment's fee coin and change |
+| `Fees` | `mint.Fees` | none | the payment's fee policy |
+| `MaxPay` | `uint64` | 0 | the most one `CreateAction` pays, in satoshis; zero pays nothing |
+| `Settler` | `publish.Settler` | none | the leg an internalized payment is broadcast on |
+| `Asset` | `*nodeapi.Asset` | none | the node a payment's proof is read from, and its inputs checked against |
+| `Headers` | `chaintracker.ChainTracker` | none | what an incoming payment is verified against before anything is broadcast; `Check` refuses without one |
+| `Wait` | `time.Duration` | `producer.DefaultTimeout` | how long `Await` waits for a payment to mine |
+| `Poll` | `time.Duration` | `producer.DefaultPoll` | how often it asks |
+
+`CreateAction` pays exactly one P2PKH output funded by this wallet and
+refuses any other shape (`ErrRefusedAction`). After the question is
+answered the caller calls `Settle` when the host accepted a payment, which
+keeps the last one made and refunds the rest, or `Refund` when it did not.
+The refusals an application words itself are sentinels: `ErrOverMaxPay` (the
+application names the setting that raises the cap), `ErrNoNode` and
+`ErrNoSettler` (it names the settings that supply them) and `ErrNotMined`
+(it says what to run again). A payment the network will never mine is a
+`*RefusedError`.
+
+## Test chain: `testchain.Chain`
+
+`New(start)` is a chain whose tip is at height `start`. `Hold` keeps
+accepted transactions unmined until `Mine`; `HoldIf` holds only those it
+answers true for; `Refuse` refuses a transaction with the reason it
+returns; `Busy` answers 503 to the RPC and the broadcaster. `Maturity` (100)
+and `CoinbaseValue` are fixed. It is for tests and local trials only.
 
 ## Wallet: `bwallet`
 
@@ -428,7 +486,9 @@ refuse a nil `tracker` with `ErrNoTracker`.
 bound on the input's size, in bytes; a bound of zero or less admits nothing.
 `nodeapi` uses its 1 MiB body bound for a proof and for a transaction. `verify.VerifyCarrier`, `funding.Rebuild` and
 `producer.Payer` pass `DefaultBound`, 64 MiB, the bound `hostset` puts on a
-whole lookup answer. `ParsePubKey` and `ParsePubKeyHex` take no setting.
+whole lookup answer, and `purse.Check` passes it for a payment.
+`chaintoken.ReadWire` passes the host's own BEEF bound. `ParsePubKey` and
+`ParsePubKeyHex` take no setting.
 
 ## Terminal text: `termsafe`
 

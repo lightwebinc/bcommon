@@ -60,6 +60,12 @@ an edit.
   derive one type, and a change to a certificate's field names or meanings is
   a new string and so a new type (BRC-52 gives one type one set of field
   names and meanings). Record the string and the type it derives.
+- **Domain strings** are fixed strings an application hashes into an
+  identifier or a key, so that a hash made for one purpose is never one made
+  for another. A domain string starts with the application's name, names
+  what it derives and ends with a version (`"<application> <purpose> v1"`).
+  Record each one: two applications hashing the same string over the same
+  inputs derive the same identifier.
 - **Borrowed protocols** are protocols another specification defines and an
   application uses as written, such as a BRC's own derivation. They are not
   the application's and are not registered to it; a note under the
@@ -191,6 +197,7 @@ assigned here).
 | Key id | `grant` | A grant carrier's record output and field signature, and the outputs of funding trees that fund grants |
 | Key id | `chain` | The outputs of funding trees that pay for a chain's first token; never a carrier's |
 | Key id | `fund` | The embedded wallet's funding key |
+| Key id | `signer` | The organisation's signer key: a member key every instance of the organisation's tooling derives from the organisation's identity key, to which an epoch key is wrapped like any member's, so that a second device catches up on a key the first one sampled. No host or reader rule reads it |
 | Tag | `bo` `0x01` | Organisation token, first field |
 | Tag | `bo` `0x02` | Funding-tree output |
 | Tag | `bo` `0x03` | Group token, first field |
@@ -219,6 +226,63 @@ Borrowed, not registered: borg releases epoch keys under BRC-369's
 `SHA-256(epoch id || epoch)`, as BRC-369 section 5.2 defines it. Every
 BRC-369 implementation shares that protocol; the key id separates each
 group's each epoch.
+
+### bsecret
+
+Secrets replicated by overlay hosts: a vault as a chain of mined tokens, and
+each secret version as a keyed object on an unmined carrier, its content key
+wrapped to the owner's wallet and under a key derived from a borg group
+epoch's key.
+**Signed by its owner; provisional** until its first publish (not yet
+committed on chain; assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "bsecret"]` | Every public bsecret derivation (counterparty anyone) and the funding key |
+| Key id | `vault` | A vault token's lock and field signature |
+| Key id | `secret` | A secret carrier's record output and field signature, and the outputs of funding trees that fund secrets |
+| Key id | `chain` | The outputs of funding trees that pay for a vault's first token; never a carrier's |
+| Key id | `fund` | The embedded wallet's funding key |
+| Protocol | `[2, "bsecret self"]` | The self wrap: a content key encrypted to the owner's own wallet, counterparty self |
+| Key ids | the standard padded base64 of a content id | One self wrap; derived per secret version, so a wrap is bound to what it carries |
+| Tag | `se` `0x01` | Vault token, first field |
+| Tag | `se` `0x02` | Funding-tree output |
+| Record magic | `sev` `0x01` | Vault record, version 1 |
+| Record magic | `ses` `0x01` | Secret record, version 1 |
+| Record magic | `sep` `0x01` | Payload (the plaintext a secret's ciphertext holds), version 1 |
+| Topics | `tm_bsecret_<name>_<suffix>` | One topic per crypt, shared by many vaults; `<suffix>` is 10 random lowercase letters chosen when the crypt is created |
+| Lookup service | `ls_bsecret` | Lookup service for every crypt on a host |
+| Host route | `<base>/ls_bsecret/terms` | The host terms document for priced questions |
+| Baskets | `bsecret fund`, `bsecret secret funding`, `bsecret chain funding`, `bsecret chain`, `bsecret kill tombstone` | Wallet baskets |
+| Domain string | `bsecret vault id v1` | Hashed into a vault identifier |
+| Domain string | `bsecret secret id v1` | Hashed into a secret identifier |
+| Domain string | `bsecret epoch wrap v1` | Hashed into the key that wraps a content key under a group epoch |
+
+The prefix `se` is registered to bsecret. `0x70`, `0x73` and `0x76` are
+never assigned as tag type bytes under it, because `se` `0x70`, `se` `0x73`
+and `se` `0x76` are the first three bytes of the record magics `sep`, `ses`
+and `sev`. `0x00` is not assigned.
+
+The prefix is `se` and not `bs`, because more than one planned application's
+name begins `bs` and the prefix would name none of them. `bs` stays
+unassigned: no application takes it. A later storage application should take
+`st`, and must not take `se`.
+
+bsecret owns the `tm_bsecret_` topic namespace: no other application names a
+topic that starts with it. A crypt's topic carries entropy under the rule
+above, because anyone can create a crypt; with `tm_bsecret_`, the separating
+underscore and the suffix taking 22 characters, `<name>` has at most 28.
+
+bsecret registers no certificate type: a reader of a vault is a member of a
+borg group, and the membership grant is borg's.
+
+Borrowed, not registered: bsecret hashes a content key into its symmetric
+key and its commitment under BRC-369 section 2's domain strings,
+`metanet keyed content symmetric v1` and
+`metanet keyed content commitment v1`, as written; every BRC-369
+implementation shares them. It derives nothing under BRC-369's
+`[2, "keyed content release"]`: the epoch keys it wraps under were released
+under that protocol by borg.
 
 ## Not registered
 
