@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -281,5 +282,105 @@ func TestTakeAtLeastAppliesToAllowedChange(t *testing.T) {
 	}
 	if _, err := p.TakeAtLeast(0, 300, allow); err == nil || !strings.Contains(err.Error(), "of at least 300 sat") {
 		t.Fatalf("only a small allowed coin left: %v", err)
+	}
+}
+
+// Remove forgets a coin the chain shows spent: the file is saved without
+// it, a coin the pool does not hold changes nothing, and only the outpoint
+// decides which coin is meant.
+func TestRemovePersistsImmediately(t *testing.T) {
+	p := newPool(t)
+	a, b, c := out(1, 0, 5, 1, false), out(1, 1, 6, 1, false), out(2, 0, 7, 2, false)
+	if _, err := p.Add(a, b, c); err != nil {
+		t.Fatal(err)
+	}
+	// The outpoint alone names the coin: the rest of the Output may differ.
+	if ok, err := p.Remove(Output{TxID: b.TxID, Vout: b.Vout}); err != nil || !ok {
+		t.Fatalf("removing a held coin: %v, %v", ok, err)
+	}
+	disk, err := LoadPool(p.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := disk.Outputs(); len(got) != 2 || got[0] != a || got[1] != c || p.Balance() != 12 {
+		t.Fatalf("after Remove the file holds %+v", got)
+	}
+	if ok, err := p.Remove(b); err != nil || ok {
+		t.Fatalf("removing a coin twice: %v, %v", ok, err)
+	}
+	if ok, err := p.Remove(out(9, 0, 1, 1, false)); err != nil || ok || p.Count() != 2 {
+		t.Fatalf("removing a coin never held: %v, %v, %d held", ok, err, p.Count())
+	}
+	// A removed coin may be returned: Return adds what is not held.
+	if err := p.Return(b); err != nil || p.Count() != 3 {
+		t.Fatalf("returning a removed coin: %v, %d held", err, p.Count())
+	}
+}
+
+// A Remove that cannot be saved leaves the coin held, in its place, so the
+// pool in memory is the pool on disk.
+func TestRemoveThatCannotSaveKeepsTheCoin(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "wallet")
+	p, err := LoadPool(filepath.Join(dir, "outputs.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, b := out(1, 0, 5, 1, false), out(2, 0, 6, 2, false)
+	if _, err := p.Add(a, b); err != nil {
+		t.Fatal(err)
+	}
+	// The directory is replaced by a file, so no temp file can be created.
+	if err := os.RemoveAll(dir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(dir, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ok, err := p.Remove(a)
+	if err == nil || ok {
+		t.Fatalf("a Remove that could not save: %v, %v", ok, err)
+	}
+	if got := p.Outputs(); len(got) != 2 || got[0] != a || got[1] != b {
+		t.Fatalf("the pool after a failed Remove: %+v", got)
+	}
+}
+
+// Remove is safe beside the pool's other methods.
+func TestRemoveIsConcurrencySafe(t *testing.T) {
+	p := newPool(t)
+	var coins []Output
+	for i := 0; i < 16; i++ {
+		coins = append(coins, out(byte(i+1), 0, 5, uint32(i), false))
+	}
+	if _, err := p.Add(coins...); err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	removed := make([]bool, len(coins))
+	for i, c := range coins {
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			ok, err := p.Remove(c)
+			if err != nil {
+				t.Error(err)
+			}
+			removed[i] = ok
+		}()
+		go func() {
+			defer wg.Done()
+			_ = p.Balance()
+			_ = p.Outputs()
+		}()
+	}
+	wg.Wait()
+	for i, ok := range removed {
+		if !ok {
+			t.Fatalf("coin %d was not removed", i)
+		}
+	}
+	disk, err := LoadPool(p.Path())
+	if err != nil || disk.Count() != 0 || p.Count() != 0 {
+		t.Fatalf("after every Remove: %d on disk, %d held, %v", disk.Count(), p.Count(), err)
 	}
 }

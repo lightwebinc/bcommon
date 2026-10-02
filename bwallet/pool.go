@@ -81,7 +81,7 @@ type poolJSON struct {
 }
 
 // Pool is the on-disk funding pool. Every mutation that changes what may be
-// spent (Add, Take, Return) saves before it returns: a reservation that lives
+// spent (Add, Take, Return, Remove) saves before it returns: a reservation that lives
 // only in memory is a double spend after a crash.
 type Pool struct {
 	mu      sync.Mutex
@@ -260,6 +260,32 @@ func (p *Pool) Return(o Output) error {
 	p.outputs = append(p.outputs, o)
 	p.sortLocked()
 	return p.saveLocked()
+}
+
+// Remove drops the held output with o's outpoint and saves the pool without
+// it, reporting whether one was held. It is for a coin the chain shows
+// spent while the pool still holds it: Take reserves a coin for a spend the
+// caller is about to make, and Remove forgets one a transaction already
+// spent. An output the pool does not hold changes nothing and is not an
+// error. When the save fails the output stays held, so memory and disk
+// agree, and the error is returned.
+func (p *Pool) Remove(o Output) (bool, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	k := o.Outpoint()
+	for i, held := range p.outputs {
+		if held.Outpoint() != k {
+			continue
+		}
+		p.outputs = append(p.outputs[:i:i], p.outputs[i+1:]...)
+		if err := p.saveLocked(); err != nil {
+			p.outputs = append(p.outputs, held)
+			p.sortLocked()
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 // Immature lists the outputs that are held but not spendable at tip.
