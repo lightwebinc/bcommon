@@ -1,0 +1,505 @@
+{
+  "magicHex": "76787201",
+  "last": 7,
+  "max": 4096,
+  "maxKeys": 64,
+  "plan": [
+    {
+      "key": 1,
+      "kind": "text"
+    },
+    {
+      "key": 2,
+      "kind": "uint",
+      "lo": 1,
+      "hi": 253402300799
+    },
+    {
+      "key": 3,
+      "kind": "bytesN",
+      "n": 32
+    },
+    {
+      "key": 4,
+      "kind": "bool"
+    },
+    {
+      "key": 5,
+      "kind": "list32",
+      "max": 4
+    },
+    {
+      "key": 6,
+      "kind": "bytesRange",
+      "lo": 1,
+      "hi": 16
+    },
+    {
+      "key": 7,
+      "kind": "bytes",
+      "optional": true
+    }
+  ],
+  "record": {
+    "type": "map",
+    "pairs": [
+      {
+        "key": {
+          "type": "uint",
+          "value": "0"
+        },
+        "value": {
+          "type": "bytes",
+          "value": "76787201"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "1"
+        },
+        "value": {
+          "type": "text",
+          "value": "sample record"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "2"
+        },
+        "value": {
+          "type": "uint",
+          "value": "1700000000"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "3"
+        },
+        "value": {
+          "type": "bytes",
+          "value": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "4"
+        },
+        "value": {
+          "type": "true"
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "5"
+        },
+        "value": {
+          "type": "array",
+          "items": [
+            {
+              "type": "bytes",
+              "value": "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f"
+            },
+            {
+              "type": "bytes",
+              "value": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"
+            },
+            {
+              "type": "bytes",
+              "value": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f"
+            }
+          ]
+        }
+      },
+      {
+        "key": {
+          "type": "uint",
+          "value": "6"
+        },
+        "value": {
+          "type": "bytes",
+          "value": "616e79206c656e677468"
+        }
+      }
+    ]
+  },
+  "encodedHex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468",
+  "cases": [
+    {
+      "name": "the sample record",
+      "reason": "",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "the optional key present",
+      "reason": "",
+      "extra": 0,
+      "hex": "a8004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e6774680743010203"
+    },
+    {
+      "name": "two keys above the last defined one, preserved",
+      "reason": "",
+      "extra": 2,
+      "hex": "a9004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e67746809646b65707419012c820102"
+    },
+    {
+      "name": "an empty list",
+      "reason": "",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f50580064a616e79206c656e677468"
+    },
+    {
+      "name": "a list at its bound",
+      "reason": "",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505845820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f5820c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf064a616e79206c656e677468"
+    },
+    {
+      "name": "the integer at its lower bound",
+      "reason": "",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f72640201035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "the integer at its upper bound",
+      "reason": "",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021b0000003afff4417f035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "exactly the most entries a record map holds",
+      "reason": "",
+      "extra": 57,
+      "hex": "b840004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468080809090a0a0b0b0c0c0d0d0e0e0f0f101011111212131314141515161617171818181818191819181a181a181b181b181c181c181d181d181e181e181f181f18201820182118211822182218231823182418241825182518261826182718271828182818291829182a182a182b182b182c182c182d182d182e182e182f182f18301830183118311832183218331833183418341835183518361836183718371838183818391839183a183a183b183b183c183c183d183d183e183e183f183f18401840"
+    },
+    {
+      "name": "one entry more than a record map holds",
+      "reason": "too-large",
+      "extra": 0,
+      "hex": "b841004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468080809090a0a0b0b0c0c0d0d0e0e0f0f101011111212131314141515161617171818181818191819181a181a181b181b181c181c181d181d181e181e181f181f18201820182118211822182218231823182418241825182518261826182718271828182818291829182a182a182b182b182c182c182d182d182e182e182f182f18301830183118311832183218331833183418341835183518361836183718371838183818391839183a183a183b183b183c183c183d183d183e183e183f183f1840184018411841"
+    },
+    {
+      "name": "a text key",
+      "reason": "key-type",
+      "extra": 0,
+      "hex": "a8004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468646e616d6501"
+    },
+    {
+      "name": "a negative key",
+      "reason": "key-type",
+      "extra": 0,
+      "hex": "a8004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e6774682001"
+    },
+    {
+      "name": "a text key and the wrong magic: the key is refused first",
+      "reason": "key-type",
+      "extra": 0,
+      "hex": "a8004476787101016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468646e616d6501"
+    },
+    {
+      "name": "another magic",
+      "reason": "magic",
+      "extra": 0,
+      "hex": "a7004476787101016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "another version of the magic",
+      "reason": "magic",
+      "extra": 0,
+      "hex": "a7004476787202016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "the magic as text",
+      "reason": "magic",
+      "extra": 0,
+      "hex": "a7006476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "no magic",
+      "reason": "magic",
+      "extra": 0,
+      "hex": "a6016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "no magic and a missing key: the magic is refused first",
+      "reason": "magic",
+      "extra": 0,
+      "hex": "a5021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 1 missing",
+      "reason": "missing",
+      "extra": 0,
+      "hex": "a6004476787201021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 missing",
+      "reason": "missing",
+      "extra": 0,
+      "hex": "a6004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f5064a616e79206c656e677468"
+    },
+    {
+      "name": "key 1 missing and key 2 out of range: the first key read is refused",
+      "reason": "missing",
+      "extra": 0,
+      "hex": "a60044767872010200035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 1 a byte string",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201014d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 2 text",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264026a31373030303030303030035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 2 negative",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f72640224035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 2 below its range",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f72640200035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 2 above its range",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021b0000003afff44180035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 3 text",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f10003617804f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 3 one byte short",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f10003581fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbe04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 3 one byte long",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035821a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc004f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 4 an integer",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf040105835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 a byte string",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f5055820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 over its bound",
+      "reason": "list",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505855820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f5820c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf5820e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 out of order",
+      "reason": "list",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 with one value twice",
+      "reason": "list",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 with an element of 31 bytes",
+      "reason": "list",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f581f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 5 with a text element",
+      "reason": "list",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f61785820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "key 6 empty",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f0640"
+    },
+    {
+      "name": "key 6 over its range",
+      "reason": "range",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f06510102030405060708090a0b0c0d0e0f1011"
+    },
+    {
+      "name": "key 7 present as text",
+      "reason": "type",
+      "extra": 0,
+      "hex": "a8004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468076178"
+    },
+    {
+      "name": "over the bound, and otherwise the sample record",
+      "reason": "too-large",
+      "extra": 0,
+      "hex": "a8004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e67746809591000000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+    },
+    {
+      "name": "over the bound and not CBOR: the bound is refused first",
+      "reason": "too-large",
+      "extra": 0,
+      "hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "name": "nothing",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": ""
+    },
+    {
+      "name": "a trailing byte",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e67746800"
+    },
+    {
+      "name": "one byte short",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e6774"
+    },
+    {
+      "name": "an array",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "8244767872016d73616d706c65207265636f7264"
+    },
+    {
+      "name": "a byte string",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "4476787201"
+    },
+    {
+      "name": "map keys out of order",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "a20101004476787201"
+    },
+    {
+      "name": "a key twice",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "a2004476787201004476787201"
+    },
+    {
+      "name": "an indefinite-length map",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "bf004476787201ff"
+    },
+    {
+      "name": "a map head in a longer form than its count needs",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "b801004476787201"
+    },
+    {
+      "name": "a key in a longer form than it needs",
+      "reason": "cbor",
+      "extra": 0,
+      "hex": "a118004476787201"
+    }
+  ],
+  "claims": [
+    {
+      "name": "the sample record",
+      "claims": true,
+      "hex": "a7004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "a map of 24 entries, whose head takes two bytes",
+      "claims": true,
+      "hex": "b818004476787201016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468080809090a0a0b0b0c0c0d0d0e0e0f0f1010111112121313141415151616171718181818"
+    },
+    {
+      "name": "only the head: a map head, key 0 and the magic",
+      "claims": true,
+      "hex": "a1004476787201"
+    },
+    {
+      "name": "the head and nothing the map declares after it",
+      "claims": true,
+      "hex": "b7004476787201"
+    },
+    {
+      "name": "a map head with a two-byte count",
+      "claims": true,
+      "hex": "b90001004476787201"
+    },
+    {
+      "name": "another magic",
+      "claims": false,
+      "hex": "a7004476787101016d73616d706c65207265636f7264021a6553f100035820a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf04f505835820101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f5820404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f5820808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f064a616e79206c656e677468"
+    },
+    {
+      "name": "the magic one byte short",
+      "claims": false,
+      "hex": "a10044767872"
+    },
+    {
+      "name": "the magic as a three-byte string",
+      "claims": false,
+      "hex": "a10043767872"
+    },
+    {
+      "name": "the magic as text",
+      "claims": false,
+      "hex": "a1006476787201"
+    },
+    {
+      "name": "key 1 first",
+      "claims": false,
+      "hex": "a1014476787201"
+    },
+    {
+      "name": "an array",
+      "claims": false,
+      "hex": "8244767872016d73616d706c65207265636f7264"
+    },
+    {
+      "name": "an indefinite-length map",
+      "claims": false,
+      "hex": "bf004476787201ff"
+    },
+    {
+      "name": "the magic alone",
+      "claims": false,
+      "hex": "76787201"
+    },
+    {
+      "name": "nothing",
+      "claims": false,
+      "hex": ""
+    }
+  ]
+}

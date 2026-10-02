@@ -376,8 +376,12 @@ func txFamilies() ([]family, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pushdrop: %w", err)
 	}
+	ct, err := chaintokens(parts)
+	if err != nil {
+		return nil, fmt.Errorf("chaintoken: %w", err)
+	}
 	return []family{{"transactions-v1.json", v}, {"unlocking-v1.json", u}, {"beef-v1.json", bf},
-		{"pubkeys-v1.json", k}, {"pushdrop-v1.json", pd}}, nil
+		{"pubkeys-v1.json", k}, {"pushdrop-v1.json", pd}, {"chaintoken-v1.json", ct}}, nil
 }
 
 // txParts is what the unlocking family is built from: the transactions
@@ -385,8 +389,14 @@ func txFamilies() ([]family, error) {
 // and proved them.
 type txParts struct {
 	b        *builder
+	coin     *transaction.Transaction
 	tree     *transaction.Transaction
 	carriers []*transaction.Transaction
+	create   *transaction.Transaction
+	update   *transaction.Transaction
+	payment  *transaction.Transaction
+	sweep    *transaction.Transaction
+	stateKey *ec.PublicKey
 	tracker  roots
 }
 
@@ -634,5 +644,6 @@ func transactions() (*txVector, *txParts, error) {
 			return nil, nil, fmt.Errorf("%s does not verify: ok=%v err=%v", tx.TxID(), ok, err)
 		}
 	}
-	return v, &txParts{b: b, tree: tree, carriers: carriers, tracker: tracker}, nil
+	return v, &txParts{b: b, coin: coin, tree: tree, carriers: carriers, create: create, update: update,
+		payment: payment, sweep: selfPaid, stateKey: stateKey, tracker: tracker}, nil
 }

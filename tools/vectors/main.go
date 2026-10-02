@@ -84,7 +84,7 @@ func main() {
 // and map keys sorted, so the same inputs always render the same bytes.
 func generate() (map[string][]byte, error) {
 	var families []family
-	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, txFamilies} {
+	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, txFamilies, recordFamilies, keyedFamilies} {
 		fs, err := build()
 		if err != nil {
 			return nil, err

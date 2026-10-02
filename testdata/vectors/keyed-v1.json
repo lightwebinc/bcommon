@@ -1,0 +1,206 @@
+{
+  "domainSymmetric": "metanet keyed content symmetric v1",
+  "domainCommitment": "metanet keyed content commitment v1",
+  "orderHex": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+  "keys": [
+    {
+      "name": "the content key BRC-369 prints, with the symmetric key and commitment it prints",
+      "keyHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298d8",
+      "scalar": true,
+      "symmetricHex": "42dcb945809f42a6f827c8336affc7a04c284dfd6e4b65c6663f6e864240ad0e",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797"
+    },
+    {
+      "name": "one, the least scalar",
+      "keyHex": "0000000000000000000000000000000000000000000000000000000000000001",
+      "scalar": true,
+      "symmetricHex": "fc8e28aede33540c3bcb5dbac63aee5c6feba4d5262a8f632f5c266b25ac5896",
+      "commitmentHex": "197f128a603e24c44e19d663f233f016328cfb6d860c743758cc63eb8797d366"
+    },
+    {
+      "name": "n - 1, the greatest scalar",
+      "keyHex": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364140",
+      "scalar": true,
+      "symmetricHex": "a811975e573829bb48732745e8fe4b8451c04dcc29bd44d388599c67d5200650",
+      "commitmentHex": "30d423ca3c35627130116313397b054af212ef99edf6ddaedbdc49cec77b4b4b"
+    },
+    {
+      "name": "a key whose first byte is zero",
+      "keyHex": "005152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+      "scalar": true,
+      "symmetricHex": "31a5a47c7d3a2b6c85cb95276d5bbb55fc41678cd11c865cffadbf4ae5900b4b",
+      "commitmentHex": "ca410f565cedbf9d14a3650cb1c4d2c2a5123c6de6802afd0a539e3ecc537bde"
+    },
+    {
+      "name": "zero",
+      "keyHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "scalar": false,
+      "symmetricHex": "4ae237981ce4158c9202998efbf2702416ea51bc7f41b91c93c1fc3e4c0936bc",
+      "commitmentHex": "0769eb021ede2800476d2be3b3109bb66d7b0907f0ad7c6312cb5247c4875332"
+    },
+    {
+      "name": "n",
+      "keyHex": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+      "scalar": false,
+      "symmetricHex": "01581618c672c6aa52b98a9ae6d9c94abd2f12511d4814274a2968061cf0c223",
+      "commitmentHex": "0cbcbdf7f28c311de3257154ef062a4181562bb7207bd48bc3c92b84b4b0c3b1"
+    },
+    {
+      "name": "n + 1",
+      "keyHex": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364142",
+      "scalar": false,
+      "symmetricHex": "61fad791b3cff8e0b895587c2d12bbdad886702314315a74032447442fd9de7c",
+      "commitmentHex": "6c1a99ee16ce124caf6dcc0f185c751a99df22492602ee87f2294fd0ca3037ba"
+    },
+    {
+      "name": "2^256 - 1",
+      "keyHex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "scalar": false,
+      "symmetricHex": "eb07ac5a37bab35b5a3bc92ae81c9df4f163210829ec86e827b2aa71aa12a717",
+      "commitmentHex": "5f2586ea8f802855b906f6c7484be89024dca7badabdafa2a1ee30ddd0143e98"
+    }
+  ],
+  "opened": [
+    {
+      "name": "the committed key",
+      "plaintextHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298d8",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797",
+      "refusal": ""
+    },
+    {
+      "name": "31 bytes",
+      "plaintextHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797",
+      "refusal": "unwrap"
+    },
+    {
+      "name": "33 bytes",
+      "plaintextHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298d800",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797",
+      "refusal": "unwrap"
+    },
+    {
+      "name": "nothing",
+      "plaintextHex": "",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797",
+      "refusal": "unwrap"
+    },
+    {
+      "name": "zero, under its own commitment: not a scalar",
+      "plaintextHex": "0000000000000000000000000000000000000000000000000000000000000000",
+      "commitmentHex": "0769eb021ede2800476d2be3b3109bb66d7b0907f0ad7c6312cb5247c4875332",
+      "refusal": "scalar"
+    },
+    {
+      "name": "n, under its own commitment: not a scalar",
+      "plaintextHex": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+      "commitmentHex": "0cbcbdf7f28c311de3257154ef062a4181562bb7207bd48bc3c92b84b4b0c3b1",
+      "refusal": "scalar"
+    },
+    {
+      "name": "another scalar",
+      "plaintextHex": "5152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f70",
+      "commitmentHex": "2013064f87db545aa20f273b3abc8bdb470ddc69349cac55b7b397585af15797",
+      "refusal": "commitment"
+    },
+    {
+      "name": "the key under the symmetric key in the commitment's place",
+      "plaintextHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298d8",
+      "commitmentHex": "42dcb945809f42a6f827c8336affc7a04c284dfd6e4b65c6663f6e864240ad0e",
+      "refusal": "commitment"
+    }
+  ],
+  "sealed": [
+    {
+      "name": "a 32-byte key, as a wrap holds it",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "ivHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "plaintextHex": "0ff730f7b66f7bb6626229ca20c5b4c2c47ecc32248203a14cd247ef7ed298d8",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210ba"
+    },
+    {
+      "name": "one byte",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "ivHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "plaintextHex": "2a",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f76c3ae0ab7002834ce7f6556e23ddbb830"
+    },
+    {
+      "name": "nothing",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "ivHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "plaintextHex": "",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f46f2b514d68f5ebad2b8a651ca14f3e4"
+    },
+    {
+      "name": "text of 17 bytes, past one cipher block",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "ivHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "plaintextHex": "6120636572746966696361746520666c64",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f3d814de1d90fc65ac2ac25ed3f57265e84bcb4188b4075915776e3b933e8ebbcfc"
+    },
+    {
+      "name": "300 bytes",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "ivHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+      "plaintextHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f5ca02c87af7ea93ba3c64e92567a4e3df082ec2e39b2e4091db92113c8432742321c0ad3ff60a1de2b4c2eb713e9661ba793cd1da77d5cf390ac026c2f15f6a6839bed4baa78878ab1277e70222c08a8a4473125e4eeefdfe30c4541d7a966d702250073f9d822b8176e87d302a4f7da105e732ab39ae02de4c14308fe4a76d2177a70ae63aa6d3c8dd4cbe78fe95a1a68e378a449fab76c96fa2c19832a77217780eaa1cc3db1b1080544cb83d4c53c8cf921739505019399c6532f3760af5d75b2c82ef4838ab22d34240e77475989bb2c809183187f64f4c9b5887a5464e85fa1b8b9b130c76f1df13979e23f40944a07f344f2aa519c048920476c305d489e326cb0a8b2ecef47191ece489b1c1a7e9a3f47fc0cd6b306cc1e3bcd0c1607a2f5cc7db27cdc94118bb128e1c64e561956281c238bd23c46241617"
+    }
+  ],
+  "opens": [
+    {
+      "name": "as sealed",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210ba",
+      "opens": true
+    },
+    {
+      "name": "an empty plaintext, the shortest that opens",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f46f2b514d68f5ebad2b8a651ca14f3e4",
+      "opens": true
+    },
+    {
+      "name": "another key",
+      "keyHex": "02030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210ba",
+      "opens": false
+    },
+    {
+      "name": "a bit of the IV flipped",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "818182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210ba",
+      "opens": false
+    },
+    {
+      "name": "a bit of the ciphertext flipped",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac8ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210ba",
+      "opens": false
+    },
+    {
+      "name": "a bit of the tag flipped",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210bb",
+      "opens": false
+    },
+    {
+      "name": "the last byte cut",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4f024ed320f0925f1bf49727ce7aa8ca1854a3b4edf562cf69e851a2de97b8210",
+      "opens": false
+    },
+    {
+      "name": "47 bytes, less than an IV and a tag",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f53561e731d14d48ac9ad6d537ab2f4",
+      "opens": false
+    },
+    {
+      "name": "nothing",
+      "keyHex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20",
+      "sealedHex": "",
+      "opens": false
+    }
+  ]
+}
