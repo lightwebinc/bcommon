@@ -25,7 +25,10 @@
 //   - Trees is the funding-tree lifecycle: spend from the current tree, or
 //     mint, settle, record and publish the next one when the current tree
 //     cannot fund what is asked; with Ahead, the next tree is minted and
-//     settled in the background before the current one runs out.
+//     settled in the background before the current one runs out;
+//     with Prepare, the application records each tree and its fee coin
+//     before the tree reaches the settlement leg, and Recover settles the
+//     record of a tree a stopped run never adopted.
 //   - Proofs asks whether a transaction mined; Collector asks it for
 //     everything still waiting, records each proof, republishes the proven
 //     transaction, and releases change the pool held back.

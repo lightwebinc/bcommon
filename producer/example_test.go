@@ -23,6 +23,7 @@ import (
 	"github.com/lightwebinc/bcommon/goldentest"
 	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/producer"
+	"github.com/lightwebinc/bcommon/publish"
 	"github.com/lightwebinc/bcommon/pushdrop"
 )
 
@@ -294,6 +295,131 @@ func ExampleTrees_Wait() {
 	// funding tree <tree 2>: mined at height 702
 	// funding tree <tree 2> is minted ahead and waits for the switch
 	// switching to funding tree <tree 2>, minted ahead
+	// funding tree published: admitted 1 output(s)
+}
+
+// exampleRecords is exampleState with the records Prepare hands it: each
+// tree signed for a coin, kept with that coin until the tree is adopted. An
+// application keeps them in its state file, saved before Prepare returns.
+type exampleRecords struct {
+	exampleState
+	prepared map[string]examplePrepared
+}
+
+type examplePrepared struct {
+	Tree funding.Tree
+	Coin bwallet.Output
+}
+
+func (s *exampleRecords) Prepare(tree funding.Tree, coin bwallet.Output) error {
+	s.prepared[tree.Txid] = examplePrepared{tree, coin}
+	return nil
+}
+
+// Adopt drops the record of the tree it adopts, in the same save.
+func (s *exampleRecords) Adopt(t funding.Tree) error {
+	delete(s.prepared, t.Txid)
+	return s.exampleState.Adopt(t)
+}
+
+// stoppingLeg ends the run once the leg has taken a transaction.
+type stoppingLeg struct {
+	publish.Settler
+	stop func()
+}
+
+func (l stoppingLeg) Submit(ctx context.Context, tx *transaction.Transaction) error {
+	err := l.Settler.Submit(ctx, tx)
+	l.stop()
+	return err
+}
+
+// Prepare hands the application each tree's record and fee coin before the
+// tree reaches the settlement leg, and Recover settles a record a run left
+// behind. Here the run stops while its tree waits for a block: the coin is
+// spent and the state knows no tree. The block arrives, and the next start
+// recovers the tree: it is adopted and published, and its change is in the
+// pool.
+func ExampleTrees_Recover() {
+	ctx := context.Background()
+	dir, err := os.MkdirTemp("", "producer-example-")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer os.RemoveAll(dir)
+	var lines []string
+	signer, payer, err := exampleProducer(dir, &lines)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	chain := &testChain{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
+		mined: map[string]uint32{}, refused: map[string]string{}, height: 700}
+	chain.srv = httptest.NewServer(http.HandlerFunc(chain.serve))
+	defer chain.srv.Close()
+	run, stop := context.WithCancel(ctx)
+	defer stop()
+	payer.Settler, payer.Asset, payer.Poll = stoppingLeg{chain.arcade(), stop}, chain.asset(), 10*time.Millisecond
+	state := &exampleRecords{prepared: map[string]examplePrepared{}}
+	treesOver := func(p *producer.Payer) *producer.Trees {
+		return &producer.Trees{
+			Payer: p, State: state, Identity: signer.IdentityHex(), Count: 4, Sats: 1000, Funder: "pool",
+			Lock: func(ctx context.Context) (*script.Script, error) {
+				return carrier.FundingLock(ctx, signer, signer.Originator, exampleParams)
+			},
+			Change: signer.FundScript,
+			Facade: chain.facade(), Topic: "tm_vector_sample",
+			Prepare: state.Prepare,
+		}
+	}
+
+	_, _, err = treesOver(payer).Spend(run, 1)
+	fmt.Println("the run stopped:", errors.Is(err, context.Canceled))
+	fmt.Println("trees adopted:", len(state.all), "records kept:", len(state.prepared), "coins in the pool:", payer.Pool.Count())
+
+	// The block arrives while the application is down.
+	for txid := range state.prepared {
+		chain.mine(txid)
+	}
+
+	// The next start: the pool as it is on disk, and the records the state
+	// kept. Every record is recovered before the first Spend.
+	pool, err := bwallet.LoadPool(payer.Pool.Path())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	next := treesOver(&producer.Payer{
+		Pool: pool, Tip: 100, Keys: payer.Keys, Kept: &producer.Kept{}, Fees: mint.DefaultFees,
+		Settler: chain.arcade(), Asset: chain.asset(), Poll: 10 * time.Millisecond, Note: payer.Note,
+	})
+	for txid, rec := range state.prepared {
+		got, err := next.Recover(ctx, rec.Tree, rec.Coin)
+		if err != nil {
+			fmt.Println(err) // undecided: the record stays for the next start
+			continue
+		}
+		fmt.Println("recovered:", got.Outcome)
+		if got.Outcome == producer.CoinReturned || got.Outcome == producer.CoinSpent {
+			delete(state.prepared, txid) // no tree: the application drops the record
+		}
+	}
+	fmt.Println("trees adopted:", len(state.all), "records kept:", len(state.prepared), "coins in the pool:", pool.Count())
+	hex := regexp.MustCompile(`[0-9a-f]{64}`)
+	for _, l := range lines {
+		if !strings.Contains(l, "settling via") {
+			fmt.Println(hex.ReplaceAllString(l, "<tree>"))
+		}
+	}
+	// Output:
+	// the run stopped: true
+	// trees adopted: 0 records kept: 1 coins in the pool: 0
+	// recovered: tree adopted
+	// trees adopted: 1 records kept: 0 coins in the pool: 1
+	// funding tree <tree>: 4 output(s) of 1000 sat
+	// funding tree <tree>: mined at height 701
+	// funding tree <tree> is recovered
 	// funding tree published: admitted 1 output(s)
 }
 

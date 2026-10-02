@@ -354,6 +354,12 @@ func hashFromHex(s string) (*chainhash.Hash, error) {
 // change by, and change left out of the pool reads exactly like spent coin,
 // so that key is named in a note rather than passed over in silence.
 func (p *Payer) Change(tx *transaction.Transaction, height uint32, mp *transaction.MerklePath) {
+	p.change(tx, height, mp, nil)
+}
+
+// change is Change, leaving out an output keep refuses. A nil keep takes
+// every output that pays one of the keys.
+func (p *Payer) change(tx *transaction.Transaction, height uint32, mp *transaction.MerklePath, keep func(vout uint32) bool) {
 	var scripts []string
 	for id, w := range p.Keys {
 		fs, err := w.FundScript()
@@ -366,7 +372,7 @@ func (p *Payer) Change(tx *transaction.Transaction, height uint32, mp *transacti
 		}
 	}
 	for i, out := range tx.Outputs {
-		if slices.Contains(scripts, out.LockingScript.String()) {
+		if slices.Contains(scripts, out.LockingScript.String()) && (keep == nil || keep(uint32(i))) { //nolint:gosec // output index
 			_, _ = p.Pool.Add(bwallet.Output{TxID: tx.TxID().String(), Vout: uint32(i), Satoshis: out.Satoshis, //nolint:gosec // output index
 				LockingScript: out.LockingScript.String(), Height: height,
 				Raw: tx.Hex(), Bump: funding.BumpHex(mp), Unproven: mp == nil})

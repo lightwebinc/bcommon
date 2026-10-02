@@ -80,6 +80,18 @@ type Trees struct {
 	// wait for a block. Zero mints a tree only when one is needed. See
 	// Spend for the rules, and Wait and Prepared for the tree minted ahead.
 	Ahead uint32
+	// Prepare, when set, is called with each tree the pool pays for, once it
+	// is signed and before it reaches the settlement leg: on the goroutine
+	// that called Spend, and for a tree minted ahead before its background
+	// half starts. tree is the record the tree is later adopted as, without
+	// a proof, a height or a kept BEEF, which it does not have yet, and coin
+	// is the fee coin it spends, already out of the pool. An application
+	// saves both, so a run that stops before Adopt leaves a record of a
+	// tree that may be on the chain and of the coin it took; Recover
+	// settles that record on the next start. An error aborts the mint and
+	// puts the coin back in the pool. Prepare is not called for a DryRun,
+	// nor for a tree Fund pays for: see Spend.
+	Prepare func(tree funding.Tree, coin bwallet.Output) error
 
 	// ahead delivers the result of the mint in flight, nil when none is;
 	// prepared is the tree minted ahead and not yet used; aheadFor is the
@@ -163,6 +175,21 @@ type aheadResult struct {
 // the state nor the plane; its change is already in the pool, and only its
 // funding outputs are stranded. An application that wants a sweep to take
 // those too records Prepared in its own history.
+//
+// A run can also stop between the moment a tree's fee coin leaves the pool
+// and the moment the tree is adopted: while the tree waits for its block,
+// or, minted ahead, for the switch. The pool is saved without the coin, and
+// the state does not know the tree, so the coin, the tree's change and its
+// outputs are all lost to the application, though the chain holds them. An
+// application closes that gap with Prepare, which hands it the tree's
+// record and the coin before the tree reaches the settlement leg, and with
+// Recover, which it runs for each such record on the next start.
+//
+// Neither covers a tree Fund pays for. The wallet behind Fund chooses the
+// coins, signs and broadcasts inside one call, so there is no moment
+// between the signing and the settlement leg for Prepare to be called in,
+// and no pool coin to return: a run that stops after Fund has broadcast and
+// before Adopt leaves a tree only that wallet knows.
 func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transaction, uint32, error) {
 	if t.Payer == nil || t.State == nil {
 		return nil, 0, errors.New("producer: Trees needs a Payer and a State")
@@ -232,6 +259,10 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		if t.DryRun {
 			return tree, 0, nil
 		}
+		if err := t.prepare(tree, count, t.Identity, t.Funder, coin); err != nil {
+			t.Payer.giveBackOne(coin)
+			return nil, 0, err
+		}
 		settler := *t.Payer
 		var leg *recordingSettler
 		if settler.Settler != nil {
@@ -272,31 +303,54 @@ func (t *Trees) record(tree *transaction.Transaction, mp *transaction.MerklePath
 		Count: uint32(count), Next: 0, Funder: funder}, nil //nolint:gosec // a small configured count
 }
 
+// prepare hands a signed tree's record and its fee coin to Prepare, when it
+// is set, before the tree reaches the settlement leg.
+func (t *Trees) prepare(tree *transaction.Transaction, count int, id, funder string, coin bwallet.Output) error {
+	if t.Prepare == nil {
+		return nil
+	}
+	rec := funding.Tree{IdentityKeyHex: id, Txid: tree.TxID().String(), RawHex: tree.Hex(), Sats: t.Sats,
+		Count: uint32(count), Funder: funder} //nolint:gosec // a small configured count
+	if err := t.Prepare(rec, coin); err != nil {
+		return fmt.Errorf("funding tree: prepare: %w", err)
+	}
+	return nil
+}
+
 // adopt records a new tree in the state, then publishes it, and starts the
 // next mint ahead when this spend leaves the new tree low.
 func (t *Trees) adopt(ctx context.Context, tree *transaction.Transaction, rec funding.Tree, need uint32) (*transaction.Transaction, uint32, error) {
-	if err := t.State.Adopt(rec); err != nil {
+	if err := t.adoptAndPublish(ctx, tree, rec); err != nil {
 		return nil, 0, err
 	}
-	tb, err := funding.BEEF(tree)
-	if err != nil {
-		return nil, 0, err
-	}
-	if t.Facade == nil {
-		return nil, 0, errors.New("publish funding tree: no object leg")
-	}
-	res, err := t.Facade.Submit(ctx, t.Topic, tb)
-	if err != nil {
-		return nil, 0, fmt.Errorf("publish funding tree: %w", err)
-	}
-	if !res.Duplicate && len(res.Admitted) == 0 {
-		return nil, 0, fmt.Errorf("publish funding tree: the topic manager admitted nothing: %s", string(res.Raw))
-	}
-	t.Payer.note("funding tree published: admitted %d output(s)", len(res.Admitted))
 	if rec.Count >= need {
 		t.mintAhead(ctx, rec.Txid, rec.Count-need)
 	}
 	return tree, 0, nil
+}
+
+// adoptAndPublish records a tree in the state and then publishes it, in
+// that order.
+func (t *Trees) adoptAndPublish(ctx context.Context, tree *transaction.Transaction, rec funding.Tree) error {
+	if err := t.State.Adopt(rec); err != nil {
+		return err
+	}
+	tb, err := funding.BEEF(tree)
+	if err != nil {
+		return err
+	}
+	if t.Facade == nil {
+		return errors.New("publish funding tree: no object leg")
+	}
+	res, err := t.Facade.Submit(ctx, t.Topic, tb)
+	if err != nil {
+		return fmt.Errorf("publish funding tree: %w", err)
+	}
+	if !res.Duplicate && len(res.Admitted) == 0 {
+		return fmt.Errorf("publish funding tree: the topic manager admitted nothing: %s", string(res.Raw))
+	}
+	t.Payer.note("funding tree published: admitted %d output(s)", len(res.Admitted))
+	return nil
 }
 
 // mintAhead starts minting the next tree when left, the outputs a spend
@@ -337,6 +391,11 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 		return
 	}
 	t.Payer.note("funding tree %s: %d output(s) of %d sat", tree.TxID(), count, t.Sats)
+	if err := t.prepare(tree, count, id, funder, o); err != nil {
+		_ = t.Payer.Pool.Return(o)
+		fail(err)
+		return
+	}
 	// The background half settles through a copy of the Payer whose notes
 	// are held for the collecting goroutine, and whose leg records whether
 	// the tree reached it.
