@@ -331,6 +331,80 @@ func TestServedThroughTheClients(t *testing.T) {
 	until(t, "the ingress to refuse a raw transaction", func() bool { return c.IngressRefused() == 1 })
 }
 
+// With RefuseKnown a transaction the chain holds is refused when it is sent
+// again, mined, waiting or displaced, by Send and through the RPC; the
+// broadcaster still answers its status. Without it nothing changes.
+func TestRefuseKnown(t *testing.T) {
+	r := newRig(t)
+	c := r.chain
+	ctx := context.Background()
+	srv := httptest.NewServer(c)
+	defer srv.Close()
+	leg := &publish.RPCSettler{RPC: &nodeapi.RPC{URL: srv.URL + "/rpc", ID: "t"}}
+	arcade := &publish.Arcade{Base: srv.URL + "/arcade", Poll: 5 * time.Millisecond, Verdict: 2 * time.Second}
+
+	mined := r.coin()
+	if err := c.Send(mined); err != nil {
+		t.Fatal(err)
+	}
+	c.SetHold(true)
+	waiting, displaced := r.coin(), r.coin()
+	for _, tx := range []*transaction.Transaction{waiting, displaced} {
+		if err := c.Send(tx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A competing spend takes the third one's coin; the chain keeps and
+	// serves the transaction that lost.
+	c.SpendElsewhere(displaced.Inputs[0].SourceTXID.String(), 0, strings.Repeat("cd", 32))
+	if c.Tx(displaced.TxID().String()) == nil || c.Sent != 3 {
+		t.Fatalf("sent %d", c.Sent)
+	}
+	all := map[string]*transaction.Transaction{"mined": mined, "waiting": waiting, "displaced": displaced}
+
+	// The default: each is taken again with nothing done.
+	for what, tx := range all {
+		if err := c.Send(tx); err != nil {
+			t.Fatalf("%s, sent again: %v", what, err)
+		}
+		if err := leg.Submit(ctx, tx); err != nil {
+			t.Fatalf("%s, sent again through the RPC: %v", what, err)
+		}
+	}
+	if c.Sent != 3 || c.Waiting() != 2 {
+		t.Fatalf("sent %d, waiting %d", c.Sent, c.Waiting())
+	}
+
+	c.SetRefuseKnown(true)
+	for what, tx := range all {
+		if err := c.Send(tx); !errors.Is(err, testchain.ErrAlreadyKnown) {
+			t.Fatalf("%s, sent again: %v", what, err)
+		}
+		if err := leg.Submit(ctx, tx); err == nil || !strings.Contains(err.Error(), "txn-already-known") {
+			t.Fatalf("%s, sent again through the RPC: %v", what, err)
+		}
+		// The broadcaster answers the status of what it holds.
+		if err := arcade.Submit(ctx, tx); err != nil {
+			t.Fatalf("%s, sent again through the broadcaster: %v", what, err)
+		}
+		if st, err := arcade.Status(ctx, tx.TxID().String()); err != nil || st.Mined() != (what == "mined") {
+			t.Fatalf("%s: the broadcaster's status %+v, %v", what, st, err)
+		}
+	}
+	if c.Sent != 3 || c.Waiting() != 2 {
+		t.Fatalf("sent %d, waiting %d", c.Sent, c.Waiting())
+	}
+	// A transaction the chain does not hold is taken as before.
+	fresh := r.coin()
+	if err := leg.Submit(ctx, fresh); err != nil || c.Sent != 4 {
+		t.Fatalf("a new transaction: %v, sent %d", err, c.Sent)
+	}
+	c.SetRefuseKnown(false)
+	if err := c.Send(fresh); err != nil || c.Sent != 4 {
+		t.Fatalf("with the refusal off again: %v, sent %d", err, c.Sent)
+	}
+}
+
 func until(t *testing.T, what string, done func() bool) {
 	t.Helper()
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {

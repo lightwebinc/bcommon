@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -44,6 +45,11 @@ const CoinbaseValue = 5_000_000_000
 
 // Maturity is the depth at which coinbase may be spent.
 const Maturity = 100
+
+// ErrAlreadyKnown is Send refusing, with RefuseKnown set, a transaction the
+// chain already holds. Its text is one a node's sendrawtransaction answers
+// for a transaction it already has.
+var ErrAlreadyKnown = errors.New("txn-already-known")
 
 // Chain is the local chain.
 type Chain struct {
@@ -70,6 +76,14 @@ type Chain struct {
 	// or arcade; true answers 503, which refuses nothing: a transient
 	// failure the sender tries again.
 	Busy func(tx *transaction.Transaction) bool
+	// RefuseKnown makes Send refuse a transaction the chain already holds,
+	// with ErrAlreadyKnown, as a node's sendrawtransaction may refuse one it
+	// has in its mempool or in a block. Without it Send takes such a
+	// transaction again and does nothing. The broadcaster under /arcade is
+	// not
+	// changed by it: it answers the status of a transaction it holds, as an
+	// ARC-compatible broadcaster does.
+	RefuseKnown bool
 	// Sent counts the transactions accepted.
 	Sent int
 }
@@ -152,6 +166,13 @@ func (c *Chain) SetHoldIf(f func(tx *transaction.Transaction) bool) {
 	c.HoldIf = f
 }
 
+// SetRefuseKnown sets RefuseKnown while the chain serves.
+func (c *Chain) SetRefuseKnown(refuse bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.RefuseKnown = refuse
+}
+
 // Waiting is how many accepted transactions are not yet mined.
 func (c *Chain) Waiting() int {
 	c.mu.Lock()
@@ -232,12 +253,19 @@ func (c *Chain) Generate(n int, addr string) ([]string, error) {
 	return hashes, nil
 }
 
-// Send takes a transaction as a node's sendrawtransaction does.
+// Send takes a transaction as a node's sendrawtransaction does. A
+// transaction the chain already holds is taken again with nothing done and
+// no error, or, with RefuseKnown set, refused with ErrAlreadyKnown. That
+// holds for a transaction SpendElsewhere displaced too: the chain keeps and
+// serves it, as a node may, so it is one the chain already holds.
 func (c *Chain) Send(tx *transaction.Transaction) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	id := tx.TxID().String()
 	if _, ok := c.txs[id]; ok {
+		if c.RefuseKnown {
+			return ErrAlreadyKnown
+		}
 		return nil
 	}
 	if c.Refuse != nil {
@@ -543,6 +571,15 @@ func (c *Chain) arcade(w http.ResponseWriter, r *http.Request, p string) {
 			return
 		}
 		id := tx.TxID().String()
+		// A transaction the broadcaster holds is answered with its status,
+		// whatever RefuseKnown says of the node.
+		c.mu.Lock()
+		_, known := c.txs[id]
+		c.mu.Unlock()
+		if known {
+			writeJSON(w, c.arcadeStatus(id))
+			return
+		}
 		if err := c.Send(tx); err != nil {
 			c.mu.Lock()
 			c.rejected[id] = err.Error()
