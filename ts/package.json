@@ -38,10 +38,10 @@
     "prepack": "npm run build -- --sourceMap false && node -e \"for (const f of ['LICENSE', 'NOTICE']) require('node:fs').copyFileSync('../' + f, f)\""
   },
   "peerDependencies": {
-    "@bsv/sdk": "2.7.1"
+    "@bsv/sdk": "2.8.10"
   },
   "devDependencies": {
-    "@bsv/sdk": "2.7.1",
+    "@bsv/sdk": "2.8.10",
     "@types/node": "^24.10.1",
     "typescript": "^5.9.3"
   }
