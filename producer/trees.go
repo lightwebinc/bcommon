@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"weak"
 
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
@@ -80,6 +81,8 @@ type Trees struct {
 	// switches to it when the current tree cannot cover a spend, with no
 	// wait for a block. Zero mints a tree only when one is needed. See
 	// Spend for the rules, and Wait and Prepared for the tree minted ahead.
+	// A pool-paid mint holds its coin until it is collected, and a take the
+	// pool cannot cover meanwhile waits for it: see Payer.Take.
 	Ahead uint32
 	// Prepare, when set, is called with each tree the pool pays for, once it
 	// is signed and before it reaches the settlement leg: on the goroutine
@@ -100,9 +103,13 @@ type Trees struct {
 	// found on the chain while the current tree had outputs left; aheadFor
 	// is the current tree the last mint ahead was started for, so a failure
 	// is not retried on every spend from the same tree.
+	//
+	// mintPool is the pool the mint in flight took its coin from, set while
+	// that mint is listed for a Payer's take to wait for (see minting).
 	ahead    chan aheadResult
 	held     []*preparedTree
 	aheadFor string
+	mintPool weak.Pointer[bwallet.Pool]
 }
 
 // ErrPublish is what errors.Is matches a *PublishError by: a funding tree
@@ -147,9 +154,12 @@ type aheadResult struct {
 	id     string
 	funder string
 	// change is set when the pool paid, so the tree's change is taken; coin
-	// is the fee coin to put back when the tree never reached the leg.
+	// is the fee coin to put back when the tree never reached the leg, and
+	// by the transaction that spent that coin, when one did: the coin is
+	// then dropped rather than put back.
 	change bool
 	coin   *bwallet.Output
+	by     string
 	notes  []string
 	err    error
 }
@@ -170,6 +180,25 @@ type aheadResult struct {
 // A failure before the tree reaches the settlement leg puts that coin back in
 // the pool before Spend returns; once the tree has reached the leg the coin
 // is spent and no later GiveBack returns it.
+//
+// One failure before the leg does not put the coin back: a tree the leg
+// refuses because its fee coin is already spent. When the refusal names
+// another transaction as the coin's spender (a *nodeapi.SpentError for its
+// outpoint, as publish.Arcade held to a node answers), or the Payer's
+// Asset, when set, shows the coin spent by a transaction other than the
+// tree, the coin is taken out of the pool (bwallet.Pool.Remove) and is not
+// returned, with a note naming the spender: put back, it would be handed
+// out again and fail the next build, until a later start's Recover took it
+// out. A refusal for any other reason, a coin the node shows unspent or
+// spent by the tree itself, and a coin the node cannot answer for all put
+// the coin back as before. A tree minted ahead is treated the same when it
+// is collected. Its Prepare record is left alone either way, and Recover
+// answers CoinSpent for it. Payer.Settle does the same for the fee coin of
+// any other transaction.
+//
+// The pool-paid mint here takes its coin as Payer.Take does, so with no
+// coin in the pool it first waits for a tree another Trees over the same
+// pool is minting ahead, whose change may pay for this one.
 // Its funding.Tree, with the BEEF it is kept as while it is unmined, is
 // adopted into the state before the tree is published, so a crash after the
 // publish never leaves a tree on the plane the state does not know.
@@ -193,6 +222,16 @@ type aheadResult struct {
 // held and reported through Note by the Spend or Wait that collects it,
 // which also takes the tree's change into the pool. At most one mint is in
 // flight, and none is started while a tree minted ahead waits unused.
+//
+// Between the moment a pool-paid mint ahead takes its coin and the moment
+// it is collected, the coin is out of the pool and its change is not yet in
+// it. A wallet with one coin has none in that time. A mint ahead that finds
+// no coin for itself never waits: it is skipped with a note, and the tree
+// is minted when it is needed. A take through a Payer over the same pool
+// (Payer.Take, Payer.TakeAtLeast, and the mint a Spend makes on demand)
+// that the pool cannot cover does wait: it collects the mint, as Wait
+// does, and takes again, bounded by its context and its Payer's Timeout.
+// Payer.Take has the rules.
 //
 // When the current tree cannot cover need, Spend waits for a mint still in
 // flight, then switches to the tree minted ahead if it is locked to Identity
@@ -303,7 +342,10 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 			t.Payer.giveBackOne(coin)
 			return nil, 0, err
 		}
+		// The copy holds no reserved coin: what becomes of this tree's coin
+		// is decided here, not by the copy's Settle.
 		settler := *t.Payer
+		settler.spent = nil
 		var leg *recordingSettler
 		if settler.Settler != nil {
 			leg = &recordingSettler{Settler: settler.Settler}
@@ -312,7 +354,7 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		mp, height, err = settler.Settle(ctx, "funding tree", tree)
 		if err != nil {
 			if leg == nil || !leg.submitted {
-				t.Payer.giveBackOne(coin)
+				t.Payer.giveBackUnspent(ctx, coin, "funding tree", tree, err)
 			} else {
 				t.Payer.release(coin)
 			}
@@ -473,6 +515,7 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 	// the tree reached it.
 	var held []string
 	bg := *t.Payer
+	bg.spent = nil
 	bg.Note = func(format string, args ...any) { held = append(held, fmt.Sprintf(format, args...)) }
 	var leg *recordingSettler
 	if bg.Settler != nil {
@@ -480,11 +523,15 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 		bg.Settler = leg
 	}
 	t.ahead = done
+	// From here until the mint is collected the coin is out of the pool and
+	// its change not yet in it: a take the pool cannot cover waits for it.
+	t.minting(t.Payer.Pool)
 	go func() {
 		mp, height, err := bg.Settle(ctx, "funding tree", tree)
 		r := aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, change: true, notes: held, err: err}
 		if err != nil && (leg == nil || !leg.submitted) {
 			r.coin = &o
+			r.by = bg.spentBy(ctx, o, tree, err)
 		}
 		done <- r
 	}()
@@ -533,8 +580,8 @@ func (s *recordingSettler) Submit(ctx context.Context, tx *transaction.Transacti
 
 // collect takes the result of the mint in flight, waiting for it when wait
 // is set: its held notes are reported, its change is taken into the pool, a
-// coin it never spent is put back, and a tree it minted becomes the tree
-// minted ahead. It returns the mint's error, already reported, or ctx's
+// coin it never spent is put back, or dropped when another transaction
+// spent it, and a tree it minted becomes the tree minted ahead. It returns the mint's error, already reported, or ctx's
 // while waiting; the mint is still in flight after the latter.
 func (t *Trees) collect(ctx context.Context, wait bool) error {
 	if t.ahead == nil {
@@ -555,10 +602,16 @@ func (t *Trees) collect(ctx context.Context, wait bool) error {
 		}
 	}
 	t.ahead = nil
+	if r.change {
+		t.minted()
+	}
 	for _, l := range r.notes {
 		t.Payer.note("%s", l)
 	}
-	if r.coin != nil {
+	switch {
+	case r.coin != nil && r.by != "":
+		t.Payer.drop(*r.coin, "funding tree", r.tx.TxID().String(), r.by)
+	case r.coin != nil:
 		_ = t.Payer.Pool.Return(*r.coin)
 	}
 	if r.err == nil && r.tx == nil {
@@ -585,6 +638,11 @@ func (t *Trees) collect(ctx context.Context, wait bool) error {
 // error, which Note has already reported and which Spend recovers from by
 // minting when a tree is needed, or ctx's error, which leaves the mint in
 // flight. With nothing in flight it returns nil at once.
+//
+// An application need not call it before it takes a fee: a take the pool
+// cannot cover while the mint holds a coin collects the mint itself (see
+// Payer.Take). Wait remains how a run that is ending collects the mint, so
+// that the change reaches the pool and Prepared answers the tree.
 func (t *Trees) Wait(ctx context.Context) error {
 	return t.collect(ctx, true)
 }

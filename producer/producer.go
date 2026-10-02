@@ -25,7 +25,8 @@
 //   - Trees is the funding-tree lifecycle: spend from the current tree, or
 //     mint, settle, record and publish the next one when the current tree
 //     cannot fund what is asked; with Ahead, the next tree is minted and
-//     settled in the background before the current one runs out;
+//     settled in the background before the current one runs out, and a fee
+//     the pool cannot pay meanwhile waits for that tree's change;
 //     with Prepare, the application records each tree and its fee coin
 //     before the tree reaches the settlement leg, and Recover settles the
 //     record of a tree a stopped run never adopted.
@@ -50,6 +51,14 @@
 // goroutine while the application uses them from its own; the ones in
 // publish and nodeapi do. The background's notes are held and reported
 // through the Payer's Note by the Spend or Wait that collects its result.
+//
+// One run owns every Payer and every Trees over one pool, not only the
+// Payer a Trees was given. A take the pool cannot cover while a tree minted
+// ahead holds one of its coins waits for that mint and collects it (see
+// Payer.Take), on the goroutine that called Take, whichever Payer over that
+// pool it was called on. Collecting calls the Note of the Trees' Payer and
+// saves the pool, and calls nothing else of the application's: not
+// TreeState, not Prepare, not a leg.
 package producer
 
 import (

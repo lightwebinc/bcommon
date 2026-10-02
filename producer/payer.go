@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
@@ -92,17 +93,26 @@ func (p *Payer) note(format string, args ...any) {
 // answer, usually bwallet.ErrNoSpendable. Held counts the transactions whose
 // change the pool holds back until their proofs arrive: coin that becomes
 // spendable once those are collected, so an application can tell "fund the
-// pool" from "wait for a block".
+// pool" from "wait for a block". Minting counts the funding trees minted
+// ahead (Trees.Ahead) that took a coin of this pool and had not settled
+// when Take stopped waiting for them: coin that returns as change once one
+// settles, so the same take can succeed later in the run. It is zero unless
+// the wait ended first, on the Payer's Timeout or the context; see Take.
 type NoCoinError struct {
-	Err  error
-	Held int
+	Err     error
+	Held    int
+	Minting int
 }
 
 func (e *NoCoinError) Error() string {
+	msg := "fee input: " + e.Err.Error()
 	if e.Held > 0 {
-		return fmt.Sprintf("fee input: %v: the other coins are change from %d transaction(s) whose proofs have not arrived; they become spendable once mined and collected", e.Err, e.Held)
+		msg = fmt.Sprintf("fee input: %v: the other coins are change from %d transaction(s) whose proofs have not arrived; they become spendable once mined and collected", e.Err, e.Held)
 	}
-	return "fee input: " + e.Err.Error()
+	if e.Minting > 0 {
+		msg += fmt.Sprintf("; %d funding tree(s) minted ahead hold a coin and have not settled, and the change returns once one does", e.Minting)
+	}
+	return msg
 }
 
 func (e *NoCoinError) Unwrap() error { return e.Err }
@@ -129,6 +139,38 @@ func (e *NoKeyError) Error() string {
 // A failure to find a coin is a *NoCoinError and a coin no key holds is a
 // *NoKeyError, each returned as it is, so the application can put its own
 // words to them. Every other error is returned with the coin's outpoint.
+//
+// A pool that has a coin for the take answers at once. When it has none,
+// and a funding tree minted ahead (Trees.Ahead) took a coin of this same
+// Pool and has not been collected, the coin the take needs may be that
+// tree's change, which reaches the pool only when the mint is collected. A
+// wallet with one coin is in that state from the moment a tree is minted
+// ahead. Take then waits for the mint and collects it, exactly as
+// Trees.Wait does (its notes go to the Note of that Trees' Payer, its
+// change into the pool, or its unspent coin back), and takes again. The
+// wait ends with the mint, with ctx, or after this Payer's Timeout
+// (DefaultTimeout when zero), whichever is first; with several such mints,
+// by several Trees over one pool, they are collected one at a time under
+// that one bound, and the take is tried again after each. The mint itself
+// runs under the context of the Spend that started it and, without Async,
+// ends within the Timeout of that Trees' Payer.
+//
+// What the collected mint leaves decides the second take. A tree that
+// settled with its proof leaves proven change, which is taken. With Async
+// on the Trees' Payer the change is unproven until its block, so the take
+// answers a *NoCoinError whose Held counts it, unless Allow lets it
+// through: the same "wait for a block" an application already handles. A
+// mint that failed before the settlement leg returns its coin, which is
+// taken; one that failed after it leaves nothing, and the take answers a
+// *NoCoinError. When the wait ends first, the mint is still in flight and
+// the *NoCoinError counts it in Minting.
+//
+// Nothing else waits: not a take the pool can cover, not a mint ahead
+// looking for its own coin, which is skipped with a note when there is
+// none, and not a tree paid through Trees.Fund, which takes no pool coin.
+// Take collects the mint on the calling goroutine, so it belongs to the
+// goroutine that owns the Trees, as every use of a Payer and a Trees over
+// one pool does (see the package documentation).
 func (p *Payer) Take(ctx context.Context) (mint.Input, error) {
 	return p.TakeAtLeast(ctx, p.Fees.Floor)
 }
@@ -137,7 +179,8 @@ func (p *Payer) Take(ctx context.Context) (mint.Input, error) {
 // outputs it funds and the fee: only a coin of at least sats satoshis is
 // taken (bwallet.Pool.TakeAtLeast), and a pool whose spendable coins are all
 // smaller answers a *NoCoinError. A coin that is taken but cannot be signed
-// for is back in the pool before the error is returned.
+// for is back in the pool before the error is returned. It waits for a
+// funding tree minted ahead as Take does.
 func (p *Payer) TakeAtLeast(ctx context.Context, sats uint64) (mint.Input, error) {
 	in, _, err := p.take(ctx, sats)
 	return in, err
@@ -151,8 +194,12 @@ func (p *Payer) take(ctx context.Context, sats uint64) (mint.Input, bwallet.Outp
 		allow = p.Allow()
 	}
 	o, err := p.Pool.TakeAtLeast(p.Tip, sats, allow)
+	minting := 0
+	if errors.Is(err, bwallet.ErrNoSpendable) {
+		o, minting, err = p.takeAfterMints(ctx, sats, allow, err)
+	}
 	if err != nil {
-		return mint.Input{}, bwallet.Output{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids())}
+		return mint.Input{}, bwallet.Output{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids()), Minting: minting}
 	}
 	p.spent = append(p.spent, o)
 	in, err := p.input(ctx, o)
@@ -221,8 +268,77 @@ func (p *Payer) release(o bwallet.Output) {
 	p.spent = slices.DeleteFunc(p.spent, func(s bwallet.Output) bool { return s.Outpoint() == o.Outpoint() })
 }
 
+// spentBy names the transaction, other than tx, that spent coin, which tx
+// spends too: the one the refusal err names for that outpoint (a
+// *nodeapi.SpentError), or the one Asset, when set, shows as its spender.
+// It is "" when neither says so: the coin is unspent, or spent by tx
+// itself, or the node cannot answer for it. Like
+// nodeapi.Asset.SpentElsewhere, it speaks only on a positive word.
+func (p *Payer) spentBy(ctx context.Context, coin bwallet.Output, tx *transaction.Transaction, err error) string {
+	var se *nodeapi.SpentError
+	if errors.As(err, &se) && se.By != "" && strings.EqualFold(se.Outpoint, coin.Outpoint()) {
+		return se.By
+	}
+	if p.Asset == nil {
+		return ""
+	}
+	by, aerr := p.Asset.Spender(ctx, coin.TxID, coin.Vout)
+	if aerr != nil || by == "" || (tx != nil && strings.EqualFold(by, tx.TxID().String())) {
+		return ""
+	}
+	return by
+}
+
+// drop forgets a reserved coin that the transaction by spent, and takes it
+// out of the pool should it be there: a spent coin handed out again only
+// fails the next build. what and txid name the transaction it was to pay
+// for.
+func (p *Payer) drop(coin bwallet.Output, what, txid, by string) {
+	p.release(coin)
+	if _, err := p.Pool.Remove(coin); err != nil {
+		p.note("%s %s: its fee coin %s is spent by %s and could not be taken out of the pool: %v", what, txid, coin.Outpoint(), by, err)
+		return
+	}
+	p.note("%s %s: its fee coin %s is spent by %s, so it is out of the pool and is not returned", what, txid, coin.Outpoint(), by)
+}
+
+// giveBackUnspent settles a reserved coin whose transaction tx the
+// settlement leg did not take, for the reason err: a coin another
+// transaction spent is dropped (see spentBy), and any other goes back to
+// the pool.
+func (p *Payer) giveBackUnspent(ctx context.Context, coin bwallet.Output, what string, tx *transaction.Transaction, err error) {
+	if by := p.spentBy(ctx, coin, tx, err); by != "" {
+		p.drop(coin, what, tx.TxID().String(), by)
+		return
+	}
+	p.giveBackOne(coin)
+}
+
+// dropSpent is what Settle, SettleAndWait and Await do about a refusal of
+// tx: each coin Take reserved that tx spends, and that another transaction
+// spent (see spentBy), is dropped, so a GiveBack after the refusal does not
+// put a spent coin back in the pool.
+func (p *Payer) dropSpent(ctx context.Context, what string, tx *transaction.Transaction, err error) {
+	if tx == nil {
+		return
+	}
+	for _, o := range slices.Clone(p.spent) {
+		for _, in := range tx.Inputs {
+			if in.SourceTXID == nil || in.SourceTxOutIndex != o.Vout || !strings.EqualFold(in.SourceTXID.String(), o.TxID) {
+				continue
+			}
+			if by := p.spentBy(ctx, o, tx, err); by != "" {
+				p.drop(o, what, tx.TxID().String(), by)
+			}
+			break
+		}
+	}
+}
+
 // GiveBack returns every coin Take reserved to the pool, except one that
-// paid for a funding tree Trees put on the settlement leg, which is spent.
+// paid for a funding tree Trees put on the settlement leg, which is spent,
+// and one that a refusal at Settle, SettleAndWait or Await showed spent by
+// another transaction, which is taken out of the pool instead (see Settle).
 func (p *Payer) GiveBack() {
 	for _, o := range p.spent {
 		_ = p.Pool.Return(o)
@@ -388,6 +504,20 @@ func (p *Payer) change(tx *transaction.Transaction, height uint32, mp *transacti
 // With Asset set, a transaction one of whose inputs the node shows spent by
 // another transaction is refused, whatever the leg answered: the error wraps
 // ErrRefused and a *nodeapi.SpentError (errors.Is nodeapi.ErrDoubleSpent).
+//
+// A transaction that is not settled leaves its fee coin reserved, for the
+// caller's GiveBack to return. A coin another transaction spent must not
+// go back, since the pool would hand it out again to fail the next build.
+// So when the leg refuses tx at Submit, or the node's view refuses it
+// afterwards, each coin this Payer's Take reserved that tx spends is asked
+// about: one the refusal names another spender for (a *nodeapi.SpentError
+// for its outpoint), or that Asset, when set, shows spent by a transaction
+// other than tx, is forgotten and taken out of the pool
+// (bwallet.Pool.Remove), with a note, and the GiveBack that follows
+// returns only the rest. A coin the node shows unspent, or spent by tx
+// itself, or cannot answer for, stays reserved and is returned as before.
+// SettleAndWait and Await do the same, Await when its wait ends on such a
+// refusal. Trees does it for a funding tree's coin: see Trees.Spend.
 func (p *Payer) Settle(ctx context.Context, what string, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
 	if !p.Async {
 		return p.SettleAndWait(ctx, what, tx)
@@ -397,12 +527,14 @@ func (p *Payer) Settle(ctx context.Context, what string, tx *transaction.Transac
 	}
 	p.note("%s %s: broadcasting via %s (%d bytes)", what, tx.TxID(), p.Settler.Name(), tx.Size())
 	if err := p.Settler.Submit(ctx, tx); err != nil {
+		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: settle: %w", what, err)
 	}
 	// The leg's acceptance is not the node's view: arcade has accepted a
 	// transaction whose input was already spent and mined, and the tcp
 	// ingress answers nothing.
 	if err := p.Asset.SpentElsewhere(ctx, tx); err != nil {
+		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: settle: %w: %w", what, ErrRefused, err)
 	}
 	p.note("%s %s: accepted; its proof is collected later", what, tx.TxID())
@@ -418,6 +550,7 @@ func (p *Payer) SettleAndWait(ctx context.Context, what string, tx *transaction.
 	}
 	p.note("%s %s: settling via %s (%d bytes)", what, tx.TxID(), p.Settler.Name(), tx.Size())
 	if err := p.Settler.Submit(ctx, tx); err != nil {
+		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: settle: %w", what, err)
 	}
 	return p.Await(ctx, what, tx)
@@ -447,6 +580,7 @@ func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transact
 	defer cancel()
 	mp, height, err := nodeapi.WaitSettled(wctx, p.Asset, tx, poll)
 	if errors.Is(err, nodeapi.ErrDoubleSpent) {
+		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: %w: %w", what, ErrRefused, err)
 	}
 	if err != nil {

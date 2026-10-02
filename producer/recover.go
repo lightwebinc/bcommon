@@ -167,7 +167,9 @@ type Recovery struct {
 //   - Between the start that answered CoinReturned and the next, the coin
 //     is in the pool. If the tree lands in that time and the coin is taken
 //     to pay for a transaction, that transaction is refused (ErrRefused)
-//     and has to be built again. No coin or tree is lost by it; if the
+//     and has to be built again. The refusal takes the spent coin out of
+//     the pool when the node shows the tree as its spender (see
+//     Payer.Settle). No coin or tree is lost by it; if the
 //     transaction was a funding tree, its own record is answered CoinSpent.
 //   - A kept record is asked about on every start, and CoinReturned puts
 //     the coin back each time. If the application has since spent the coin
@@ -175,8 +177,9 @@ type Recovery struct {
 //     leg an instant before a stop, the node may show the coin unspent once
 //     more and the coin goes back to the pool though it is spent. A
 //     transaction that then takes it is refused, or, reaching the node
-//     first, displaces the earlier one. The next Recover that answers
-//     CoinSpent takes the coin out again.
+//     first, displaces the earlier one. That refusal takes the coin out
+//     again when the node names its spender by then, and otherwise the next
+//     Recover that answers CoinSpent does.
 //
 // An application that restarts at once can wait a moment before it
 // recovers, which makes both rarer.
