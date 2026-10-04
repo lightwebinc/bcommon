@@ -492,7 +492,9 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 // form over the SDK alone; chaintoken reads a BEEF through the guard and a
 // script through pushdrop, and decides nothing an application's record
 // enters; testchain serves the wire formats the clients read without
-// importing a client, and its tests drive it through those clients.
+// importing a client, and its tests drive it through those clients;
+// sanitize is character rules over a table it embeds, and its tests compare
+// it with termsafe.
 var layers = map[string]struct {
 	module []string
 	tests  []string
@@ -503,6 +505,7 @@ var layers = map[string]struct {
 	"chaintoken": {module: []string{"guard", "pushdrop"}, tests: []string{"goldentest", "mint"}, sdk: true},
 	"chainview":  {module: []string{"nodeapi"}, sdk: true},
 	"testchain":  {tests: []string{"goldentest", "headers", "nodeapi", "publish"}, sdk: true},
+	"sanitize":   {tests: []string{"termsafe"}},
 }
 
 // testOnly are the packages that exist for tests and local trials. No

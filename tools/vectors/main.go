@@ -25,8 +25,16 @@
 // with the workspace off, so that go-sdk is the version this module pins and
 // not whatever a workspace holds:
 //
-//	GOWORK=off go run .          # write ../../testdata/vectors
+//	GOWORK=off go run .          # write ../../testdata/vectors and the filter's table
 //	GOWORK=off go run . -check   # compare byte for byte; exit 1 on any difference
+//
+// It also writes the renderer filter's property table, generated from the
+// Unicode emoji data under third_party/unicode, to the two places the
+// library reads it from: sanitize/unicode-15.1.json, which the Go package
+// embeds, and ts/src/sanitize-table.ts, which holds the same bytes for the
+// TypeScript package. The corpus in sanitize-v1.json comes from a second
+// implementation of the filter here, which reads the Unicode files and not
+// the table.
 package main
 
 import (
@@ -48,23 +56,45 @@ type family struct {
 func main() {
 	dir := flag.String("dir", filepath.Join("..", "..", "testdata", "vectors"), "the directory the vectors are written to, or checked against with -check")
 	check := flag.Bool("check", false, "compare the generated vectors with the files in -dir instead of writing them")
+	repo := flag.String("repo", filepath.Join("..", ".."), "the repository root: the Unicode data is read from it, and the renderer filter's table is written to it, or checked against it with -check")
 	flag.Parse()
 
-	files, err := generate()
+	files, err := generate(*repo)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "vectors:", err)
+		os.Exit(1)
+	}
+	table, _, err := tableFiles(*repo)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "vectors:", err)
 		os.Exit(1)
 	}
 	if *check {
-		if bad := compare(*dir, files); len(bad) > 0 {
+		bad := compare(*dir, files)
+		for _, name := range sortedNames(table) {
+			got, err := os.ReadFile(filepath.Join(*repo, name))
+			switch {
+			case err != nil:
+				bad = append(bad, fmt.Sprintf("%s: %v", name, err))
+			case !bytes.Equal(got, table[name]):
+				bad = append(bad, fmt.Sprintf("%s differs from the generator's output at byte %d", name, firstDifference(got, table[name])))
+			}
+		}
+		if len(bad) > 0 {
 			for _, b := range bad {
 				fmt.Fprintln(os.Stderr, "vectors:", b)
 			}
 			fmt.Fprintln(os.Stderr, "vectors: regenerate with `make vectors-update` and review the diff")
 			os.Exit(1)
 		}
-		fmt.Printf("vectors: %d files match\n", len(files))
+		fmt.Printf("vectors: %d files and the %d table files match\n", len(files), len(table))
 		return
+	}
+	for _, name := range sortedNames(table) {
+		if err := os.WriteFile(filepath.Join(*repo, name), table[name], 0o644); err != nil {
+			fmt.Fprintln(os.Stderr, "vectors:", err)
+			os.Exit(1)
+		}
 	}
 	if err := os.MkdirAll(*dir, 0o755); err != nil {
 		fmt.Fprintln(os.Stderr, "vectors:", err)
@@ -82,9 +112,10 @@ func main() {
 // generate builds every family and renders each as indented JSON with a
 // trailing newline. encoding/json writes struct fields in declaration order
 // and map keys sorted, so the same inputs always render the same bytes.
-func generate() (map[string][]byte, error) {
+func generate(repo string) (map[string][]byte, error) {
 	var families []family
-	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, txFamilies, recordFamilies, keyedFamilies, segmentFamilies} {
+	sanitize := func() ([]family, error) { return sanitizeFamilies(repo) }
+	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, txFamilies, recordFamilies, keyedFamilies, segmentFamilies, sanitize} {
 		fs, err := build()
 		if err != nil {
 			return nil, err

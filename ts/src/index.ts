@@ -51,6 +51,7 @@ export {
   type WireEntry,
 } from './wire.js'
 export { verifyFieldSignature } from './fieldsig.js'
+export { UnicodeVersion, filterBytes, filterText } from './sanitize.js'
 export { decodeFunding } from './funding.js'
 export {
   LockTime,

@@ -1,0 +1,421 @@
+{
+  "unicode": "15.1",
+  "tableSha256": "eddef73b55dd5140955f545ebae4bb1158a5639e9b8b6aa5679c0fee8b632e45",
+  "cases": [
+    {
+      "name": "plain ASCII",
+      "inputHex": "68656c6c6f2c20776f726c64",
+      "outputHex": "68656c6c6f2c20776f726c64"
+    },
+    {
+      "name": "empty",
+      "inputHex": "",
+      "outputHex": ""
+    },
+    {
+      "name": "text outside ASCII: Latin, Greek, CJK, Arabic, a combining accent",
+      "inputHex": "636166c3a920ceb1ceb2ceb320e4bda0e5a5bd20d985d8b1d8add8a8d8a72065cc81",
+      "outputHex": "636166c3a920ceb1ceb2ceb320e4bda0e5a5bd20d985d8b1d8add8a8d8a72065cc81"
+    },
+    {
+      "name": "a tab becomes a space",
+      "inputHex": "610962090963",
+      "outputHex": "612062202063"
+    },
+    {
+      "name": "LF is kept",
+      "inputHex": "6f6e650a74776f0a",
+      "outputHex": "6f6e650a74776f0a"
+    },
+    {
+      "name": "U+2028 becomes LF",
+      "inputHex": "6f6e65e280a874776f",
+      "outputHex": "6f6e650a74776f"
+    },
+    {
+      "name": "U+2029 becomes LF",
+      "inputHex": "6f6e65e280a974776f",
+      "outputHex": "6f6e650a74776f"
+    },
+    {
+      "name": "CR and CRLF: CR goes",
+      "inputHex": "610d620d0a63",
+      "outputHex": "61620a63"
+    },
+    {
+      "name": "NUL, BEL, BS, VT, FF and DEL go",
+      "inputHex": "610062076308640b650c667f67",
+      "outputHex": "61626364656667"
+    },
+    {
+      "name": "C1 controls go: NEL, U+0080, U+009F",
+      "inputHex": "61c28562c28063c29f64",
+      "outputHex": "61626364"
+    },
+    {
+      "name": "a colour sequence goes, its text stays",
+      "inputHex": "1b5b33316d7265641b5b306d20706c61696e",
+      "outputHex": "72656420706c61696e"
+    },
+    {
+      "name": "clear screen and cursor home go",
+      "inputHex": "1b5b324a1b5b4874657874",
+      "outputHex": "74657874"
+    },
+    {
+      "name": "a window title, ended by BEL",
+      "inputHex": "1b5d303b70776e6564076166746572",
+      "outputHex": "6166746572"
+    },
+    {
+      "name": "a window title, ended by ST as ESC \\",
+      "inputHex": "1b5d303b70776e65641b5c6166746572",
+      "outputHex": "6166746572"
+    },
+    {
+      "name": "a window title, ended by U+009C",
+      "inputHex": "1b5d303b70776e6564c29c6166746572",
+      "outputHex": "6166746572"
+    },
+    {
+      "name": "a hyperlink sequence and its text",
+      "inputHex": "1b5d383b3b68747470733a2f2f6578616d706c652e636f6d076c696e6b1b5d383b3b07",
+      "outputHex": "6c696e6b"
+    },
+    {
+      "name": "an OSC the value ends inside takes the rest",
+      "inputHex": "6265666f72651b5d303b6e6576657220656e646564",
+      "outputHex": "6265666f7265"
+    },
+    {
+      "name": "a DCS string",
+      "inputHex": "611b507123303b323b303b303b301b5c62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "ESC with an intermediate: a charset switch",
+      "inputHex": "611b284262",
+      "outputHex": "6162"
+    },
+    {
+      "name": "ESC and one character: a terminal reset",
+      "inputHex": "611b6362",
+      "outputHex": "6162"
+    },
+    {
+      "name": "a lone ESC at the end",
+      "inputHex": "6162631b",
+      "outputHex": "616263"
+    },
+    {
+      "name": "C1 CSI, U+009B, as a colour sequence",
+      "inputHex": "61c29b33316d62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "a CSI cut by a control takes the control",
+      "inputHex": "611b5b31320a62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "bidi: right-to-left override and pop",
+      "inputHex": "616263e280ae646362e280ac",
+      "outputHex": "616263646362"
+    },
+    {
+      "name": "bidi: every control in the list",
+      "inputHex": "61d89c62e2808e63e2808f64e280aa65e280ab66e280ac67e280ad68e280ae69e281a66ae281a76be281a86ce281a96d",
+      "outputHex": "6162636465666768696a6b6c6d"
+    },
+    {
+      "name": "a disguised identifier, isolates around a comment",
+      "inputHex": "616363657373e281a720e281a62f2f20636865636b206c61746572e281a920e281a66772616e746564",
+      "outputHex": "616363657373202f2f20636865636b206c61746572206772616e746564"
+    },
+    {
+      "name": "zero width space, non-joiner, word joiner",
+      "inputHex": "61e2808b62e2808c63e281a064",
+      "outputHex": "61626364"
+    },
+    {
+      "name": "invisible operators U+2061 to U+2064",
+      "inputHex": "61e281a162e281a263e281a364e281a465",
+      "outputHex": "6162636465"
+    },
+    {
+      "name": "soft hyphen and combining grapheme joiner",
+      "inputHex": "6578c2ad747261cd8f",
+      "outputHex": "6578747261"
+    },
+    {
+      "name": "Hangul fillers",
+      "inputHex": "e1859fe185a061e385a462efbea0",
+      "outputHex": "6162"
+    },
+    {
+      "name": "Mongolian vowel separator",
+      "inputHex": "61e1a08e62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "a byte order mark, leading and inside",
+      "inputHex": "efbbbf61efbbbf62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "supplementary variation selectors, first and last",
+      "inputHex": "61f3a0848062f3a087af63",
+      "outputHex": "616263"
+    },
+    {
+      "name": "the flag of England is kept whole",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf",
+      "outputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf"
+    },
+    {
+      "name": "the flag of Scotland is kept whole",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081b3f3a081a3f3a081b4f3a081bf",
+      "outputHex": "f09f8fb4f3a081a7f3a081a2f3a081b3f3a081a3f3a081b4f3a081bf"
+    },
+    {
+      "name": "the flag of Wales is kept whole",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081b7f3a081acf3a081b3f3a081bf",
+      "outputHex": "f09f8fb4f3a081a7f3a081a2f3a081b7f3a081acf3a081b3f3a081bf"
+    },
+    {
+      "name": "three flags in text",
+      "inputHex": "676f20f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bff09f8fb4f3a081a7f3a081a2f3a081b3f3a081a3f3a081b4f3a081bff09f8fb4f3a081a7f3a081a2f3a081b7f3a081acf3a081b3f3a081bf21",
+      "outputHex": "676f20f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bff09f8fb4f3a081a7f3a081a2f3a081b3f3a081a3f3a081b4f3a081bff09f8fb4f3a081a7f3a081a2f3a081b7f3a081acf3a081b3f3a081bf21"
+    },
+    {
+      "name": "a tag run the table does not list: its tags go, the black flag stays",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081baf3a081baf3a081baf3a081bf",
+      "outputHex": "f09f8fb4"
+    },
+    {
+      "name": "England without its cancel tag",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7",
+      "outputHex": "f09f8fb4"
+    },
+    {
+      "name": "England with a tag too many",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081a7f3a081bf",
+      "outputHex": "f09f8fb4"
+    },
+    {
+      "name": "England's tags after a letter: hidden text goes",
+      "inputHex": "61f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf",
+      "outputHex": "61"
+    },
+    {
+      "name": "tag characters spelling a hidden instruction",
+      "inputHex": "6869f3a081a9f3a081a7f3a081aef3a081aff3a081b2f3a081a5",
+      "outputHex": "6869"
+    },
+    {
+      "name": "tag characters at the start",
+      "inputHex": "f3a08181f3a0818278",
+      "outputHex": "78"
+    },
+    {
+      "name": "U+E0001, the language tag",
+      "inputHex": "f3a08081f3a081a5f3a081ae78",
+      "outputHex": "78"
+    },
+    {
+      "name": "a flag whose tags an escape sequence interrupts",
+      "inputHex": "f09f8fb41b5b306df3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf",
+      "outputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf"
+    },
+    {
+      "name": "heart on fire is kept",
+      "inputHex": "e29da4efb88fe2808df09f94a5",
+      "outputHex": "e29da4efb88fe2808df09f94a5"
+    },
+    {
+      "name": "heart on fire without its U+FE0F",
+      "inputHex": "e29da4e2808df09f94a5",
+      "outputHex": "e29da4e2808df09f94a5"
+    },
+    {
+      "name": "the rainbow flag is kept",
+      "inputHex": "f09f8fb3efb88fe2808df09f8c88",
+      "outputHex": "f09f8fb3efb88fe2808df09f8c88"
+    },
+    {
+      "name": "the transgender flag",
+      "inputHex": "f09f8fb3efb88fe2808de29aa7efb88f",
+      "outputHex": "f09f8fb3efb88fe2808de29aa7efb88f"
+    },
+    {
+      "name": "a family of three",
+      "inputHex": "f09f91a8e2808df09f91a9e2808df09f91a7",
+      "outputHex": "f09f91a8e2808df09f91a9e2808df09f91a7"
+    },
+    {
+      "name": "a skin tone",
+      "inputHex": "f09f918df09f8fbd",
+      "outputHex": "f09f918df09f8fbd"
+    },
+    {
+      "name": "every skin tone",
+      "inputHex": "f09f918bf09f8fbbf09f918bf09f8fbcf09f918bf09f8fbdf09f918bf09f8fbef09f918bf09f8fbf",
+      "outputHex": "f09f918bf09f8fbbf09f918bf09f8fbcf09f918bf09f8fbdf09f918bf09f8fbef09f918bf09f8fbf"
+    },
+    {
+      "name": "a skin tone before a joiner",
+      "inputHex": "f09f91a9f09f8fbde2808df09f92bb",
+      "outputHex": "f09f91a9f09f8fbde2808df09f92bb"
+    },
+    {
+      "name": "two skin tones across a joiner",
+      "inputHex": "f09fabb1f09f8fbbe2808df09fabb2f09f8fbf",
+      "outputHex": "f09fabb1f09f8fbbe2808df09fabb2f09f8fbf"
+    },
+    {
+      "name": "a joiner between letters goes",
+      "inputHex": "61e2808d62",
+      "outputHex": "6162"
+    },
+    {
+      "name": "a joiner after an emoji, before a letter",
+      "inputHex": "f09f94a5e2808d61",
+      "outputHex": "f09f94a561"
+    },
+    {
+      "name": "a joiner before an emoji, after a letter",
+      "inputHex": "61e2808df09f94a5",
+      "outputHex": "61f09f94a5"
+    },
+    {
+      "name": "a joiner at each end",
+      "inputHex": "e2808df09f94a5e2808d",
+      "outputHex": "f09f94a5"
+    },
+    {
+      "name": "two joiners between emoji: one stays",
+      "inputHex": "f09f94a5e2808de2808df09f94a5",
+      "outputHex": "f09f94a5e2808df09f94a5"
+    },
+    {
+      "name": "a joiner before a skin tone",
+      "inputHex": "f09f918de2808df09f8fbd",
+      "outputHex": "f09f918df09f8fbd"
+    },
+    {
+      "name": "a joiner after a lone skin tone",
+      "inputHex": "f09f8fbde2808df09f94a5",
+      "outputHex": "f09f8fbdf09f94a5"
+    },
+    {
+      "name": "a run of U+FE0F: one stays",
+      "inputHex": "e29da4efb88fefb88fefb88f",
+      "outputHex": "e29da4efb88f"
+    },
+    {
+      "name": "U+FE0E then U+FE0F: the first stays",
+      "inputHex": "e29da4efb88eefb88f",
+      "outputHex": "e29da4efb88e"
+    },
+    {
+      "name": "U+FE0E after a base that lists it",
+      "inputHex": "e298baefb88e",
+      "outputHex": "e298baefb88e"
+    },
+    {
+      "name": "U+FE0F after a letter goes",
+      "inputHex": "61efb88f",
+      "outputHex": "61"
+    },
+    {
+      "name": "U+FE0F after an emoji the table does not list goes",
+      "inputHex": "f09f9880efb88f",
+      "outputHex": "f09f9880"
+    },
+    {
+      "name": "U+FE00 to U+FE0D go",
+      "inputHex": "61efb88062efb88763efb88d64",
+      "outputHex": "61626364"
+    },
+    {
+      "name": "a selector run hiding bits after a letter",
+      "inputHex": "78efb880efb881efb882efb88eefb88fefb88d",
+      "outputHex": "78"
+    },
+    {
+      "name": "a keycap: digit, U+FE0F, U+20E3",
+      "inputHex": "31efb88fe283a323efb88fe283a3",
+      "outputHex": "31efb88fe283a323efb88fe283a3"
+    },
+    {
+      "name": "a selector after a removed zero-width space",
+      "inputHex": "e29da4e2808befb88f",
+      "outputHex": "e29da4efb88f"
+    },
+    {
+      "name": "a selector after a removed U+FE00",
+      "inputHex": "e29da4efb880efb88f",
+      "outputHex": "e29da4efb88f"
+    },
+    {
+      "name": "U+FE0F after a flag's tags goes",
+      "inputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bfefb88f",
+      "outputHex": "f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf"
+    },
+    {
+      "name": "invalid UTF-8: a lone continuation byte",
+      "inputHex": "618062",
+      "outputHex": "61efbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: 0xFF",
+      "inputHex": "61ff62",
+      "outputHex": "61efbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: a three-byte sequence cut short",
+      "inputHex": "61e28262",
+      "outputHex": "61efbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: an overlong NUL",
+      "inputHex": "61c08062",
+      "outputHex": "61efbfbdefbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: an encoded surrogate",
+      "inputHex": "61eda08062",
+      "outputHex": "61efbfbdefbfbdefbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: above U+10FFFF",
+      "inputHex": "61f490808062",
+      "outputHex": "61efbfbdefbfbdefbfbdefbfbd62"
+    },
+    {
+      "name": "invalid UTF-8: a four-byte sequence cut at the end",
+      "inputHex": "61f09f94",
+      "outputHex": "61efbfbd"
+    },
+    {
+      "name": "invalid UTF-8 inside an escape sequence",
+      "inputHex": "1b5bff33316d78",
+      "outputHex": "78"
+    },
+    {
+      "name": "private use and noncharacters are not on the list",
+      "inputHex": "ee8080efbfbff48fbfbf",
+      "outputHex": "ee8080efbfbff48fbfbf"
+    },
+    {
+      "name": "a value that is only what the rules remove",
+      "inputHex": "1b5b306de2808be280aee281a6f3a08181efb88f00",
+      "outputHex": ""
+    },
+    {
+      "name": "a mixed message",
+      "inputHex": "486920407465616d20e29da4efb88fe2808df09f94a5091b5b316d736869702069741b5b306de280ae21e280a8f09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf",
+      "outputHex": "486920407465616d20e29da4efb88fe2808df09f94a52073686970206974210af09f8fb4f3a081a7f3a081a2f3a081a5f3a081aef3a081a7f3a081bf"
+    }
+  ]
+}
