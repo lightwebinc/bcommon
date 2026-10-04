@@ -46,7 +46,9 @@ type Trees struct {
 	// because a successor cannot spend a predecessor's tree.
 	Identity string
 	// Count is how many outputs a new tree has, at least; Spend mints more
-	// when one spend needs more. Sats is the value of each.
+	// when one spend needs more, up to mint.MaxFundingOutputs. A tree of
+	// more is refused with an error wrapping mint.ErrTreeTooLarge before a
+	// coin is taken or Fund is called. Sats is the value of each.
 	Count int
 	Sats  uint64
 	// Funder is recorded in the new tree's funding.Tree.Funder: how the
@@ -299,11 +301,17 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		}
 	}
 	// A tree at least as large as the spend needs, and never smaller than
-	// Count asks for.
+	// Count asks for, and never larger than a tree holds.
 	count := t.Count
 	if uint32(count) < need { //nolint:gosec // a small configured count
+		if need > mint.MaxFundingOutputs {
+			return nil, 0, fmt.Errorf("producer: this transition spends %d outputs: %w", need, mint.ErrTreeTooLarge)
+		}
 		count = int(need)
 		t.Payer.note("this transition spends %d outputs, so the tree is minted with %d rather than %d", need, count, t.Count)
+	}
+	if count > mint.MaxFundingOutputs {
+		return nil, 0, fmt.Errorf("producer: Count %d: %w", count, mint.ErrTreeTooLarge)
 	}
 	var tree *transaction.Transaction
 	var mp *transaction.MerklePath
@@ -479,6 +487,10 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 	t.Payer.note("funding tree %s has %d output(s) left, so the next is minted ahead", curTxid, left)
 	fail := func(err error) {
 		t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", err)
+	}
+	if count > mint.MaxFundingOutputs {
+		fail(fmt.Errorf("producer: Count %d: %w", count, mint.ErrTreeTooLarge))
+		return
 	}
 	done := make(chan aheadResult, 1)
 	if t.Fund != nil {

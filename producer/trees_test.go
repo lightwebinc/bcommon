@@ -11,6 +11,7 @@ import (
 
 	"github.com/lightwebinc/bcommon/carrier"
 	"github.com/lightwebinc/bcommon/funding"
+	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/producer"
 )
 
@@ -265,4 +266,64 @@ func TestIndexKeepsTheHistoryInStep(t *testing.T) {
 	if got := producer.Index(none, cur); len(got) != 1 || got[0] != *cur {
 		t.Fatalf("%+v", got)
 	}
+}
+
+// A tree larger than mint.MaxFundingOutputs is refused before a coin is
+// taken or Fund is called, whether Count or one spend asks for it; at the
+// cap it is minted. A mint ahead under a Count over the cap is skipped
+// with a note.
+func TestSpendTreeCap(t *testing.T) {
+	ctx := context.Background()
+	for _, c := range []struct {
+		name  string
+		count int
+		need  uint32
+	}{
+		{"Count over the cap", mint.MaxFundingOutputs + 1, 1},
+		{"one spend over the cap", 4, mint.MaxFundingOutputs + 1},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			tr, l, st, _ := treesFor(t)
+			tr.Count = c.count
+			_, _, err := tr.Spend(ctx, c.need)
+			if !errors.Is(err, mint.ErrTreeTooLarge) {
+				t.Fatalf("got %v", err)
+			}
+			if tr.Payer.Pool.Count() != 1 || st.adopted != 0 || len(l.submissions()) != 0 {
+				t.Fatal("a coin was taken or a tree minted")
+			}
+			funded := false
+			tr.Fund = func(context.Context, int) (*transaction.Transaction, *transaction.MerklePath, uint32, error) {
+				funded = true
+				return nil, nil, 0, errors.New("unreachable")
+			}
+			if _, _, err := tr.Spend(ctx, c.need); !errors.Is(err, mint.ErrTreeTooLarge) || funded {
+				t.Fatalf("with Fund: %v, called %v", err, funded)
+			}
+		})
+	}
+	t.Run("at the cap", func(t *testing.T) {
+		tr, _, _, _ := treesFor(t)
+		tr.Count = 1
+		asked := 0
+		tr.Fund = func(_ context.Context, count int) (*transaction.Transaction, *transaction.MerklePath, uint32, error) {
+			asked = count
+			return nil, nil, 0, errors.New("the wallet declines")
+		}
+		if _, _, err := tr.Spend(ctx, mint.MaxFundingOutputs); err == nil || err.Error() != "the wallet declines" || asked != mint.MaxFundingOutputs {
+			t.Fatalf("Fund asked for %d: %v", asked, err)
+		}
+	})
+	t.Run("ahead", func(t *testing.T) {
+		tr, _, st, n := aheadFor(t)
+		spend(t, tr, st, 1)
+		tr.Count = mint.MaxFundingOutputs + 1
+		spend(t, tr, st, 1)
+		if err := tr.Wait(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(n.String(), "not minted ahead") || !strings.Contains(n.String(), "1023") {
+			t.Fatalf("notes:\n%s", n)
+		}
+	})
 }

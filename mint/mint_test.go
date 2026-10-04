@@ -432,3 +432,20 @@ func TestSignerFailures(t *testing.T) {
 		t.Fatalf("failing signer: %v", err)
 	}
 }
+
+// A tree holds at most MaxFundingOutputs funding outputs and its change: the
+// largest is built, and one more is refused before anything is signed.
+func TestFundingTreeCap(t *testing.T) {
+	holder, payer := parties(t)
+	tree, err := mint.FundingTree(holder.lock, mint.MaxFundingOutputs, 1, payer.coin(100000), payer.lock, mint.DefaultFees)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tree.Outputs) != mint.MaxFundingOutputs+1 {
+		t.Fatalf("%d outputs, want %d and change", len(tree.Outputs), mint.MaxFundingOutputs)
+	}
+	_, err = mint.FundingTree(holder.lock, mint.MaxFundingOutputs+1, 1, payer.coin(100000), payer.lock, mint.DefaultFees)
+	if !errors.Is(err, mint.ErrTreeTooLarge) {
+		t.Fatalf("one over the cap: %v", err)
+	}
+}

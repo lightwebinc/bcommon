@@ -53,7 +53,18 @@ func (f Fees) for_(size int) uint64 {
 var (
 	ErrInsufficient = errors.New("mint: fee input cannot cover the outputs and the fee")
 	ErrNoChange     = errors.New("mint: nil change script")
+	// ErrTreeTooLarge is a funding tree of more than MaxFundingOutputs
+	// funding outputs.
+	ErrTreeTooLarge = errors.New("mint: a funding tree holds at most 1023 funding outputs")
 )
+
+// MaxFundingOutputs is the most funding outputs one funding tree holds,
+// its change outputs aside. A sweep of every funding output of a tree with
+// one fee input then spends at most 1024 inputs, the least a host that
+// admits a sweep must accept, so the kill switch for a whole tree is one
+// transaction every such host takes. Every carrier's BEEF carries its whole
+// tree as well, so an application usually wants a tree far smaller.
+const MaxFundingOutputs = 1023
 
 // errNoLock refuses a nil lock before the fee loop. The SDK dereferences
 // every output's script when it computes a signature hash, so a nil one
@@ -110,10 +121,14 @@ func Transition(lock *script.Script, sats uint64, prev *Input, fee Input, change
 // FundingTree builds and signs a funding tree: count outputs of sats each,
 // locked with lock, plus change. Each carrier spends one; a mined spend of
 // any of them by the owner (a kill switch) is a transaction the caller
-// builds with the unlocker for lock.
+// builds with the unlocker for lock. count is 1 to MaxFundingOutputs; a
+// larger one is refused with an error wrapping ErrTreeTooLarge.
 func FundingTree(lock *script.Script, count int, sats uint64, fee Input, change *script.Script, fees Fees) (*transaction.Transaction, error) {
 	if count < 1 || sats < 1 {
 		return nil, errors.New("mint: a funding tree needs at least one output of at least one satoshi")
+	}
+	if count > MaxFundingOutputs {
+		return nil, fmt.Errorf("%w: %d asked", ErrTreeTooLarge, count)
 	}
 	if lock == nil {
 		return nil, errNoLock
