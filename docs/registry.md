@@ -284,6 +284,61 @@ implementation shares them. It derives nothing under BRC-369's
 `[2, "keyed content release"]`: the epoch keys it wraps under were released
 under that protocol by borg.
 
+### bchat
+
+Team chat replicated by overlay hosts: a workspace as a chain of mined
+tokens that carries its channel directory, its moderation and the anchors
+of its message intervals, and each message as a signed record on an unmined
+carrier, keyed under a borg group epoch in a private channel.
+**Signed by its owner; provisional** until its first publish (not yet
+committed on chain; assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "bchat"]` | Every public bchat derivation (counterparty anyone) and the funding key |
+| Key id | `message` | A message carrier's record output and field signature, and the outputs of funding trees that fund messages |
+| Key id | `workspace` | A workspace token's lock and field signature |
+| Key id | `chain` | The outputs of funding trees that pay for a workspace's first token; never a carrier's |
+| Key id | `fund` | The embedded wallet's funding key |
+| Tag | `bc` `0x01` | Workspace token, first field |
+| Tag | `bc` `0x02` | Funding-tree output |
+| Record magic | `bcm` `0x01` | Message record, version 1 |
+| Record magic | `bcw` `0x01` | Workspace record, version 1 |
+| Record magic | `bcp` `0x01` | Payload (the text, mentions and attachments a message carries), version 1 |
+| Topics | `tm_bchat_<name>_<suffix>` | One topic per workspace; `<name>` is at most 30 characters and `<suffix>` is 10 random lowercase letters chosen when the workspace is created |
+| Lookup service | `ls_bchat` | Lookup service for every workspace on a host |
+| Host routes | `<base>/ls_bchat/terms`, `<base>/ls_bchat/watch` | The host terms document for priced questions; the optional notification stream |
+| Baskets | `bchat fund`, `bchat message funding`, `bchat chain funding`, `bchat chain`, `bchat kill tombstone` | Wallet baskets |
+| Domain string | `bchat workspace id v1` | Hashed into a workspace identifier |
+| Domain string | `bchat epoch wrap v1` | Hashed into the key that wraps a message's content key under a group epoch |
+| Domain string | `bchat dm v1` | Hashed into a conversation id |
+| bbox plaintext member | `bchat` | bchat's member of a bbox plaintext, which bbox preserves |
+| bbox box | `bchat` | Where a direct message goes; a payment goes to `payment_inbox`, as BRC-33 uses it |
+
+The prefix `bc` is registered to bchat. `0x6d`, `0x70` and `0x77` are never
+assigned as tag type bytes under it, because `bc` `0x6d`, `bc` `0x70` and
+`bc` `0x77` are the first three bytes of the record magics `bcm`, `bcp` and
+`bcw`. `0x00` is not assigned.
+
+bchat owns the `tm_bchat_` topic namespace: no other application names a
+topic that starts with it. A workspace's topic carries entropy under the
+rule above, because anyone can create a workspace; with `tm_bchat_`, the
+separating underscore and the suffix taking 20 characters, `<name>` has at
+most 30.
+
+bchat registers no certificate type: a writer of a gated or private channel
+is a member of a borg group, and the membership grant is borg's.
+
+Borrowed, not registered: bchat hashes a content key into its symmetric key
+and its commitment under BRC-369 section 2's domain strings,
+`metanet keyed content symmetric v1` and
+`metanet keyed content commitment v1`, as written. It sends direct messages
+and payments as bbox envelopes, so it uses `[2, "message encryption"]`
+through bbox and BRC-29's `[2, "3241645161d8"]` for payments, each as its
+specification defines it. It derives nothing under BRC-369's
+`[2, "keyed content release"]`: the epoch keys it wraps under were released
+under that protocol by borg.
+
 ## Not registered
 
 bcommon itself registers nothing: every package that derives, tags or names
