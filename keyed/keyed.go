@@ -10,6 +10,12 @@
 // commitment before anything uses it (CheckOpened), so that a wrong key
 // names whoever wrapped it and not whoever encrypted under it.
 //
+// SealSegment and OpenSegment encrypt a value under a content key as one
+// BRC-369 section 2.3 segment, and EpochWrapKey, WrapToEpoch and
+// UnwrapFromEpoch wrap a content key for the members of one group epoch,
+// under a key derived from the epoch's symmetric key, the content id and
+// the application's own domain string.
+//
 // What a key encrypts, who it is released to and how a release is framed
 // are the application's. This package writes no record and names no
 // protocol.
