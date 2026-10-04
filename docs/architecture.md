@@ -55,6 +55,7 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `wirewallet` | none | yes |
 | 0 | `goldentest` | none | yes |
 | 0 | `termsafe` | none | no |
+| 0 | `sanitize` | none | no |
 | 0 | `keyed` | none | yes |
 | 0 | `testchain` | none | yes |
 | 1 | `store` | `cbor`, `commit` | no |
@@ -98,12 +99,12 @@ Every edge inside the module:
 The graph is shallow on purpose. `mint` takes every lock script and every
 unlocker as a parameter, so it needs neither `pushdrop` nor `carrier`, and
 `producer` takes the funding lock the same way, so it needs neither either.
-`termsafe` imports only the standard library. `record` reads bytes and
+`termsafe` and `sanitize` import only the standard library. `record` reads bytes and
 needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
-`TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview` and
-`testchain` to these edges, tests included.
+`TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`,
+`testchain` and `sanitize` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -199,8 +200,15 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   just unwrapped (`CheckOpened`: 32 bytes, a scalar, the committed one, in
   that order), and BRC-2's symmetric form (`SymmetricSeal`,
   `SymmetricOpen`), in which a key is wrapped and a certificate field is
-  encrypted. What a key encrypts, who it is released to and how a release
-  is framed are the application's.
+  encrypted. It also owns one BRC-369 section 2.3 segment (`SealSegment`,
+  `OpenSegment`: AES-256-GCM under the symmetric key with the IV
+  `salt || 0^8`, the tag after), and the wrap of a content key for the
+  members of one group epoch (`EpochWrapKey`, `WrapToEpoch`,
+  `UnwrapFromEpoch`): BRC-2's symmetric form under
+  `SHA-256(domain || epoch symmetric key || content id)`, the domain string
+  the application's own, so that two applications using one epoch key never
+  share a wrapping key. What a key encrypts, who it is released to and how
+  a release is framed are the application's.
 
 ### Producer
 
@@ -341,6 +349,20 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   `Validate` and `ValidateBounded` are the publishing side of the same
   rules. It is the one package about terminals, and it still reads no
   environment itself: `UTF8Locale` takes the application's lookup.
+- **`sanitize`** owns the character rules a renderer of any kind applies
+  before it shows text someone else wrote, so that a terminal and a web
+  page show the same characters: `Filter` maps a tab to a space and the
+  line and paragraph separators to LF; removes controls but LF, escape
+  sequences, the bidirectional controls, the zero-width and invisible
+  characters, the supplementary variation selectors and tag characters
+  outside a listed emoji tag sequence; keeps U+FE0E and U+FE0F only in a
+  listed emoji variation sequence; and keeps U+200D only between two
+  Extended_Pictographic characters. The property table it reads is
+  generated from Unicode 15.1's emoji data and embedded, and the TypeScript
+  twin reads the same bytes; neither uses its runtime's Unicode tables.
+  `termsafe` is unchanged: a terminal renderer runs `Filter` and then
+  `termsafe`, which also bounds the value and drops what it does not
+  print.
 
 ### Tests
 
@@ -438,6 +460,7 @@ to read what a producer wrote:
 | `guard.CheckBEEF` | `checkBEEF` |
 | `chaintoken.ReadWire`, `Wire.Token`, `Wire.Carrier`, `Wire.Alone`, `MinimalPath`, `MergedPath`, `TokenBEEF`, `Stored`, `Mined` | `readWire`, `tokenShape`, `carrierShape`, `aloneShape`, `minimalPath`, `mergedPath`, `tokenBEEF`, `storedToken`, `mined` |
 | `chaintoken.ReadOutput`, `Output.LockedTo`, `Output.Signed`, `Output.SignedBy`, `Spends`, `VerifyField`, `CheckDER` | `readTokenOutput`, `tokenLockedTo`, `tokenSigned`, `tokenSignedBy`, `tokenSpends`, `verifyField`, `strictSignature` |
+| `sanitize.Filter`, `sanitize.UnicodeVersion` | `filterText` (a string) and `filterBytes` (UTF-8 bytes), `UnicodeVersion` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
@@ -477,6 +500,12 @@ bytes present before the SDK's readers follow it. The SDK's own readers
 refuse some paths the Go reader reads and a shape then refuses, a path
 listing one offset twice for one; either way the BEEF is refused as a BEEF,
 and the vectors hold both languages to the same verdict on every case.
+
+The renderer filter is the one twin a host does not need: a web renderer
+runs it in the browser, over the same table, held to the same corpus
+(`sanitize-v1.json`) byte for byte. Invalid UTF-8 becomes U+FFFD as the
+WHATWG decoder (TextDecoder) replaces it, which the Go side does too, so a
+value read from bytes filters the same in both.
 
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the RFC 6962
 functions, the network clients, `verify`, `keyed`, `purse`, `chainview` and

@@ -395,6 +395,25 @@ got, err := keyed.CheckOpened(opened, commitment) // 32 bytes, a scalar, the com
 A wallet's `Encrypt` writes the same form with an IV it draws itself, and
 its `Decrypt` opens what `SymmetricSeal` wrote under the key it derives.
 
+## Seal a value for the members of a group epoch
+
+[`keyed/example_test.go`](../keyed/example_test.go), `ExampleWrapToEpoch`
+
+A fresh content key seals the value as one BRC-369 segment, and the key is
+wrapped under a key derived from the epoch's symmetric key, the content id
+and the application's registered domain string. A member opens the wrap
+with the key of the epoch the record names, checks the key against the
+commitment, and only then opens the segment. Another epoch's key, or
+another application's domain string, derives another wrapping key, and the
+wrap does not open.
+
+```go
+ct, err := keyed.SealSegment(k, salt, plaintext)                         // len(plaintext) + 16 bytes
+wrap, err := keyed.WrapToEpoch(domain, epochSym, contentID, k, nil)      // 80 bytes
+got, err := keyed.UnwrapFromEpoch(domain, epochSym, contentID, wrap, keyed.Commitment(k))
+pt, err := keyed.OpenSegment(got, salt, ct)                               // ErrTag if the encrypter lied
+```
+
 ## Run a chain inside a test
 
 [`testchain/example_test.go`](../testchain/example_test.go), `ExampleChain`
@@ -624,6 +643,29 @@ termsafe.Text(hostile)                                  // "status green evil"
 termsafe.Sanitize(hostile, termsafe.Options{ANSI: true}) // colour kept, then reset
 err := termsafe.ValidateBounded("plan", "ring\x07 the bell")
 // plan line 1 has a control character (U+0007); errors.Is(err, termsafe.ErrUnsafe)
+```
+
+## Filter text for any renderer
+
+[`sanitize/example_test.go`](../sanitize/example_test.go), `ExampleFilter`
+
+Before a terminal or a web page shows text someone else wrote, `Filter`
+applies one ordered set of character rules over a pinned Unicode table:
+escape sequences, controls, bidirectional controls, zero-width characters
+and hidden tag characters go, a tab becomes a space, and emoji keep the
+selectors and joiners that change how they draw, the flags of England,
+Scotland and Wales their tags. The TypeScript `filterText` and
+`filterBytes` give the same bytes for the same value.
+
+```go
+sanitize.Filter("ship it" + "\x1b]0;pwned\x07" + "\u202e!")   // "ship it!"
+sanitize.Filter("a\u200Db\uFE0F")                              // "ab"
+termsafe.Text(sanitize.Filter(value))                           // a terminal also bounds it
+```
+
+```ts
+import { filterText } from '@lightwebinc/bcommon'
+node.textContent = filterText(value) // a text node, never markup
 ```
 
 ## Read a carrier in TypeScript

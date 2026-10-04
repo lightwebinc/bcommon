@@ -36,6 +36,22 @@ and nothing in the library imports it:
   go-sdk makes of it, so a case the library refuses and the SDK takes is
   visible as such.
 
+- The segment family uses the standard library alone too: AES-256-GCM
+  with a 12-byte nonce, the salt and eight zero bytes, under the symmetric
+  key it computes with SHA-256; and the epoch wrap as SHA-256 of the domain
+  string, the epoch's symmetric key and the content id, sealed with a
+  32-byte nonce. It wraps under both registered epoch-wrap domain strings
+  and fails if they give one wrap.
+- The renderer filter's corpus comes from a second implementation of the
+  filter's four rules in the generator, which reads the vendored Unicode
+  files under `third_party/unicode/15.1` directly, never the generated
+  table, and scans escape sequences with its own functions. Most cases also
+  carry the output the rules alone fix, and the generator fails before it
+  writes anything when its filter does not reach it. The generator also
+  writes the table itself, to `sanitize/unicode-15.1.json` and, as the same
+  bytes in one string literal, `ts/src/sanitize-table.ts`; `make vectors`
+  checks both.
+
 Being a separate module keeps the library at one direct dependency. The
 generator's own requirements are checked by `make vectors`: exactly go-sdk,
 at the library's pin, and fxamacker/cbor. `TestBoundaryFiles` refuses any
@@ -64,6 +80,8 @@ needed to rebuild it, as well as the bytes.
 | `unlocking-v1.json` | The first carrier of `transactions-v1.json` with its one unlocking script rewritten: the canonical script, which alone is accepted, and a high S, `OP_PUSHDATA1` and `OP_PUSHDATA2` for a short push, `OP_0` or a byte pushed before the signature, the signature pushed twice, `OP_NOP` after or before it, R or S padded with a zero, a negative R, a sequence length one too long, a byte after the sequence, a zero S, R equal to the group order, the sighash bytes 0x01 and 0xc1, no sighash byte, an empty script, and a carrier of two inputs. Each case records its txid and whether go-sdk's interpreter still accepts the spend: the ones it accepts are spends anyone could make without the key. | `carrier`; `carrier.ts` |
 | `record-v1.json` | One sample record under the test magic `vxr` `0x01`, item by item, with the plan a reader follows over its keys, and the ways a record is refused, each for the first rule it breaks: over its bound, not canonical CBOR, not a map, more than 64 entries, a key that is not an unsigned integer, the wrong magic, a key missing, of the wrong type, out of range, or a list over its bound, out of order or with a wrong element; cases that break two rules, to pin the order; records with preserved keys and at each bound; and what claims a record from its head alone. The accepted records come from the independent encoder; the malformed ones are written by hand. | `record`; `record.ts` |
 | `keyed-v1.json` | The content key BRC-369 prints, with the symmetric key and commitment the document prints for it, recomputed with SHA-256 alone; keys at and past each end of the scalar range; plaintexts a holder checks against a commitment, each refused for the first check it fails; and BRC-2's symmetric form, sealed with the standard library's AES-256-GCM under a 32-byte nonce, with the ways a sealed value fails to open. | `keyed`; no TypeScript twin |
+| `keyed-segment-v1.json` | One BRC-369 segment sealed under three keys and six salts, plaintexts of 1, 15, 16, 17, 64, 300 and 16384 bytes, each with its IV; the ways a segment fails to open (another key or salt, a flipped bit, a cut or added byte, a tag alone, nothing, a key that is not a scalar), each with its refusal; the wrap of a content key under two epoch keys and both registered epoch-wrap domain strings, with the epoch's symmetric key and the wrapping key; and unwraps under the other domain string, another epoch, another content id, another commitment, a short wrap, and wraps of another scalar and of 31 bytes. | `keyed`; no TypeScript twin |
+| `sanitize-v1.json` | The renderer filter's corpus, pinned to the table by its SHA-256: 83 inputs, as bytes, and the bytes the filter returns for each. Tabs, U+2028 and U+2029; C0, DEL and C1 controls; colour, title, hyperlink, DCS, charset and reset sequences, terminated and not, and C1 CSI; every bidirectional control and every listed zero-width and invisible character; supplementary variation selectors; tag characters: the flags of England, Scotland and Wales kept whole, and runs the table does not list, cut short, too long, after a letter or alone removed; heart on fire, the rainbow and transgender flags, a family, skin tones before and across a joiner, and joiners that join nothing; selector runs, U+FE00 to U+FE0D, keycaps, and selectors after an unlisted base; invalid UTF-8 of each kind; and private use and noncharacters, which stay. | `sanitize`; `sanitize.ts` |
 | `chaintoken-v1.json` | The state token of the transaction family, created and updated, in stand-in blocks of two, four and eight transactions, and the BEEF each shape needs, built by hand: a token and its parent as V1 and V2, in two blocks or one (one path, the union of the two minimal paths, with and without the siblings a reader computes, and with the two each other's sibling); a carrier and its funding tree as go-sdk writes them and by hand; a sweep alone. Then each broken one way: an Atomic BEEF of a token, a token alone, an unrelated transaction riding along or in the parent's place, a parent or a token unproven, a bare txid, a path with a leaf it does not need, one leaf twice, two paths of one block, a third txid flag, a sibling missing, a BUMP nothing names, and bytes that are no BEEF with its subject. Also the BEEF a replayer assembles from two stored tokens, a token output read and held to its key (wrong value, wrong field count, a wider push, a trailing opcode, a high-S signature, a signature over other bytes, another key, another tag), and signature encodings, strict or not. | `chaintoken`, `pushdrop`; `wire.ts`, `script.ts` |
 
 The transaction family is built under a derivation and tags that belong to
@@ -124,7 +142,9 @@ may be refused at the read in one language and at the shape in the other,
 because the TypeScript SDK refuses some paths (one offset listed twice) that
 go-sdk reads, and either way it is refused as a BEEF. `tokenBEEF` assembles
 each replay byte for byte, and every token output and signature case reads
-as it does in Go. The SDK's own
+as it does in Go. Every renderer-filter case gives the Go bytes through
+`filterBytes`, and through `filterText` where the input is UTF-8, and
+the table module holds the bytes the Go package embeds. The SDK's own
 PushDrop is also checked to write the vector's locks byte for byte. The
 kept BEEF is read rather than compared, because go-sdk writes Atomic BEEF
 V2 and the TypeScript SDK writes V1. The transaction builders have no
@@ -136,7 +156,7 @@ side.
 
 ```
 make vectors          # regenerate and compare byte for byte; part of make verify
-make vectors-update   # regenerate and write testdata/vectors
+make vectors-update   # regenerate and write testdata/vectors and the filter's table
 make ts-test          # the TypeScript package's tests, which read them too
 ```
 

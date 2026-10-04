@@ -30,8 +30,8 @@ change between v0 minor versions. One tag versions both languages. See
 | `pushdrop` | BRC-42/43 derivation under counterparty Anyone, tagged PushDrop locks, unlockers and decoding, and a lock read leniently and rebuilt canonically from raw script bytes |
 | `carrier` | An unmineable carrier transaction that commits a payload, and the funding lock, decode and sweep it spends from |
 | `chaintoken` | The BEEF a host admits a mined chain token, an unmined carrier and a mined sweep in, read exactly as declared on the wire and held to exactly what the object needs, and a token output held to its key |
-| `keyed` | The content key of BRC-369 keyed content, its symmetric key and commitment, the check on an unwrapped key, and BRC-2's symmetric form |
-| `mint` | Builders for a state transition, a funding tree and a payment, with a fee loop that signs to measure the size and rebuilds at the rate until the fee covers it |
+| `keyed` | The content key of BRC-369 keyed content, its symmetric key and commitment, the check on an unwrapped key, BRC-2's symmetric form, one BRC-369 segment, and a content key's wrap under a group epoch with the application's domain string |
+| `mint` | Builders for a state transition, a funding tree of at most 1023 funding outputs and a payment, with a fee loop that signs to measure the size and rebuilds at the rate until the fee covers it |
 | `funding` | Funding-tree state kept between runs, and the BEEF kept for transactions spent before they mine |
 | `guard` | A structural walk of a BRC-74 BUMP, a BEEF or a raw transaction before the SDK allocates for it, and a public key taken only in its canonical encoding |
 | `nodeapi` | A Teranode JSON-RPC and asset API client with bounded responses and a txid-in-proof check |
@@ -48,6 +48,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `knownkeys` | The grammar and store of a pinned-key file: pin, rotate, retire, forget |
 | `verify` | The refusal vocabulary, SPV verdicts on one transaction, and the carrier check a reader runs |
 | `termsafe` | Text someone else wrote, filtered before it reaches a terminal, and the same rules checked before a producer publishes text |
+| `sanitize` | The renderer filter: four ordered character rules over a pinned Unicode 15.1 emoji table, which a terminal and a web renderer apply alike before they show text someone else wrote |
 | `goldentest` | Test helpers: a fixed key, hex and transaction parsing that fail the test, and a stub chain tracker |
 | `testchain` | A local stand-in chain for tests: it mines what it is sent and serves a node's RPC and asset API, a broadcaster, an ingress and a header source |
 
@@ -57,7 +58,7 @@ same vectors as the Go packages. It has two entry points:
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
+| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, the renderer filter, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
 
 ## Install
