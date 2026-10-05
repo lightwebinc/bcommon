@@ -204,8 +204,8 @@ application names the setting that raises the cap), `ErrNoNode` and
 | `Out`, `Warn` | `io.Writer` | none: nothing is written | a line for each payment settled and the report; a line for each payment not settled, refused, or (from `ReadLedgers`) skipped |
 
 `Settle` returns an error only when the run cannot go on: a `Settler` not set
-up, a `Record` that does not persist, a context ended. A payment not settled
-is counted in the `Report`, named on `Warn`, and left for the next run;
+up, or a `Record` that does not persist. A payment not settled, a context
+that ended among them, is counted in the `Report`, named on `Warn`, and left for the next run;
 `Report.Problem` is the line an application ends such a run with, under its
 refusal status. A run is idempotent: a payment the record holds as settled
 or refused is counted and not touched, so the command is safe on a timer.

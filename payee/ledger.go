@@ -105,7 +105,8 @@ func (p Payment) Spends() ([]string, error) {
 }
 
 // Line is the payment as a ledger line, newline included, byte for byte as
-// a host writes it: JSON with no HTML escaping, keys in the order above.
+// a host writes it: JSON with no HTML escaping, keys in the order above. An
+// empty Inputs, which a host never accepts, is left out.
 func (p Payment) Line() ([]byte, error) {
 	var b bytes.Buffer
 	enc := json.NewEncoder(&b)

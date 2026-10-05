@@ -141,9 +141,9 @@ var ErrNewerLedger = errors.New("payee: the line is of a later ledger version th
 
 // Settle takes into the pool every payment in ps the record holds neither
 // as settled nor as refused, and reports the run. It returns an error only
-// when the run cannot go on (a record that does not persist, a context
-// ended, a Settler not set up); a payment that is not settled is counted,
-// named on Warn, and left for the next run.
+// when the run cannot go on (a Settler not set up, a record that does not
+// persist); a payment that is not settled, a context that ended among
+// them, is counted, named on Warn, and left for the next run.
 func (s *Settler) Settle(ctx context.Context, ps []Payment) (Report, error) {
 	var rep Report
 	inFlight := s.InFlight
@@ -261,9 +261,6 @@ func (s *Settler) Settle(ctx context.Context, ps []Payment) (Report, error) {
 	}
 	if s.Out != nil {
 		fmt.Fprintln(s.Out, rep.String())
-	}
-	if err := ctx.Err(); err != nil {
-		return rep, err
 	}
 	return rep, nil
 }
