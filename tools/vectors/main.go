@@ -115,7 +115,7 @@ func main() {
 func generate(repo string) (map[string][]byte, error) {
 	var families []family
 	sanitize := func() ([]family, error) { return sanitizeFamilies(repo) }
-	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, txFamilies, recordFamilies, keyedFamilies, segmentFamilies, sanitize} {
+	for _, build := range []func() ([]family, error){cborFamilies, storeFamilies, rfc6962Families, byteTreeFamilies, chirpFamilies, txFamilies, recordFamilies, keyedFamilies, segmentFamilies, sanitize} {
 		fs, err := build()
 		if err != nil {
 			return nil, err

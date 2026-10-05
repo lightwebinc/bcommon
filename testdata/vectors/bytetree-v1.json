@@ -1,0 +1,1707 @@
+{
+  "note": "trees[i] is over the first i leaves, from 0; objects are stream(size) cut into segments of segmentSize bytes, the last unpadded; samples carry the audit path's hashes leaf to root without sides",
+  "leaves": [
+    {
+      "hex": ""
+    },
+    {
+      "hex": "31"
+    },
+    {
+      "hex": "dce7"
+    },
+    {
+      "hex": "0e0069965c7bb4c56e9f9793be8df7c7e82e9c78f136ed2db620bb2be0eaec"
+    },
+    {
+      "hex": "73de7be6d9a2d631ab15584e8e3e907588137890255387f2d4f534f0faea3beb"
+    },
+    {
+      "hex": "8ab4e09c91bdeb9cc9d1f7bf1fe3fc2e6dfc2dda32a91847560f65acb2a263f7c1"
+    },
+    {
+      "hex": "683e0004b802233ce9f92fee8f5605e332305cb9888b35b5aa12d50b3dcd40f00687798616b7575a227b77afeca40d777851232417e76f6499da50ee382079"
+    },
+    {
+      "hex": "1e8199e331594f1a6e40503c72215fbe49c4ec278e39afff1cf45c5044c0f2ebd1f143ca5b4e9ae80f083c9dda5a11f25258d83dbffb6fbce72cedb1ec7fd918"
+    },
+    {
+      "hex": "ae152d5d701679ea5fc33109512d66fd90bb120a15f81bac4a026c75997e7d678706e43769045971e46fa4752ae3c28e2cd78dd53d82044d9fe87a9a858b3711d4"
+    },
+    {
+      "hex": "d9a84f5883f39932e64902f9faea4c4a953d82371f249a08e5fc19426acedcb2ba787348a7432ae63fc60211ccfa01ffd5830b768ded7958e100de81cdf71c5588a53f2afbe3df2500ef14af6c72cc19c83f6b561f54b130108b9a94a56e571fb159afca"
+    },
+    {
+      "hex": "4037ab73c2c7396e21b3fad83e2625d53f938de92604fec5ab3dc2af794e9c05e1162a1fac474a70700a9058d4fcaaac684408552653dde69b674ba8b85f5a8e7cd3884838deac2f40ca19887740a8c6dd33d356aefc9ab42091e4bbfceff0db8a3def695db63d26bae94839ad5693513fa680bca69255c11cc5c3e4ff749793a36c21d519d0a2bec0781cc41ce9ca1352a784464fdf3803e01ea52b815b427098bfda56c639e5a12ad6d4c641c18963e1b9eaf86ab8b73146c9599423926912f8e1073bef72058e7ca152f72832c77ddd9d8db5290aad8c47613c32320033f8b2f2ebde735c6fb7cfc51971bafc4854e2b18dd3b7a8b3861491d10bcb88c1"
+    },
+    {
+      "hex": "6cf335da10a8b7a0f0e1c30153b30cb4246b749bba6790be2adeba0b3dc10c077e9ceeec109208f35a20aa46ad5f99655df41c95dd3d005e72a0f444da75a2c775b97664a0ca6d10dc5b4c7d6da68d972e33b407c1feb9f1e752f259ec0c4021e02268bba24c8884d67660ff354497a6e923411145ebacb5e74dc680821380ecd57221032e3ecbdd209eb3882a376de774184b44445a3a34d3327ce4ddc792ce5585fe721bbf378071c307d6c81b0e1d66a85a5228036f533da6b3ae83a69ca2e1af4cd649f33c7233c3b82bb5ca5ec1f0bae3dcb6d5e68cd7873b568226d061998c28ae4a9ce1d0231489820b71d262f38b3440d07a27480ef5155a1ec29c2831124a0fc1013d83f419e09b705634354ff9e1098bffd5cdabd1a6f4d69593b79aaf3b5c97dacd866d0e58be324ed91a940426f6b2b517472982f5fd2d17b112deec6cdcee8bec27c0cf6447e49c1f8fe45aa8c75e146e7ec3186dbe4476e1b92d4b3a64092957f7eb568e5e8d17f1ecec69a2cf354c896fb57d1ea07b494d14abd0458035db9d6a1a368154ada59f38c5180990d1c63e4b1dfd332dbd7f6232cd2b4ff83d3b05cfa55b9420d2d59b5bf8538a7cd5dca1f2fc88f0784a963c07b0d15d7ec894f76c88f3739fe0c55ec0d541b4a4687000b5ccdf4331eacc413b20623296a9703f37522749ba72bcd4d92533adf8003de36299b1957fbd4f827b8108849b0513c342dc055865caed2b9125aa1584097e04d588e6346f1998364b9bec34ace2ed418b2008f07d078711e51d39a4461e43bfc64c4a489cd21d35405c5f1cf22a2cab3a50de7607b7727ae9ba9847dc57a3fd01a6e158e10e115b50669a55e06422e2644bf80e7d1678d5b65223c36c9b43d1ad86fb5683c7cc622c09e7ebd5c1ae1b54bd80421f03fa348c4b259591ee1bd811b08adb17e85f6d32eddee6809ac2e5e2e098d5df8d24795fa33f8aead76cd2fd230fbc58a6a34f7dd1a113bd5c9065ae3b28cd8220f6e3cb81c1fdbfeec9caaa31c1e0f5e3cadff974f8db42b057b811606b83b970ea8c872ced72cdb662e2be1a6d0bb2ff38aef0294e0875afb5b1f93ca571473c802fa40d8222c408df45456be08e57ceab42bd11eace9b9375faa160c9ca8c1bcef5180e171edd318b153b1b1bbe5d0b55f29c5647922e7938154a736a355cb065f7de5893e1045ac140f954ee5a0d3b8076ba4c72e5967d33398657094032fad5ac2bdae98941397ba15879e379bb7400b14a2dcdbb77934610f8725d4400924524a87b8493e37a4772c36380f3f3aac4050e82c37065667465ce8c6c8906735ef7aec230b5e5811079f1823e8225c5e914bed0750518868911036b0a3cfe1b5011857fc18c17100721a03d10e4414a7b0665b1dc82304b1234c9aa53386b8f8a6f3b9e653f3fa56819dd96ef4c30b83a4e21c9f0db5ee85d337a3441be4838a3655b14f03079a27264019b7c87f75b5b7a5059888310c66f40aa8797c33d63effb395bb70c05249de3fbab8ac28d425733e1ee74e58fdc65e98d6d0f583385d8f5ffe4fa4f6cc8c702e5133fcedc2f773e2526261dc4e613319b3d987deadf6f9f25eb6741f2867fb73765ffb2563531d60337eefe9e0162a3f371e8a9ae11273a80b5447374366867ff1fe06773aa2e1e6bdd5331a2bf62e2a0257a806342d5cf61d91b40463cb34ff2203be1a8c01806ca9b528275f0d710127bc9b2ef04bfa46ee34b8a258715b5ab968829795a22df44c7aef3684f168677d709de24d49ee4b3a9426472b6161a2f716655ef6e7be9687a39afa25b57101a1910c488cc24355293a8dd3c5c8ecd7daea9adae1fb83b60edcc70f80f7b8ae70270560a0ae8b9273e8af43e7ad612f9c05314e140ea3fcb5b4dcb26840ed81a157b066af71539a4dea95f7e7b2589c37bfcdc8883630bfc00a330cc0960928bfbcc8bf182669eabe8b9230d12591b9a1447d69d10eb0fc9e0f4d09e5b398314e227b9159dca93e4f016a9dd767180d64ffbe5c2e4d50ad1ea5358b663214801ead4f958817088f156ef1beb2459fbb5ffece4ba95c6e31b27e5f96f96ceaf280b51bad29a401a176eaa8a46b89ab8db04f0e6e01f99285a0eec1ced76544fe7ecc9ed70f51abc493572c9b05213512f6dba573446aeadbae906a2d79adb0c4609d3295b59a70c2e45189f2b501028b0996d9ebfe1d059f163893dd6df0cb8831dc98eafd5f2489322d4ee0980024b2537b4e581279aed4036a5b3568c0af59e8ec9957d1876a02561231814e4a0a4d27905c3a4910e328f4221707cd31d8c47a4f55ebf12a894caf00c1f2d7bd0f0a802cbda01041700946e2817ba6afe100e12a9976a937b097d215f2e33667a5404a94065b28782f430fab23f7577df05da0c80731854611d975d48028758172f844dcc00e1b5ac0f2132bbfa8ff5810b412460e84b1893ea63cdf26c9cb9f9c11bd15ce630f16f9bb5f61002a2a24c25fb60fa0022223e90da604442b316d79bf7b9684aebf23de8980356f139c8253bc581fd5779d4b2b940d2253af2b2c557387cc2c03ae23dc7101556b1173763e214d4592a4f26ba2becb3a264914dbafb4ecf4e4a824da3a450beca86bd6b5a967c594033fa4d53492f6bf27721e7b5ed1cd35606028e887744dec40438a9a3b6c8e7ce1b5124f4f8740886a486ef7579074715cca4039b29c85fa21fee7126af0e6007ba073dcb54e4b753ba36caeed01c122068f316a89cfaf8b5c0b871fb874d3d5d64c2fea73f270e58a9ef1a6da74bbf783480e722fb2ae101982ea853333beb220bc9b4f4757c9ea15c66182326df2f5409a5925a706f89d5648cd36bd10f7882b3ca89ec498cf3b5dc7040ade5decb6fad49429989386279cd29c6e465fbabdb06e7c693a873f72b16ab11788de8e8902645cf90eb3be24e771e9b671f1656ce19e05d8882f945a2afd2138ab79eae6409e8577ed6ae1e6e5fecf4115792a51178dc08584054ce55c6766bfd27d29b50e5d68f47861736abf0de33d559c267bf8290841b7eb60aa352ca89c6740314339cfe7afa32d3abc4aee298916cbbc11f5bcc6c2df6751861ffecd70ffc57928688c2cb6efb2fefbd05924df28f9c8c90e0b9a3aecbac72c7ccc16e8c88e1d1728936237906df89f9344a093da12be8cd4e021b90c84b42733ddf224a168b6515847795822e3efa97d454c217d5f578140d620cbb822e957ca2e2d9f4c3745cce3931b73c57d2ed26b8feb6a54d94811eb0208f42c108e541e4eafc50de8d91269d406d9acaba36539499037854c55cc80cfbe4c0b74b2cfa8e344e9df02e8a6c001aa8a045ea8facf67102567de3c6ecd4528c4be6eeba78c01ec55938ac198b5714d8a0829257600a0dc6d08698910a6a0b77cd4381b0197311778a1300f056b0b42c5d5774d42d74d045876c9f0f7c764c4bc48606d7621792164cddf7ef6cca22802e53cac8857ba6aae8f80927610d4a61344306573d0dff54eb362e39f21fc6164a28700007fb2b4518cca683ef9771664a2c12cff4d6bda6f34a28cbe60bd1bacb0f3edeecfd2a716ff354323176ec7551597f41eca25c2c12a84c7dd86a06540a056b8661da7aa5a27a60f05d32aecdaa58ecd7cc4700d3b0699bf3ed9830b065dc3f869ab1c41ab5d1b4e54514c10d1680442d68462a6d05b0e470f8629105caef7f05fb3ac211dc920f445bb6bfec8e647b1f39030a1cf1c8551b230b39307a089cb397fb9fe3535474cae12227e812b7ae1081c42bebbf3dda898ab02a207a593f9f87909dc8e67b7d541bbdcd3afd654fe9e8d22307e4863bd7236f188e74bb7216c13a0c77f867aff5e34c889b9f69b3ca0d2b8cad7e61e8f20453ca5cb5999195960e67f2df00e2e55a588cbf084a78ced659aeed8ad864aeaaa228aa66a3267c99ef5db1f803100bdef7c4924e66a3a8e5632ef651d164a28bd333e92f039f19dd5f67183421cb24eb3c708f1e7d3a963c223cece7cf1644f12b6b13dc074963f38d217142857c345d29ef01de450883c2d2450aa2de6cf9a4151634143caa36ac21b03e549ea3f71302bec8821ec1b0806871b8a26eb5ea0dba268a6f512ea1dbd8bd752e2e30620362b3101c350d3880ce28ea268ae4db2ad65e51924a3748be1c4fa10e36530e2885002973a9bd61328cff239f58d68be912c2c26e223a6c30f3f7f036ed90c30be2c151f54405cbb64ecbc691579bfa9b9e32d50166ef42120a314ee1d8a0aeab99e58e2be05ff43db5cc337652fa250d27d5791e5083ec2fd5c4a3697d9534a6846c563e999b0632ecc2cce9bd5f22d609549bd51199daa98da75f6980990198e6e4f37fe0877bd73b6005be019675712ab5c5fd7b18e5fe31035f371141242b92b38674c2e35d2db10fa289163c6d7596058e61d82eb155bc212e3e2f3107e8db5e1f241fd094bc41f9644335f0bae1f7b44546d1dc3cc78045920f4d83b836fb6ffee969ac835e12dc88299bbb64a72cc4e309b777d4495752b17fe6c3fb85f40f153589ea07e191c1138610197bc8470d8073502472ac484d4ba70b44c4594604f756c991ebe10eacf3ea8e14d131ce029cfa8d9bf9857c722782dbf289eb651c223a37920a883d3071510ca35dc15902ad7067ca37f7eb9e11cc7a499ad1ddc44434bd5722544ac14270e9d73376cee4740c34cdb6a27d2358719ed2536b5753470219c72308dd66aa407b81c8bbf9e56eb90f41255622c9329b4fcef85c22fdf103898827e8d60593633684297f3a88a436dcdd2d80f8a0f2a8621d1ae6dc9f4a6b0965db467cd488931d647c79ce733a90fcd6d4720a666a5caff60562b23d1afd286abf43851e9a58b84d6345321731cfc5d26d5d8f56d7d8d8e006ba2adcec2ef5330542c7c0f77a5750eb47ce8cb72366e707b3bec50b3caf1a703d8f8b3daa758542ee28b21f648df422687289e9684773923d02a9520a1bdf3e4b5da4799d1fb5e5e6a7615cfd942d5846b6731132a0b378aa7bad2f2b3ffe4cdbd9662b6b460a367d7b8edf3e80f733ba77482854f67913661a9c1b92067802908943d0bc072d904b1dca76c0b99c67cf10ddc7944f3fe3e127f5f446614109e0365b4a81fc5cea090a2525a7bd107ff1c716c061d4a792f7b743e0a47db81fce969e938328ee2e027a92e4348d9ead7fd59776dfad2729ba6c52355a1716d267edd3403c39806a55095b36516e94b7b876d6512eb39a5626c7757648da4731b3510944de693d55a71eed9a353ace4738b24ed391ad4efa794b425a8e81b15b04d3a303c8c66b871e84fa42662ddd659634819c544e25def37ee79c157908d98e08bf3de76f669135d1df98650e4f7b18b1261e8c261ce67e1e1dfe2c3e429c8f896be4877f4504a9cfba4264c8ad8db4483754d1601c6deafb6c9596b914c1e438f1364eb8208483bdf2094ce0a209fd5153e427151b384a9bcf8c6a0a965b7b13a08e3d3516fedcf14a15cbf0d555277033ebd7ad13a40784924ea40123fb82edae25d118c4d4a3d119acce9502d2ff9f9b1e665d7df11d00a27709dac8b8d74570ab29000f833e6b18299f0c9dddfd620cf729a87084fd2b82e7c342b7ea4ec2a1dd6fcc714f7a43e23c50b1c179f71d1f11b890a24c9706d4b23a6ffd254c737d791303d67ec5586d1e48a3efc9e39e4e55a7253e03a47cc5f01c6034457db0a8f59ae4337061e5446c6f5a5bd8470f87cbb673989416a1c5a35aa0103cda4fad73020ecdd1c6245c8c113561a8b27ac8099ce9c4"
+    }
+  ],
+  "trees": [
+    {
+      "size": 0,
+      "rootHex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "paths": []
+    },
+    {
+      "size": 1,
+      "rootHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+      "paths": [
+        {
+          "index": 0,
+          "steps": []
+        }
+      ]
+    },
+    {
+      "size": 2,
+      "rootHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 3,
+      "rootHex": "4f06e7966c7461247405f54f07261a72f4b88360b813ec69c9835589ad0fc058",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 4,
+      "rootHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 5,
+      "rootHex": "2fc217fddad1affbe4ffda7464f31b00424b44b9d99239536fafa8bb0193a964",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 6,
+      "rootHex": "13fa98a26b0102cc2ff2ed1d29ae4ddeb70d2cb98ec6f190252947521f80de40",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 7,
+      "rootHex": "c3db3a6e4a8c899af5a68322a4624de106fc604b92cfdc5185aeffb3fdb699c5",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "122839dc57860ae05d633b527423cf699a983331fb8d0b7137d45ae8ac21f190",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "122839dc57860ae05d633b527423cf699a983331fb8d0b7137d45ae8ac21f190",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "122839dc57860ae05d633b527423cf699a983331fb8d0b7137d45ae8ac21f190",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "122839dc57860ae05d633b527423cf699a983331fb8d0b7137d45ae8ac21f190",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 8,
+      "rootHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "691cd9401a61502c71f020a00b03d9f3347ec649ce128a9c9ff2d1ab12a9574e",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 9,
+      "rootHex": "e2c2e22cbbbed72b4aab507619bab756c93704a5ee7c6d0c91d257a1e140d853",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "691cd9401a61502c71f020a00b03d9f3347ec649ce128a9c9ff2d1ab12a9574e",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 10,
+      "rootHex": "cf7391eb5104ca1ad9c58453ab5a7c199aa045d78252b0b087387a66973ed9f3",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "691cd9401a61502c71f020a00b03d9f3347ec649ce128a9c9ff2d1ab12a9574e",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "45eefc9b8facafe9db28d0d53fb8c374ad6cf20c7f09a2b4782d27ee5ad6415b",
+              "left": false
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": true
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 11,
+      "rootHex": "212dfeeab36b6a71452c1bb1fad72e619e4bac741d9dd0f0ad7b9301a685e2f1",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "691cd9401a61502c71f020a00b03d9f3347ec649ce128a9c9ff2d1ab12a9574e",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "19070a650810081ad6675dfa50e32288481811b068a9e2189c571ba40368fb8d",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "45eefc9b8facafe9db28d0d53fb8c374ad6cf20c7f09a2b4782d27ee5ad6415b",
+              "left": false
+            },
+            {
+              "hashHex": "b1362e5941dbb4963640a3f0f156da8283c809b85abe19bb2e743fe1a4174ac1",
+              "left": false
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": true
+            },
+            {
+              "hashHex": "b1362e5941dbb4963640a3f0f156da8283c809b85abe19bb2e743fe1a4174ac1",
+              "left": false
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": true
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "size": 12,
+      "rootHex": "808c448f813c6a42ceacd35e1b1fd62220996867e721af6f892c58803db93f2c",
+      "paths": [
+        {
+          "index": 0,
+          "steps": [
+            {
+              "hashHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+              "left": false
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "steps": [
+            {
+              "hashHex": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+              "left": true
+            },
+            {
+              "hashHex": "177c2d30aa9dbc69f019fc20bc66fdc2475e2b21e06b201caa60a4a5bcb64fae",
+              "left": false
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "steps": [
+            {
+              "hashHex": "4a632179fade38a2a79e0d6b042597453221f7bdcfdec23e8f304b702bde6539",
+              "left": false
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "steps": [
+            {
+              "hashHex": "07f352c4a433416e833b25345a9721c6586df1e9b3fa7971f3aec93d07ceab2e",
+              "left": true
+            },
+            {
+              "hashHex": "bfed9f368426cb156544219069eecc14c5f0aef352bdaf8c479368257ec3114d",
+              "left": true
+            },
+            {
+              "hashHex": "4483bf237eaca8322c8da7edf48ba55aaa775b8890963690211f803109d88abe",
+              "left": false
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 4,
+          "steps": [
+            {
+              "hashHex": "59d23f5d8110dab70d07dfdfcd9a5906d1571f185927856d16c78b48c6761479",
+              "left": false
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 5,
+          "steps": [
+            {
+              "hashHex": "ac9b323dfc7f8f3ab931a3db18d4d937ce943863ab1511c6410e8731db5ffcad",
+              "left": true
+            },
+            {
+              "hashHex": "219176bf7cf000f73a93108f2baa137d643a21254794b083c8cb3678150e1444",
+              "left": false
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 6,
+          "steps": [
+            {
+              "hashHex": "691cd9401a61502c71f020a00b03d9f3347ec649ce128a9c9ff2d1ab12a9574e",
+              "left": false
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 7,
+          "steps": [
+            {
+              "hashHex": "2b4b85f8470840e59bdd3bbfa6116f00682f3735f94980027aa9016599a35745",
+              "left": true
+            },
+            {
+              "hashHex": "997baab974acad1625bbe0604a2beab1bd106dd7cb28419ba8946f88d74a7d06",
+              "left": true
+            },
+            {
+              "hashHex": "bcf04fe919169e180610448451cd5e11e10a51eeee28056e5f9518e59c24b3b6",
+              "left": true
+            },
+            {
+              "hashHex": "db3ca28b4cf7223dd1b9d957adc3b76c098f835ca0921072d98cfd3e686bb444",
+              "left": false
+            }
+          ]
+        },
+        {
+          "index": 8,
+          "steps": [
+            {
+              "hashHex": "45eefc9b8facafe9db28d0d53fb8c374ad6cf20c7f09a2b4782d27ee5ad6415b",
+              "left": false
+            },
+            {
+              "hashHex": "a5b1cfdd21c0f94764959d51a078855652d860e6f7d99f9b3eee90cd0e47f51b",
+              "left": false
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 9,
+          "steps": [
+            {
+              "hashHex": "7ded5f505b35ff71fc6b841733e3eacce3a804004e5a4924d8561b3e2d705167",
+              "left": true
+            },
+            {
+              "hashHex": "a5b1cfdd21c0f94764959d51a078855652d860e6f7d99f9b3eee90cd0e47f51b",
+              "left": false
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 10,
+          "steps": [
+            {
+              "hashHex": "7c71780154b4504023600d6d471e9789d9dd04d4947c1a9a70b7b4803e405944",
+              "left": false
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": true
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        },
+        {
+          "index": 11,
+          "steps": [
+            {
+              "hashHex": "b1362e5941dbb4963640a3f0f156da8283c809b85abe19bb2e743fe1a4174ac1",
+              "left": true
+            },
+            {
+              "hashHex": "5bc7ee5be271bc372b24295690bce97f62c4eae5750ef0b4a688f14c74dfbd8e",
+              "left": true
+            },
+            {
+              "hashHex": "56dea480d3c3438e6b55282daff0c958c7ba1f6c2d60ac49f41a167e687e4e83",
+              "left": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "segmentSize": 4096,
+  "content": "SHA-256(\"bcommon vector content\" || uint32be(j)) for j = 0, 1, ... concatenated, cut to size",
+  "objects": [
+    {
+      "size": 0,
+      "segments": 0,
+      "rootHex": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "samples": []
+    },
+    {
+      "size": 1,
+      "segments": 1,
+      "rootHex": "2215e8ac4e2b871c2a48189e79738c956c081e23ac2f2415bf77da199dfd920c",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 0,
+          "siblingsHex": []
+        }
+      ]
+    },
+    {
+      "size": 4095,
+      "segments": 1,
+      "rootHex": "cd47ff48d2ea7115629b56b0bfc8145ee12f5995764f9bd75f9371655a4b694d",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 0,
+          "siblingsHex": []
+        }
+      ]
+    },
+    {
+      "size": 4096,
+      "segments": 1,
+      "rootHex": "f238e09cee118209e814595d66fb7a530b802ba328d4a29dbab2cc4b2466601c",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 0,
+          "siblingsHex": []
+        }
+      ]
+    },
+    {
+      "size": 4097,
+      "segments": 2,
+      "rootHex": "28a0fa438d7eb7349c59878a6624b2089e7bb6d2d1fdcd71ca199df85159e3d4",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 1,
+          "siblingsHex": [
+            "fa61e3dec3439589f4784c893bf321d0084f04c572c7af2b68e3f3360a35b486"
+          ]
+        },
+        {
+          "index": 1,
+          "pathLen": 1,
+          "siblingsHex": [
+            "f238e09cee118209e814595d66fb7a530b802ba328d4a29dbab2cc4b2466601c"
+          ]
+        }
+      ]
+    },
+    {
+      "size": 12293,
+      "segments": 4,
+      "rootHex": "7de57b14373b6297263d7b39ec2ba80aa6947119b733714d9426610f9441857f",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 2,
+          "siblingsHex": [
+            "b01047c5daa69b54f73bc4962b995d6b456ab29c7f16182b816bd72279943998",
+            "bd793ddf86a806cc0525f0bfe8bf5cccd00dad07bd65bd55a821c8cd8b2d3324"
+          ]
+        },
+        {
+          "index": 2,
+          "pathLen": 2,
+          "siblingsHex": [
+            "40c8ecc575936812ca5c72ec18a6a3a5d34bcd1144deaad67a0f415635fdf769",
+            "5e0b4e0e66f90b327f01568a07528910515ea59f58cba57d49229307473dfceb"
+          ]
+        },
+        {
+          "index": 3,
+          "pathLen": 2,
+          "siblingsHex": [
+            "f28ade05b222d2951f4de3cf2d3028dc6f5b00c379133611668ee5b711cef04f",
+            "5e0b4e0e66f90b327f01568a07528910515ea59f58cba57d49229307473dfceb"
+          ]
+        }
+      ]
+    },
+    {
+      "size": 4194304,
+      "segments": 1024,
+      "rootHex": "0997910e09dea7f4a705beb4a81afb6c04d972a5ecd6637c0f75024fde1b8f1f",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 10,
+          "siblingsHex": [
+            "b01047c5daa69b54f73bc4962b995d6b456ab29c7f16182b816bd72279943998",
+            "5a6fc3bf78c1b3604ec033b16e95f78adf81fd47a4f484e954f5efb5d3322fc6",
+            "e59ad0f70c03cff4f00acffe3edbab6e3b68aa60be602e0c293fadfbf73977b2",
+            "df2feba53caf7b4a2cf2e21e62e68b6bdc7937b8d7547ea5701f9290d2d1e39f",
+            "135228adaa390413e9ed53b821c8daed6358369d4dba1b67b3e9e6d019e6dc8e",
+            "ca02188bb1b872517e3bf01e929d2f17bf4fe3aff941ac4a162b5c4d6eefaeb8",
+            "04078f50de5fdad7aa579242a5e6a52535fdb66a825f20d70247826c8c1db4a1",
+            "6d7e128d1d93356a44ddaad0f517659f8b003424533f3c464329108531078623",
+            "286eb8c975fd691300daac5763807087bb40719ef08191f033beafdcdca67901",
+            "1c1a33331ab156ddaf873709c237ba2a0aec0b2a7684bab84e2aa8290ee50a02"
+          ]
+        },
+        {
+          "index": 512,
+          "pathLen": 10,
+          "siblingsHex": [
+            "322185ac409c2f85cdee79746c9b41427a349ce5e673a60c82cccbb8af390e5f",
+            "5b475602f68d7c4dd44005323f7539abfc33ad2ac84f0b22c29f9f8662276c61",
+            "0b5a6f9d459a909c0678f09a700491e6d95396e1d51c4b76fe7196139f33f86e",
+            "35e636824578fadea7090c77462197fa910f261dc9f8cbf86578fd85a5f6a364",
+            "1ecd15c8a42cd40b9bf86f2ad1c2c8761a74321afdeef2b4a31aad9b5f03a523",
+            "3802c580b1366e8098e84c4e6211db5803995dd87832d65ad660e2b050c577d2",
+            "cf589d2e1f6f735b6746d1d330ff20a21844f03c5f990a44fe31139614ce04f9",
+            "dcfe57a6da907528065ca210bd2b6f6b62f3dfc1a73110fe05d1d43da9dbe8d8",
+            "68e768b103564c9345ba5ead6a0aebdf3bc8d236959045cb3fb4d8dfbf95fa26",
+            "47c2065736bc7601fbe4798a712d1000ee6f889d92a4fff417795e7f04aba53d"
+          ]
+        },
+        {
+          "index": 1022,
+          "pathLen": 10,
+          "siblingsHex": [
+            "ee999de8e1627eb74cafb24f1236309df517da7f3eec0d1038f9a3bc0cb838b2",
+            "2da25453fe248b148b84eac5a42fab51b9c2bcf0bae7dc4f0f77e52cfa8fbe21",
+            "358e28690bfbf14e1d9f2877117a2afe74cbb4ea48e1730f913c58da22a475a8",
+            "b220e5b68a3b278abae21e3fb5f5c74e91ef3553d7b9795db016437e486de27e",
+            "83a79339ca0cdd8aeadbe8a7dbac32f8e0f618763f9e833e51469527b9482666",
+            "2d2d75354e69f786c885a4a7d1511d1be3a754ed8a34bdcb8f4b18ead518edc1",
+            "d3ce627dc88316450f26ed4c79944c4b621129f28fb073ce31c3de5b7b08d394",
+            "b0761f187b5b4c9c624bb0e97599aa1503be6b37351b9b5a83a645b0a6da4088",
+            "2ebad12308ceb022e430367960e32d0696c10f1c4fe233d82232079334b7a18f",
+            "47c2065736bc7601fbe4798a712d1000ee6f889d92a4fff417795e7f04aba53d"
+          ]
+        },
+        {
+          "index": 1023,
+          "pathLen": 10,
+          "siblingsHex": [
+            "b46bb3e292e53dca8c72a239f6a271ca31b7bfed8a8fe64c73e0a4f3c0af1221",
+            "2da25453fe248b148b84eac5a42fab51b9c2bcf0bae7dc4f0f77e52cfa8fbe21",
+            "358e28690bfbf14e1d9f2877117a2afe74cbb4ea48e1730f913c58da22a475a8",
+            "b220e5b68a3b278abae21e3fb5f5c74e91ef3553d7b9795db016437e486de27e",
+            "83a79339ca0cdd8aeadbe8a7dbac32f8e0f618763f9e833e51469527b9482666",
+            "2d2d75354e69f786c885a4a7d1511d1be3a754ed8a34bdcb8f4b18ead518edc1",
+            "d3ce627dc88316450f26ed4c79944c4b621129f28fb073ce31c3de5b7b08d394",
+            "b0761f187b5b4c9c624bb0e97599aa1503be6b37351b9b5a83a645b0a6da4088",
+            "2ebad12308ceb022e430367960e32d0696c10f1c4fe233d82232079334b7a18f",
+            "47c2065736bc7601fbe4798a712d1000ee6f889d92a4fff417795e7f04aba53d"
+          ]
+        }
+      ]
+    },
+    {
+      "size": 4194305,
+      "segments": 1025,
+      "rootHex": "a714516cf6aee5abcbe7a0e187cefeab8bfafb4b605ea8df76df2e767d222d53",
+      "samples": [
+        {
+          "index": 0,
+          "pathLen": 11,
+          "siblingsHex": [
+            "b01047c5daa69b54f73bc4962b995d6b456ab29c7f16182b816bd72279943998",
+            "5a6fc3bf78c1b3604ec033b16e95f78adf81fd47a4f484e954f5efb5d3322fc6",
+            "e59ad0f70c03cff4f00acffe3edbab6e3b68aa60be602e0c293fadfbf73977b2",
+            "df2feba53caf7b4a2cf2e21e62e68b6bdc7937b8d7547ea5701f9290d2d1e39f",
+            "135228adaa390413e9ed53b821c8daed6358369d4dba1b67b3e9e6d019e6dc8e",
+            "ca02188bb1b872517e3bf01e929d2f17bf4fe3aff941ac4a162b5c4d6eefaeb8",
+            "04078f50de5fdad7aa579242a5e6a52535fdb66a825f20d70247826c8c1db4a1",
+            "6d7e128d1d93356a44ddaad0f517659f8b003424533f3c464329108531078623",
+            "286eb8c975fd691300daac5763807087bb40719ef08191f033beafdcdca67901",
+            "1c1a33331ab156ddaf873709c237ba2a0aec0b2a7684bab84e2aa8290ee50a02",
+            "541232e2aa3f8edc67d9f9ea0c39d63311cda71c466343617fd9f6672ffd31a3"
+          ]
+        },
+        {
+          "index": 512,
+          "pathLen": 11,
+          "siblingsHex": [
+            "322185ac409c2f85cdee79746c9b41427a349ce5e673a60c82cccbb8af390e5f",
+            "5b475602f68d7c4dd44005323f7539abfc33ad2ac84f0b22c29f9f8662276c61",
+            "0b5a6f9d459a909c0678f09a700491e6d95396e1d51c4b76fe7196139f33f86e",
+            "35e636824578fadea7090c77462197fa910f261dc9f8cbf86578fd85a5f6a364",
+            "1ecd15c8a42cd40b9bf86f2ad1c2c8761a74321afdeef2b4a31aad9b5f03a523",
+            "3802c580b1366e8098e84c4e6211db5803995dd87832d65ad660e2b050c577d2",
+            "cf589d2e1f6f735b6746d1d330ff20a21844f03c5f990a44fe31139614ce04f9",
+            "dcfe57a6da907528065ca210bd2b6f6b62f3dfc1a73110fe05d1d43da9dbe8d8",
+            "68e768b103564c9345ba5ead6a0aebdf3bc8d236959045cb3fb4d8dfbf95fa26",
+            "47c2065736bc7601fbe4798a712d1000ee6f889d92a4fff417795e7f04aba53d",
+            "541232e2aa3f8edc67d9f9ea0c39d63311cda71c466343617fd9f6672ffd31a3"
+          ]
+        },
+        {
+          "index": 1023,
+          "pathLen": 11,
+          "siblingsHex": [
+            "b46bb3e292e53dca8c72a239f6a271ca31b7bfed8a8fe64c73e0a4f3c0af1221",
+            "2da25453fe248b148b84eac5a42fab51b9c2bcf0bae7dc4f0f77e52cfa8fbe21",
+            "358e28690bfbf14e1d9f2877117a2afe74cbb4ea48e1730f913c58da22a475a8",
+            "b220e5b68a3b278abae21e3fb5f5c74e91ef3553d7b9795db016437e486de27e",
+            "83a79339ca0cdd8aeadbe8a7dbac32f8e0f618763f9e833e51469527b9482666",
+            "2d2d75354e69f786c885a4a7d1511d1be3a754ed8a34bdcb8f4b18ead518edc1",
+            "d3ce627dc88316450f26ed4c79944c4b621129f28fb073ce31c3de5b7b08d394",
+            "b0761f187b5b4c9c624bb0e97599aa1503be6b37351b9b5a83a645b0a6da4088",
+            "2ebad12308ceb022e430367960e32d0696c10f1c4fe233d82232079334b7a18f",
+            "47c2065736bc7601fbe4798a712d1000ee6f889d92a4fff417795e7f04aba53d",
+            "541232e2aa3f8edc67d9f9ea0c39d63311cda71c466343617fd9f6672ffd31a3"
+          ]
+        },
+        {
+          "index": 1024,
+          "pathLen": 1,
+          "siblingsHex": [
+            "0997910e09dea7f4a705beb4a81afb6c04d972a5ecd6637c0f75024fde1b8f1f"
+          ]
+        }
+      ]
+    }
+  ]
+}

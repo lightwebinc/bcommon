@@ -508,6 +508,8 @@ var layers = map[string]struct {
 	"chainview":  {module: []string{"nodeapi"}, sdk: true},
 	"testchain":  {tests: []string{"goldentest", "headers", "nodeapi", "publish"}, sdk: true},
 	"sanitize":   {tests: []string{"termsafe"}},
+	"chirp":      {sdk: true},
+	"commit":     {},
 	"payee":      {module: []string{"guard", "purse", "termsafe"}, tests: []string{"bwallet", "mint", "nodeapi", "producer", "publish", "testchain"}, sdk: true},
 }
 
