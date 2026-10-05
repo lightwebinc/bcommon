@@ -3,6 +3,9 @@ package producer_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -416,10 +419,32 @@ var refusals = []struct {
 		h.chain.SpendElsewhere(coin.TxID, coin.Vout, other)
 		p.Asset = nil
 	}, func(err error, _ string) bool { return strings.Contains(err.Error(), "missing or spent input 0") }},
+	{"the coin is spent and the node answers no evidence of by whom", false, func(h *chainHome, p *producer.Payer, coin bwallet.Output, other string) {
+		// The node answers NOT_FOUND for the coin, as for an output it has
+		// pruned: no spender is named, so the coin is not dropped.
+		h.chain.SpendElsewhere(coin.TxID, coin.Vout, other)
+		p.Asset = &nodeapi.Asset{Base: h.base, Client: &http.Client{Transport: notFoundUTXOs{}}}
+	}, func(err error, _ string) bool { return strings.Contains(err.Error(), "missing or spent input 0") }},
 	{"the coin is spent by the transaction itself", false, func(h *chainHome, p *producer.Payer, _ bwallet.Output, _ string) {
 		h.chain.SetHold(true)
 		p.Settler = &landingLeg{Settler: p.Settler, chain: h.chain}
 	}, func(err error, _ string) bool { return strings.Contains(err.Error(), "the answer was lost") }},
+}
+
+// notFoundUTXOs answers the node's UTXO view of any transaction with
+// NOT_FOUND for every output, and passes every other request on.
+type notFoundUTXOs struct{}
+
+func (notFoundUTXOs) RoundTrip(r *http.Request) (*http.Response, error) {
+	if !strings.HasPrefix(r.URL.Path, "/api/v1/utxos/") {
+		return http.DefaultTransport.RoundTrip(r)
+	}
+	outs := make([]string, 0, 8)
+	for i := 0; i < 8; i++ {
+		outs = append(outs, fmt.Sprintf(`{"vout":%d,"status":"NOT_FOUND"}`, i))
+	}
+	return &http.Response{StatusCode: http.StatusOK, Header: http.Header{}, Request: r,
+		Body: io.NopCloser(strings.NewReader("[" + strings.Join(outs, ",") + "]"))}, nil
 }
 
 const (

@@ -249,7 +249,10 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 	if !proven {
 		// Without a proof, that the node serves the tree does not put it on
 		// the chain: a node keeps a transaction that lost a double spend.
-		// The coin's spender decides.
+		// The coin's spender decides. Spender answers "" only where the
+		// node shows the coin unspent; a status that is no evidence
+		// (nodeapi.ErrSpendUnknown) is an error, and an error decides
+		// nothing.
 		by, err := asset.Spender(ctx, coin.TxID, coin.Vout)
 		switch {
 		case err != nil && known && !t.Payer.Async:
@@ -304,7 +307,8 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 		}
 	}
 	// Change the pool was already given may have paid a fee since, so only
-	// change the node shows unspent is taken.
+	// change the node shows unspent is taken, and change it cannot answer
+	// for leaves the tree unadopted until it can.
 	var cerr error
 	t.Payer.change(tx, height, mp, func(vout uint32) bool {
 		by, err := asset.Spender(ctx, tree.Txid, vout)

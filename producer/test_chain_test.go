@@ -173,6 +173,9 @@ type testChain struct {
 	// outpoint, txid.vout, of a known transaction. What it does not name is
 	// unspent.
 	spentBy map[string]string
+	// status overrides the status the node's UTXO view answers for an
+	// outpoint, txid.vout, such as NOT_FOUND for one it has pruned.
+	status map[string]string
 }
 
 type submission struct {
@@ -183,7 +186,7 @@ type submission struct {
 func newTestChain(t testing.TB) *testChain {
 	t.Helper()
 	l := &testChain{known: map[string]*transaction.Transaction{}, accepted: map[string]bool{},
-		mined: map[string]uint32{}, refused: map[string]string{}, spentBy: map[string]string{}, height: 700}
+		mined: map[string]uint32{}, refused: map[string]string{}, spentBy: map[string]string{}, status: map[string]string{}, height: 700}
 	l.srv = httptest.NewServer(http.HandlerFunc(l.serve))
 	t.Cleanup(l.srv.Close)
 	return l
@@ -220,6 +223,19 @@ func (l *testChain) spend(txid string, vout uint32, by string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.spentBy[fmt.Sprintf("%s.%d", txid, vout)] = by
+}
+
+// answer sets the status the node's UTXO view answers for output vout of
+// txid; "" puts back the one it would answer.
+func (l *testChain) answer(txid string, vout uint32, status string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	op := fmt.Sprintf("%s.%d", txid, vout)
+	if status == "" {
+		delete(l.status, op)
+		return
+	}
+	l.status[op] = status
 }
 
 func (l *testChain) accepting() string {
@@ -307,6 +323,9 @@ func (l *testChain) serve(w http.ResponseWriter, r *http.Request) {
 			o := map[string]any{"txid": id, "vout": i, "status": "OK"}
 			if by, ok := l.spentBy[fmt.Sprintf("%s.%d", id, i)]; ok {
 				o["status"], o["spendingData"] = "SPENT", map[string]any{"txId": by, "vin": 0}
+			}
+			if st, ok := l.status[fmt.Sprintf("%s.%d", id, i)]; ok {
+				o["status"] = st
 			}
 			outs = append(outs, o)
 		}

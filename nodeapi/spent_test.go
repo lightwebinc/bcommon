@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -50,23 +51,91 @@ func utxoNode(t *testing.T, body string) *Asset {
 
 const otherHex = "3333333333333333333333333333333333333333333333333333333333333333"
 
+// utxosFixture is a node's answer for txidHex with one output in each
+// status the node answers, in the node's own shape.
+func utxosFixture(t *testing.T) string {
+	t.Helper()
+	b, err := os.ReadFile("../testdata/fixtures/nodeapi/utxos.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
+}
+
+// Only OK and SPENT with a spender are evidence. Every other answer is an
+// error wrapping ErrSpendUnknown, never "", whatever else it carries: a
+// FROZEN output names a placeholder spender and a CONFLICTING one may name
+// a real one, and neither is SPENT.
 func TestSpenderReadsTheNodesUTXOView(t *testing.T) {
 	ctx := context.Background()
-	a := utxoNode(t, `[{"txid":"`+txidHex+`","vout":0,"status":"OK"},{"txid":"`+txidHex+`","vout":1,"status":"SPENT","spendingData":{"txId":"`+otherHex+`","vin":0}},{"vout":2,"status":"SPENT"}]`)
+	a := utxoNode(t, utxosFixture(t))
 	if by, err := a.Spender(ctx, txidHex, 0); err != nil || by != "" {
 		t.Fatalf("unspent: %q %v", by, err)
 	}
 	if by, err := a.Spender(ctx, txidHex, 1); err != nil || by != otherHex {
 		t.Fatalf("spent: %q %v", by, err)
 	}
-	if _, err := a.Spender(ctx, txidHex, 2); err == nil || !strings.Contains(err.Error(), "names no spender") {
-		t.Fatalf("spent with no spender: %v", err)
+	for vout, want := range map[uint32]string{
+		2: `status "NOT_FOUND"`,
+		3: `status "IMMATURE"`,
+		4: `status "FROZEN"`,
+		5: `status "CONFLICTING"`,
+		6: `status "LOCKED"`,
+		7: `status "CONFLICTING"`,
+		8: "names no spender",
+		9: "no output 9",
+	} {
+		by, err := a.Spender(ctx, txidHex, vout)
+		if by != "" || !errors.Is(err, ErrSpendUnknown) || !strings.Contains(err.Error(), want) {
+			t.Fatalf("output %d: %q %v", vout, by, err)
+		}
 	}
-	if _, err := a.Spender(ctx, txidHex, 3); err == nil || !strings.Contains(err.Error(), "no output 3") {
-		t.Fatalf("no such output: %v", err)
+}
+
+// A transaction the node does not serve, which it also answers for one it
+// has pruned, is no evidence either.
+func TestSpenderOfATransactionTheNodeDoesNotServe(t *testing.T) {
+	body, err := os.ReadFile("../testdata/fixtures/nodeapi/utxos_unknown.json")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := a.Spender(ctx, otherHex, 0); !IsHTTP(err, http.StatusNotFound) {
-		t.Fatalf("unknown: %v", err)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write(body)
+	}))
+	t.Cleanup(srv.Close)
+	by, err := (&Asset{Base: srv.URL}).Spender(context.Background(), txidHex, 0)
+	if by != "" || !errors.Is(err, ErrSpendUnknown) || !IsHTTP(err, http.StatusNotFound) {
+		t.Fatalf("%q %v", by, err)
+	}
+}
+
+// An answer that is not the node's shape is no evidence, even where it
+// would read as unspent.
+func TestSpenderRefusesAMalformedAnswer(t *testing.T) {
+	ctx := context.Background()
+	for _, c := range []struct{ name, body string }{
+		{"not JSON", `{`},
+		{"not a list", `{"vout":0,"status":"OK"}`},
+		{"a null entry", `[null]`},
+		{"no index", `[{"status":"OK"}]`},
+		{"no status", `[{"vout":0}]`},
+		{"an empty status", `[{"vout":0,"status":""}]`},
+		{"another status", `[{"vout":0,"status":"UNSPENT"}]`},
+		{"the output twice", `[{"vout":0,"status":"OK"},{"vout":0,"status":"OK"}]`},
+		{"another transaction", `[{"txid":"` + otherHex + `","vout":0,"status":"OK"}]`},
+		{"a spender that is not a txid", `[{"vout":0,"status":"SPENT","spendingData":{"txId":"zz","vin":0}}]`},
+		{"an empty answer", `[]`},
+	} {
+		by, err := utxoNode(t, c.body).Spender(ctx, txidHex, 0)
+		if by != "" || !errors.Is(err, ErrSpendUnknown) {
+			t.Fatalf("%s: %q %v", c.name, by, err)
+		}
+	}
+	// A failed read is the same.
+	_, err := (&Asset{Base: "http://127.0.0.1:1"}).Spender(ctx, txidHex, 0)
+	if !errors.Is(err, ErrSpendUnknown) {
+		t.Fatalf("no node: %v", err)
 	}
 }
 
@@ -88,6 +157,12 @@ func TestSpentElsewhere(t *testing.T) {
 	if err := utxoNode(t, `[{"vout":1,"status":"OK"}]`).SpentElsewhere(ctx, tx); err != nil {
 		t.Fatalf("unspent: %v", err)
 	}
+	for _, status := range []string{"NOT_FOUND", "FROZEN", "CONFLICTING", "LOCKED", "IMMATURE", ""} {
+		body := `[{"vout":1,"status":"` + status + `","spendingData":{"txId":"` + otherHex + `","vin":0}}]`
+		if err := utxoNode(t, body).SpentElsewhere(ctx, tx); err != nil {
+			t.Fatalf("status %q: %v", status, err)
+		}
+	}
 	var none *Asset
 	if err := none.SpentElsewhere(ctx, tx); err != nil {
 		t.Fatalf("no node: %v", err)
@@ -106,5 +181,17 @@ func TestWaitSettledStopsOnADoubleSpend(t *testing.T) {
 	}
 	if d := time.Since(start); d > 5*time.Second {
 		t.Fatalf("took %s", d)
+	}
+}
+
+// A status that is no evidence settles nothing: the wait goes on until the
+// transaction mines or ctx ends, and never reads as settled.
+func TestWaitSettledWaitsThroughAnUnknownStatus(t *testing.T) {
+	a := utxoNode(t, `[{"vout":1,"status":"NOT_FOUND"}]`)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	mp, _, err := WaitSettled(ctx, a, spendingTx(t), 5*time.Millisecond)
+	if mp != nil || !errors.Is(err, context.DeadlineExceeded) || errors.Is(err, ErrDoubleSpent) {
+		t.Fatalf("%v %v", mp, err)
 	}
 }

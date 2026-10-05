@@ -272,7 +272,9 @@ func (p *Payer) release(o bwallet.Output) {
 // spends too: the one the refusal err names for that outpoint (a
 // *nodeapi.SpentError), or the one Asset, when set, shows as its spender.
 // It is "" when neither says so: the coin is unspent, or spent by tx
-// itself, or the node cannot answer for it. Like
+// itself, or the node cannot answer for it (nodeapi.ErrSpendUnknown). ""
+// only keeps the coin reserved, for the caller's GiveBack, as a refusal
+// that names no spender does; it is not taken for "unspent". Like
 // nodeapi.Asset.SpentElsewhere, it speaks only on a positive word.
 func (p *Payer) spentBy(ctx context.Context, coin bwallet.Output, tx *transaction.Transaction, err error) string {
 	var se *nodeapi.SpentError

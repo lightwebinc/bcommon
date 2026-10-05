@@ -1,8 +1,18 @@
 package chainview
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
+
+	"github.com/bsv-blockchain/go-sdk/chainhash"
+	"github.com/bsv-blockchain/go-sdk/script"
+	"github.com/bsv-blockchain/go-sdk/transaction"
+
+	"github.com/lightwebinc/bcommon/nodeapi"
 )
 
 func TestRefusedAnswer(t *testing.T) {
@@ -31,5 +41,33 @@ func TestRefusedAnswer(t *testing.T) {
 	}
 	if _, got := RefusedAnswer(nil); got {
 		t.Error("nil is a refusal")
+	}
+}
+
+// Only the node's positive word is worded: an input it answers for with a
+// status that is no evidence, even one naming a spender, is passed over.
+func TestSpentElsewhereWordsOnlyAPositiveWord(t *testing.T) {
+	parent, err := chainhash.NewHashFromHex(strings.Repeat("11", 32))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx := transaction.NewTransaction()
+	tx.AddInput(&transaction.TransactionInput{SourceTXID: parent, SourceTxOutIndex: 0, UnlockingScript: &script.Script{}})
+	tx.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: &script.Script{script.OpTRUE}})
+	other := strings.Repeat("33", 32)
+	for status, want := range map[string]string{
+		"SPENT":       "input 0 (" + parent.String() + ".0) is spent by " + other,
+		"NOT_FOUND":   "",
+		"CONFLICTING": "",
+		"LOCKED":      "",
+		"FROZEN":      "",
+	} {
+		body := `[{"vout":0,"status":"` + status + `","spendingData":{"txId":"` + other + `","vin":0}}]`
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(body)) }))
+		got := SpentElsewhere(context.Background(), &nodeapi.Asset{Base: srv.URL}, tx)
+		srv.Close()
+		if got != want {
+			t.Fatalf("%s: %q", status, got)
+		}
 	}
 }

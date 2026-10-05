@@ -352,6 +352,27 @@ response body is bounded at 1 MiB, and a 429 from either API is retried after
 200 ms, 1 s and 3 s. `ProofFor(raw, txid)` holds a supplied proof to the same
 bound.
 
+`Spender(ctx, txid, vout)` answers only on evidence. Every other answer is
+an error wrapping `ErrSpendUnknown`, never `""`:
+
+| The node's answer for the output | `Spender` |
+|---|---|
+| status `OK` | `""`, nil: unspent |
+| status `SPENT` naming a spender | the spender's txid, nil |
+| status `SPENT` naming no spender, or one that is not a txid | `ErrSpendUnknown` |
+| status `NOT_FOUND`, which a node answers for an output it has pruned or could not read, as well as one it never stored | `ErrSpendUnknown` |
+| status `IMMATURE`, `FROZEN`, `CONFLICTING`, `LOCKED`, empty, or any other, even with a spender named | `ErrSpendUnknown` |
+| the output missing from the answer, or named twice | `ErrSpendUnknown` |
+| a 404 for the transaction, which a node also answers for a fully spent transaction it has pruned | `ErrSpendUnknown`, and `IsHTTP(err, 404)` |
+| an answer that does not decode, or is for another transaction, or a failed read | `ErrSpendUnknown` |
+
+A caller that acts on "unspent", such as putting a coin back in a pool,
+acts only on `""` with a nil error, and treats an error as undecided: it
+changes nothing and asks again later. `SpentElsewhere` refuses only on a
+`SPENT` naming another transaction and passes over every input `Spender`
+cannot answer for, so its nil says no input is shown spent elsewhere, not
+that every input is unspent.
+
 ## Publishing: `publish`
 
 | Type and field | Default | |
@@ -460,8 +481,9 @@ either:
 Dropped means forgotten by the `Payer` and taken out of the pool
 (`bwallet.Pool.Remove`), with a note naming the spender. A refusal for any
 other reason, a coin the node shows unspent or spent by the refused
-transaction itself, and a coin the node cannot answer for keep the coin as
-before.
+transaction itself, and a coin the node cannot answer for
+(`nodeapi.ErrSpendUnknown`) keep the coin as before: a coin is dropped only
+on a spender named.
 
 | Transaction | Where | The coin when it is not spent elsewhere |
 |---|---|---|
@@ -549,7 +571,10 @@ four outcomes:
 | `CoinSpent` | the tree has no proof, and the coin is spent by another transaction, `Recovery.By`, whether or not the node serves the tree | took the coin out of the pool if it was there; adopted, held and published nothing | drop it |
 
 An error with no outcome decides nothing about the tree: the node could not
-answer, or the tree did not mine within `Timeout`. The record stays and the
+answer, or the tree did not mine within `Timeout`. A status that is no
+evidence (`nodeapi.ErrSpendUnknown`, such as `NOT_FOUND` for an output the
+node has pruned) is such an error, for the fee coin and for the tree's
+change alike: it never reads as unspent. The record stays and the
 next start asks again. A node that serves an unproven tree and cannot say
 who spent its coin is such an error with `Async`, so that no tree is adopted
 without a proof or the node's word on its coin; without `Async` the wait

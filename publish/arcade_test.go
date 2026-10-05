@@ -269,3 +269,28 @@ func TestArcadeSubmitHeldToTheNodeRefusesADoubleSpend(t *testing.T) {
 		}
 	}
 }
+
+// A status that is no evidence of a spender, even one naming a spender
+// without being SPENT, is not a refusal: arcade's acceptance stands, and the
+// proof, collected later, settles the transaction.
+func TestArcadeSubmitHeldToTheNodePassesOverNoEvidence(t *testing.T) {
+	other := strings.Repeat("e7", 32)
+	for _, status := range []string{"NOT_FOUND", "CONFLICTING", "LOCKED", "FROZEN"} {
+		tx := efTx(t)
+		f := &fakeArcade{post: []func(http.ResponseWriter, string){accepted("ACCEPTED_BY_NETWORK")}}
+		a, _ := arcadeFor(t, f, tx)
+		src := tx.Inputs[0].SourceTXID.String()
+		node := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/api/v1/utxos/"+src+"/json" {
+				http.NotFound(w, r)
+				return
+			}
+			_, _ = fmt.Fprintf(w, `[{"vout":0,"status":%q,"spendingData":{"txId":%q,"vin":0}}]`, status, other)
+		}))
+		t.Cleanup(node.Close)
+		a.Asset = &nodeapi.Asset{Base: node.URL}
+		if err := a.Submit(context.Background(), tx); err != nil {
+			t.Fatalf("%s: %v", status, err)
+		}
+	}
+}
