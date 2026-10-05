@@ -339,6 +339,70 @@ specification defines it. It derives nothing under BRC-369's
 `[2, "keyed content release"]`: the epoch keys it wraps under were released
 under that protocol by borg.
 
+### bstore
+
+Object storage as a market on overlay hosts: a bucket as a chain of mined
+tokens committing to its key map, object entries, outcome records and front
+statements on unmined carriers for hosts, the object's CHIRP (BRC-167)
+pieces on a second topic for storage providers, and hold outputs that pay
+providers who hold an object.
+**Signed by its owner; provisional** until its first publish (not yet
+committed on chain; assigned here).
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "bstore"]` | Every bstore derivation (counterparty anyone) and the funding key |
+| Key id | `bucket` | A bucket token's lock and field signature |
+| Key id | `chain` | The outputs of funding trees that pay for a bucket's first token; never a carrier's |
+| Key id | `entry` | An entry carrier's record output and field signature, and the outputs of funding trees that fund entries |
+| Key id | `piece` | A piece carrier's record output and field signature, and the outputs of funding trees that fund pieces |
+| Key id | `outcome` | An outcome carrier's record output and field signature, and the outputs of funding trees that fund outcomes |
+| Key id | `front` | A front statement carrier's record output and field signature, and the outputs of funding trees that fund them |
+| Key id | `hold` | A hold output's lock |
+| Key id | `challenge` | The signature of a challenge response |
+| Key id | `fund` | The embedded wallet's funding key |
+| Tag | `st` `0x01` | Bucket token, first field |
+| Tag | `st` `0x02` | Funding-tree output |
+| Tag | `st` `0x03` | Hold output, its one field |
+| Tag | `st` `0x04` | Reserved; not assigned in this version |
+| Record magic | `stb` `0x01` | Bucket record, version 1 |
+| Record magic | `ste` `0x01` | Object entry, version 1 |
+| Record magic | `stp` `0x01` | Piece, version 1 |
+| Record magic | `sto` `0x01` | Outcome record, version 1 |
+| Record magic | `stf` `0x01` | Front statement, version 1 |
+| Record magic | `stq` `0x01` | Challenge request, version 1 |
+| Record magic | `str` `0x01` | Challenge response body, version 1 |
+| Topics | `tm_bstore_<name>_<suffix>` | A bucket's records topic, which overlay hosts carry; `<name>` is 1 to 25 characters and `<suffix>` is 10 random lowercase letters chosen when the bucket is created |
+| Topics | `tm_bstoreblob_<name>_<suffix>` | The same bucket's blob topic, which storage providers subscribe to and no host admits; the same `<name>` and `<suffix>` |
+| Lookup service | `ls_bstore` | Lookup service for every bucket on a host |
+| Host route | `<base>/ls_bstore/terms` | The host terms document for priced questions |
+| Provider routes | `<front>/challenge`, `<front>/renew`, `<front>/settle`, `<front>/terms` | A storage provider's routes; a derived front ends `/bstore/v1` |
+| Baskets | `bstore fund`, `bstore entry funding`, `bstore piece funding`, `bstore outcome funding`, `bstore front funding`, `bstore chain funding`, `bstore chain`, `bstore hold`, `bstore kill tombstone` | Wallet baskets |
+| Domain string | `bstore bucket id v1` | Hashed into a bucket id |
+
+The prefix `st` is registered to bstore. `0x62`, `0x65`, `0x66`, `0x6f`,
+`0x70`, `0x71` and `0x72` are never assigned as tag type bytes under it,
+because `st` followed by one of them is the first three bytes of the record
+magics `stb`, `ste`, `stf`, `sto`, `stp`, `stq` and `str`. `0x00` is not
+assigned. `0x04` is reserved and not assigned.
+
+bstore owns both the `tm_bstore_` and the `tm_bstoreblob_` topic
+namespaces: no other application names a topic that starts with either.
+Neither namespace is a prefix of another registered one, and a bucket's
+topics carry entropy under the rule above, because anyone can create a
+bucket. With `tm_bstoreblob_`, the separating underscore and the suffix
+taking 25 characters, `<name>` has at most 25, and the records topic takes
+the same bound so that one name serves both.
+
+bstore registers no certificate type: which providers a writer treats as
+independent operators is the writer's own policy.
+
+Borrowed, not registered: bstore reads and writes BRC-26 advertisements
+under `[2, "uhrp advertisement"]` with key id `1`, as the SDK has it, and
+pays providers by BRC-29 under `[2, "3241645161d8"]`, each as its
+specification defines it. Its pieces are CHIRP (BRC-167) profile 1 objects,
+whose roots carry no extension.
+
 ## Not registered
 
 bcommon itself registers nothing: every package that derives, tags or names
