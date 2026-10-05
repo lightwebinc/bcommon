@@ -47,6 +47,7 @@ beside the standard library and, where noted, go-sdk.
 |---|---|---|---|
 | 0 | `cbor` | none | no |
 | 0 | `commit` | none | no |
+| 0 | `chirp` | none | yes |
 | 0 | `hostset` | none | no |
 | 0 | `resolve` | none | no |
 | 0 | `guard` | none | yes |
@@ -106,7 +107,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`,
-`testchain`, `sanitize` and `payee` to these edges, tests included.
+`testchain`, `sanitize`, `payee`, `commit` and `chirp` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -132,7 +133,25 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   are refused.
 - **`commit`** owns the RFC 6962 Merkle Tree Hash, inclusion paths and their
   verification. The `0x00` leaf and `0x01` interior prefixes keep a leaf and
-  a subtree from ever being passed off as each other.
+  a subtree from ever being passed off as each other. Leaves are 32-byte
+  commitments (`Root`, `Prove`, `Verify`) or byte strings of any length
+  (`HashLeaf`, `RootOfBytes`, `ProveBytes`, `VerifyBytes`); `Builder` and
+  `SegmentWriter` compute a root over leaves or content that arrive as a
+  stream; `RootOfSubtrees` and `ProveSubtrees` compose per-block subtree
+  roots into the whole tree when every block but the last holds the same
+  power of two of leaves; `PathLen` and `VerifyAt` check a compact path,
+  its hashes alone, whose sides follow from the index and the leaf count
+  (RFC 9162 section 2.1.3.2). Indices there are 64-bit, so a tree of more
+  than 2^31 leaves is described on 32-bit platforms too.
+- **`chirp`** owns CHIRP (BRC-167) version 1 and chunking profile 1: the
+  root and branch node encodings (the decoder refuses everything the BRC
+  says a consumer rejects, and the encoder refuses what the decoder would),
+  profile 1's canonical construction (`Build`, `BuildTree`, the streaming
+  `Chunker`), `Verify`, which fetches a closure object by object, hashing
+  each before reading it, under a reference bound, and checks content hash
+  and canonical construction, and the UHRP object identifier and CHIRP URL
+  of a hash. It takes go-sdk only for Base58. Minor versions above 0 are
+  refused rather than read as 1.0.
 - **`store`** owns how a record commits to a set of other records: the refs
   entry (name, root, count, optional head), the manifest that lists a
   store's members, and `store.Root`, the one rule that computes a store's
@@ -478,6 +497,8 @@ to read what a producer wrote:
 | `chaintoken.ReadWire`, `Wire.Token`, `Wire.Carrier`, `Wire.Alone`, `MinimalPath`, `MergedPath`, `TokenBEEF`, `Stored`, `Mined` | `readWire`, `tokenShape`, `carrierShape`, `aloneShape`, `minimalPath`, `mergedPath`, `tokenBEEF`, `storedToken`, `mined` |
 | `chaintoken.ReadOutput`, `Output.LockedTo`, `Output.Signed`, `Output.SignedBy`, `Spends`, `VerifyField`, `CheckDER` | `readTokenOutput`, `tokenLockedTo`, `tokenSigned`, `tokenSignedBy`, `tokenSpends`, `verifyField`, `strictSignature` |
 | `sanitize.Filter`, `sanitize.UnicodeVersion` | `filterText` (a string) and `filterBytes` (UTF-8 bytes), `UnicodeVersion` |
+| `commit.HashLeaf`, `NodeHash`, `RootOfBytes`, `RootOfLeafHashes`, `RootOfSubtrees`, `ProveBytes`, `ProveLeafHashes`, `ProveSubtrees`, `VerifyBytes`, `PathLen`, `VerifyAt`, `Builder`, `SegmentRoot`, `SegmentWriter` | `hashLeaf`, `hashNode`, `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `proveLeafHashes`, `proveSubtrees`, `verifyBytes`, `pathLength`, `verifyAt`, `RootBuilder`, `segmentRoot`, `SegmentWriter` |
+| `chirp.EncodeRoot`, `EncodeBranch`, `DecodeRoot`, `DecodeBranch`, `Kind`, `BuildTree`, `Build`, `Verify`, `Identifier`, `ParseIdentifier`, `URL`, `ParseURL`, `ValidMediaType`, `Reason` | `encodeRoot`, `encodeBranch`, `decodeRoot`, `decodeBranch`, `nodeKind`, `buildChirpTree`, `buildChirp`, `verifyClosure` (async over the fetch), `chirpIdentifier`, `parseChirpIdentifier`, `chirpURL`, `parseChirpURL`, `validMediaType`, `ChirpError.code` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
@@ -524,8 +545,14 @@ runs it in the browser, over the same table, held to the same corpus
 WHATWG decoder (TextDecoder) replaces it, which the Go side does too, so a
 value read from bytes filters the same in both.
 
-The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the RFC 6962
-functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
+A host or a provider that checks a stored object needs the byte-leaf roots
+and the CHIRP codec, so both have twins, held to the same vectors
+(`bytetree-v1.json`, `chirp-v1.json`) and the same refusal codes in the same
+order. The streaming `chirp.Chunker` has none: a publisher builds closures,
+a host checks them.
+
+The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the 32-byte-leaf
+RFC 6962 functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
 `chainview` and `testchain` have no TypeScript twin: a topic manager reads
 outputs, it does not build them, pay for them, or hold a key. A host's
 ledger is written by the host itself, and `payee` reads and writes the same

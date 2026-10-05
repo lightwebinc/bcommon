@@ -13,7 +13,7 @@ and nothing in the library imports it:
 - CBOR is encoded by [fxamacker/cbor](https://github.com/fxamacker/cbor)
   under its core deterministic options (RFC 8949 §4.2.1).
 - RFC 6962 roots and audit paths come from its own implementation of the
-  RFC's definitions. Every path is checked with the bit-by-bit verification
+  RFC's definitions, over leaves of any length. Every path is checked with the bit-by-bit verification
   of RFC 9162 §2.1.3.2 before it is written.
 - Transactions are built with go-sdk's primitives and its P2PKH and PushDrop
   templates, called directly. Before it is written, every transaction in
@@ -27,6 +27,13 @@ and nothing in the library imports it:
   itself; every path is cut from one and checked to give its root before it
   is written, and the merged path of two transactions in one block is
   checked against what go-sdk's own merge gives.
+- The CHIRP family is written by the generator's own node writer, profile 1
+  grouping and Base58Check (over `math/big`), from BRC-167's tables. Before
+  it writes, it reproduces every golden value the BRC prints: the three
+  roots with their hashes and identifiers, the identifier of the `hello`
+  blob, and the tree shapes over 256, 257 and 65,537 blobs. Each refusal
+  case is labelled by its construction: it breaks one rule of a valid node
+  or closure.
 - The keyed family uses the standard library alone: SHA-256, `math/big` and
   AES-256-GCM with a 32-byte nonce. It recomputes the symmetric key and the
   commitment BRC-369 prints for its content key and fails if either stops
@@ -73,6 +80,8 @@ needed to rebuild it, as well as the bytes.
 | `manifest-v1.json` | A manifest body: the one-key map whose `members` array lists four members as `c`, `name`, `size`, `type` maps. One member is ordinary, one has an empty name and type and a zero size, one has a 64-byte name and a size past 32 bits, and one has a name outside ASCII. Also the RFC 6962 root over the members' commitments. | `store`; `cbor.ts`, the body only |
 | `refs-v1.json` | A refs array of three entries: one without a head, a one-member store whose root is the leaf hash of its head, and one with two members the format does not define. | `store`; `store.ts` |
 | `rfc6962-v1.json` | Seventeen fixed leaves, the root of the first n for every n from 1 to 17, and the audit path of every leaf in each tree. | `commit` |
+| `bytetree-v1.json` | Twelve leaves of 0 to 4,096 bytes, the root of the first n for every n from 0 to 12 (the empty root included) and the audit path of every leaf; then content of 0, 1, 4,095, 4,096, 4,097, 12,293, 4,194,304 and 4,194,305 bytes cut into 4,096-byte segments, the last unpadded, with its segment count, root, and the compact path (hashes without sides, with its length) of the first, middle, second-last and last segment. The content is SHA-256("bcommon vector content" \|\| uint32be(j)) for j = 0, 1, ... concatenated. | `commit`; `commit.ts` |
+| `chirp-v1.json` | BRC-167's three golden roots (empty, `hello`, `hello` with `text/plain`) with their hashes, identifiers and URLs, reproduced from the BRC by the generator before it writes; profile 1 closures of content of 0, 1, 4 MiB - 1, 4 MiB and 4 MiB + 1 bytes and of one blob twice and a tail, with every blob hash, branch and the distinct object count; BRC-167's tree shapes over 256, 257 and 65,537 synthetic blobs, the widths and root children the BRC prints; 36 nodes, admitted or refused for the first rule broken (size, truncation, magic, version, kind, profile 0, a non-minimal CompactSize, 257 children and none, child kind, lengths, the empty-content rule, a trailing byte, and extensions out of order, repeated, of type 0, critical, `mediaType` on a branch or malformed, and over 16,384 value bytes); 18 closures checked object by object, passing or refused (missing, a host's wrong bytes, a refused node, too large, over the reference bound, sixteen nodes deep and seventeen, a blob or a branch of the wrong length, the content hash, and two non-canonical groupings), with a profile 2 closure verified but not called canonical; and identifiers and URLs, admitted and refused. The generator's CHIRP writer and its Base58Check are its own. | `chirp`; `chirp.ts` |
 | `transactions-v1.json` | A mined coin, a funding tree of four outputs spending it, two carriers spending the tree, a state token created and then updated, a payment, and two sweeps of the tree: one the tree pays for, and one with a fee input and change. Also the derived keys, the locks, the tree's kept BEEF, and both proofs. | `pushdrop`, `carrier`, `mint`, `funding`; `derive.ts`, `fieldsig.ts`, `funding.ts`, `carrier.ts` |
 | `beef-v1.json` | The first carrier as Atomic BEEF V2, BEEF V1 and BEEF V2, V2 with its parent as a bare txid, the kept funding tree, and a V1 and a V2 built by hand; then 13 bytes declaring 2^63 BUMPs, a BUMP declaring 2^32-1 leaves at one level, 2^32-1 transactions, a transaction declaring 2^32-1 inputs, input and output scripts longer than the bytes, a transaction of no inputs, no transactions, BUMP tree heights 65 and 0, a has-BUMP byte of 2, BUMP indexes past the BUMPs in V1 and V2, V2 data format 3, an unknown version, Atomic around Atomic, one byte short, one trailing byte, and nothing. Each records whether the guard admits it and whether go-sdk parses it. | `guard`; `wire.ts` (the structural walk) |
 | `pubkeys-v1.json` | The test identity key, its other parity, x = 1 under both prefixes, then 02 and 03 \|\| p+1 (aliases of x = 1), 02 \|\| p, 02 \|\| 2^256-1, x = 5 (off the curve), the identity key uncompressed and hybrid, prefixes 04 and 00 on 33 bytes, 32 and 34 bytes, and nothing. Each records the strict verdict and whether go-sdk parses it. | `guard`; `pubkey.ts` |

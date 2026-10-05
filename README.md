@@ -25,7 +25,8 @@ change between v0 minor versions. One tag versions both languages. See
 |---|---|
 | `cbor` | Deterministic CBOR, an RFC 8949 subset; the decoder refuses anything non-canonical |
 | `record` | The bounded, ordered reading of an application record: a canonical CBOR map with integer keys, a magic and preserved unknown keys, refused for the first rule it breaks |
-| `commit` | RFC 6962 Merkle roots, inclusion paths and their verification |
+| `commit` | RFC 6962 Merkle roots, inclusion paths and their verification, over 32-byte commitments or leaves of any length: a streaming root, the root of content cut into fixed segments, per-block subtree roots, and the compact path whose sides follow from the index and the leaf count |
+| `chirp` | CHIRP (BRC-167) version 1 and its profile 1: root and branch node codecs, the canonical construction from content (in memory or streamed), closure verification object by object, and the UHRP object identifier and CHIRP URL of a hash |
 | `store` | Store reference entries, manifests, and the rule that computes a store's root from its entry and its members' commitments |
 | `pushdrop` | BRC-42/43 derivation under counterparty Anyone, tagged PushDrop locks, unlockers and decoding, and a lock read leniently and rebuilt canonically from raw script bytes |
 | `carrier` | An unmineable carrier transaction that commits a payload, and the funding lock, decode and sweep it spends from |
@@ -59,7 +60,7 @@ same vectors as the Go packages. It has two entry points:
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, the renderer filter, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
+| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
 
 ## Install
