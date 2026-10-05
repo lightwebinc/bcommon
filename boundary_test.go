@@ -494,7 +494,9 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 // enters; testchain serves the wire formats the clients read without
 // importing a client, and its tests drive it through those clients;
 // sanitize is character rules over a table it embeds, and its tests compare
-// it with termsafe.
+// it with termsafe; payee is the payee's side of a payment over the purse,
+// and settles nothing the purse does not, and its tests run it on the local
+// chain.
 var layers = map[string]struct {
 	module []string
 	tests  []string
@@ -506,6 +508,7 @@ var layers = map[string]struct {
 	"chainview":  {module: []string{"nodeapi"}, sdk: true},
 	"testchain":  {tests: []string{"goldentest", "headers", "nodeapi", "publish"}, sdk: true},
 	"sanitize":   {tests: []string{"termsafe"}},
+	"payee":      {module: []string{"guard", "purse", "termsafe"}, tests: []string{"bwallet", "mint", "nodeapi", "producer", "publish", "testchain"}, sdk: true},
 }
 
 // testOnly are the packages that exist for tests and local trials. No
