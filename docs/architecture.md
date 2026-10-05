@@ -73,10 +73,12 @@ beside the standard library and, where noted, go-sdk.
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
 | 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
+| 5 | `payee` | `guard`, `purse`, `termsafe` | yes |
 
 Every edge inside the module:
 
 ```text
+  payee    ──▶ purse, guard, termsafe
   purse    ──▶ producer, bwallet, chainview, funding, guard, mint, nodeapi,
                publish, termsafe
   producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
@@ -104,7 +106,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`,
-`testchain` and `sanitize` to these edges, tests included.
+`testchain`, `sanitize` and `payee` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -308,6 +310,20 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   transaction must verify against the headers, before it is broadcast and
   pooled with its derivation. A payment the network will never mine is a
   `RefusedError`.
+- **`payee`** owns the payee's side of those payments, over the purse: the
+  payee key (`HomeKey`, the home's root key in `identity.json`, and
+  `KeyLine`, `CreateKeyFile` for the host's environment), the ledger a host
+  appends each accepted payment to (`Payment`, versioned `LedgerV1` and
+  `LedgerV2`, read by `ReadLedger` and written byte for byte as a host
+  writes it by `Payment.Line`), the host's own rule over it (`Claims`: a
+  txid once, a coin once, else 409), and `Settler`, which settles every
+  payment the payee's record (`Record`, whose JSON is `Book`) holds neither
+  as settled nor as refused. It checks each through the purse, broadcasts
+  them all before it waits for any, at most `InFlight` at once, records
+  each outcome as it comes, and counts the run in a `Report`. Whether a
+  payment's coin was spent elsewhere is the purse's answer, from the leg's
+  refusal and the node's view of the inputs (`chainview`): `payee` decides
+  nothing about the chain itself.
 
 ### Reader
 
@@ -407,6 +423,7 @@ Where the library applies it:
 | A BEEF a host is asked to admit | `chaintoken.ReadWire` applies the caller's bound and `guard.CheckBEEF` before it reads anything, so every count it then follows fits the bytes present; the TypeScript `readWire` runs the same walk (`checkBEEF`) before the SDK's readers | `chaintoken`, `wire.ts` |
 | A locking script | `pushdrop.FirstPush` and `pushdrop.Fields` hold every declared push length to the bytes present and return slices of the script, allocating nothing for the data | `pushdrop`, `chaintoken.ReadOutput` |
 | A payment handed to a wallet | `guard.ParseBEEF` under `guard.DefaultBound` before anything is derived or broadcast | `purse.Check` |
+| A host's payment ledger | a line is read to `MaxLine` (16 MiB); a version 1 line's coins are read through `guard.ParseBEEF` under `guard.DefaultBound` | `payee.ReadLedger`, `payee.Payment.Spends` |
 | A record's store references | `MaxRefs` (64 stores), `MaxRefMembers` (8 members per entry), `MaxRefName` (64 bytes), `MaxMembers` (1024 per manifest) bound the work one record can ask of a reader | `store` |
 | An HTTP response | every body is read to a bound before it is parsed, and most clients refuse one over the bound rather than parse a truncated answer | `headers`, `nodeapi`, `hostset`, `resolve`, `publish`, `wirewallet` |
 
@@ -508,9 +525,11 @@ WHATWG decoder (TextDecoder) replaces it, which the Go side does too, so a
 value read from bytes filters the same in both.
 
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the RFC 6962
-functions, the network clients, `verify`, `keyed`, `purse`, `chainview` and
-`testchain` have no TypeScript twin: a topic manager reads outputs, it does
-not build them, pay for them, or hold a key.
+functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
+`chainview` and `testchain` have no TypeScript twin: a topic manager reads
+outputs, it does not build them, pay for them, or hold a key. A host's
+ledger is written by the host itself, and `payee` reads and writes the same
+bytes.
 
 The runtime entry point imports nothing but its peer `@bsv/sdk`, pinned
 exactly at 2.7.1, and nothing from `node:`, so a browser can load it too.

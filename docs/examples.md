@@ -626,6 +626,41 @@ The four outcomes, why a `CoinReturned` record is kept, what a publish
 that fails after `Adopt` returns, and why a tree paid through `Fund` cannot
 be covered, are in [configuration.md](configuration.md#prepare-and-recover).
 
+## Read a host's payment ledger and settle it
+
+[`payee/example_test.go`](../payee/example_test.go), `ExampleReadLedger`,
+`ExampleClaims` and `ExampleSettler`
+
+A host appends each payment it accepted to its ledger. Every version of a
+line is read, a line cut short by a crash is skipped and named, and a line
+is written back byte for byte as the host wrote it. The host's own rule
+takes a txid once and a coin once.
+
+```go
+ps, err := payee.ReadLedger(strings.NewReader(ledger), "payments.jsonl", &warn)
+// aa 5 version 1
+// bb 7 version 2
+// payments.jsonl line 3: not a payment; skipped
+var c payee.Claims
+c.Claim("aa", []string{"cc.0"})         // accepted
+c.Claim("aa", []string{"cc.0"})         // replayed
+c.Claim("bb", []string{"cc.0", "dd.1"}) // conflict
+```
+
+A payee's command reads the ledgers, then settles them into its home's pool
+through its purse, recording each outcome in its own state:
+
+```go
+ps, err := payee.ReadLedgers(stderr, paths...)
+s := &payee.Settler{App: "sample", Payer: p, Record: payee.Saved(&st.Book, st.Save),
+	Pool: home.Pool, Out: stdout, Warn: stderr}
+rep, err := s.Settle(ctx, ps)
+if problem := rep.Problem(); problem != "" {
+	// end the run with the application's refusal status
+}
+// 0 payment(s) settled, 0 sat; 1 settled before; 0 not settled; 0 refused (1 before); pool 0 output(s), 0 sat
+```
+
 ## Filter text for a terminal
 
 [`termsafe/example_test.go`](../termsafe/example_test.go), `ExampleSanitize`
@@ -774,7 +809,8 @@ settlement, proof collection and published trees (`producer.Payer.Settle`,
 proof source), overlay lookups
 (`lookup.Query`), domain discovery (`resolve.FetchManifest`,
 `resolve.ResolveHandle`), the header service (`headers.Client`), a wallet
-over the wire (`wirewallet.Dial`) and the payment actions (`purse.Purse`,
-which pays from a funded pool and settles through a leg). Their parameters are in
+over the wire (`wirewallet.Dial`), the payment actions (`purse.Purse`,
+which pays from a funded pool and settles through a leg) and a settle run
+that reaches the chain (`payee.Settler` over a `purse.Purse`). Their parameters are in
 [configuration.md](configuration.md); the packages' own tests exercise them
 against local stand-ins.

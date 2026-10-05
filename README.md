@@ -41,6 +41,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `producer` | A producer's orchestration: fee inputs and change from a coin pool, settlement, the funding-tree lifecycle, the one kept copy of each unproven transaction, and proof collection that republishes what has mined |
 | `chainview` | Whether a transaction can still mine: a settlement leg's error read as a definitive refusal or as transient, and the input another transaction spent |
 | `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
+| `payee` | The payee's side of those payments: the payee key, a host's versioned ledger of accepted payments read and written byte for byte, the host's replay and conflict rule, and an idempotent settle run into the pool with its counts |
 | `headers` | A chain tracker over WhatsOnChain, chaintracks or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |

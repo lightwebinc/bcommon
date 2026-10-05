@@ -41,6 +41,7 @@ orphans what was already published: it is a new value, never an edit.
 | Canonical CBOR encoding | `cbor` (fixed) | A record's commitment covers its exact bytes |
 | Fund-key derivation of a wallet | `bwallet.Profile.FundProtocol`, `FundKeyID` | Changing either strands every coin already paid to the key |
 | Funding-tree state file shape | `funding.Tree` JSON tags | Part of the application's state file |
+| A payee's record and a host's payment ledger | `payee.Book` and `payee.Payment` JSON tags, `payee.LedgerFile` | Part of the application's state file, and what a host has already written; a later ledger version adds keys and names itself in `"v"` |
 
 The library's own tests use `[1, "vector sample"]` with key ids `object` and
 `state`, and the tag prefix `vx`. These are reserved for tests and no
@@ -187,6 +188,56 @@ application names the setting that raises the cap), `ErrNoNode` and
 `ErrNoSettler` (it names the settings that supply them) and `ErrNotMined`
 (it says what to run again). A payment the network will never mine is a
 `*RefusedError`.
+
+## Payee: `payee`
+
+### `payee.Settler`
+
+| Field | Type | Default | |
+|---|---|---|---|
+| `App` | `string` | none, refused when empty | the application's name: a payment is internalized with the description `<App> priced question <class>` and the labels `<App>` and `payee` |
+| `Payer` | `payee.Payer` | none, refused when nil | the payee's `*purse.Purse`, set up for the payee leg (`Settler`, `Asset`, `Headers`, `Wait`, `Poll`) |
+| `Record` | `payee.Record` | none, refused when nil | what is settled and what was refused, kept across runs; `payee.Saved` makes one of a `payee.Book` and the application's save |
+| `Pool` | `payee.Pool` | none: the report shows an empty pool | the payee's `*bwallet.Pool`, read for the report |
+| `InFlight` | `int` | `DefaultInFlight` (16) | payments broadcast and not yet mined at once, 1 to `MaxInFlight` (64); outside that, `Settle` refuses to run |
+| `Words` | `func(error) error` | `payee.Words` | the application's wording of the purse's refusals: which setting names the node or the leg, what to run again |
+| `Out`, `Warn` | `io.Writer` | none: nothing is written | a line for each payment settled and the report; a line for each payment not settled, refused, or (from `ReadLedgers`) skipped |
+
+`Settle` returns an error only when the run cannot go on: a `Settler` not set
+up, a `Record` that does not persist, a context ended. A payment not settled
+is counted in the `Report`, named on `Warn`, and left for the next run;
+`Report.Problem` is the line an application ends such a run with, under its
+refusal status. A run is idempotent: a payment the record holds as settled
+or refused is counted and not touched, so the command is safe on a timer.
+Two runs over one home at once are the application's to prevent, as for any
+command that writes its state.
+
+### The ledger
+
+| Name | Value | |
+|---|---|---|
+| `LedgerFile` | `payments.jsonl` | the ledger's name in a host's state directory |
+| `LedgerV1` | 1 | `txid`, `beef`, `outputIndex`, `satoshis`, `derivationPrefix`, `derivationSuffix`, `senderIdentityKey`, `class` |
+| `LedgerV2` | 2 | adds `inputs` (every outpoint the payment spends, `<txid>.<index>`) and `at` (Unix seconds) |
+| `LedgerVersion` | `LedgerV2` | the latest this package reads, and the one `Payment.Line` writes |
+| `MaxLine` | 16 MiB | the longest line read |
+
+A line names no version up to `LedgerV2` and is told apart by its shape. A
+later version writes its number in `"v"`; `Settle` reports such a line as not
+settled (`ErrNewerLedger`) and leaves it in the ledger for a reader that
+knows it. A line that does not parse, one cut short by a crash, is skipped:
+its question was never answered.
+
+### The payee key and the home
+
+The payee's home is a `bwallet` directory: its root key in `identity.json`
+(`payee.IdentityFile`) is the payee key, and its pool is where settled
+payments go. `HomeKey(dir, app)` reads the key; `app` names the command that
+makes a home, in the error for a directory that is not one. `KeyEnv(app)` is
+the host's variable, `<APP>_PAYEE_KEY`; `KeyLine` is the line that sets it;
+`CreateKeyFile` writes that line to a new file at mode 0600 and never over
+one (`ErrKeyFileExists`), and returns what the command says when it has.
+The flags that choose a file or standard output are the application's.
 
 ## Test chain: `testchain.Chain`
 

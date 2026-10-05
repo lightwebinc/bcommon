@@ -6,9 +6,9 @@
 // funding-tree state, node, arcade and wallet clients, the producer's
 // orchestration of fees, funding trees and proofs around them, a header
 // source, host sets with quorum fan-out, BRC-24 lookup, BRC-169 and BRC-180
-// resolution, a pinned-key file, SPV verdicts, and a filter for text that
-// reaches a terminal. Each subdirectory that holds Go code is one package;
-// this root package holds no code of its own.
+// resolution, a pinned-key file, SPV verdicts, a payee's ledger and settle
+// run, and a filter for text that reaches a terminal. Each subdirectory that
+// holds Go code is one package; this root package holds no code of its own.
 //
 // An application supplies what makes these packages its own: the payload
 // schema, the derivation protocol and key ids, the output tags, the wallet
