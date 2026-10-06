@@ -34,7 +34,11 @@ import (
 // The parse runs under a recover, so a malformed proof is an error and never
 // a crash.
 func ParseBUMP(b []byte, bound int) (mp *transaction.MerklePath, err error) {
-	if err := guardBUMP(b, bound); err != nil {
+	return parseBUMP(b, bound, DefaultLimits())
+}
+
+func parseBUMP(b []byte, bound int, l Limits) (mp *transaction.MerklePath, err error) {
+	if err := guardBUMP(b, bound, l); err != nil {
 		return nil, err
 	}
 	defer func() {
@@ -65,6 +69,7 @@ var (
 type cursor struct {
 	b   []byte
 	pos int
+	lim Limits
 }
 
 func (c *cursor) remaining() int { return len(c.b) - c.pos }
@@ -147,11 +152,11 @@ func (c *cursor) fits(n uint64, each int) bool {
 // guardBUMP walks one BRC-74 BUMP allocating nothing and rejects any declared
 // count the remaining bytes could not encode. After it returns nil the SDK
 // parser cannot be asked for more than the body holds.
-func guardBUMP(raw []byte, bound int) error {
+func guardBUMP(raw []byte, bound int, l Limits) error {
 	if len(raw) > bound {
 		return fmt.Errorf("bump is %d bytes, max %d", len(raw), bound)
 	}
-	c := &cursor{b: raw}
+	c := &cursor{b: raw, lim: l}
 	if _, err := c.bump(); err != nil {
 		if errors.Is(err, errTruncated) {
 			return errBUMPTruncated
@@ -168,6 +173,15 @@ func guardBUMP(raw []byte, bound int) error {
 
 // bump walks one BUMP from the cursor and returns its tree height.
 func (c *cursor) bump() (byte, error) {
+	start := c.pos
+	h, err := c.bumpBody()
+	if err == nil && over(uint64(c.pos-start), c.lim.BUMPBytes) {
+		return 0, fmt.Errorf("bump is %d bytes, the limit is %d", c.pos-start, c.lim.BUMPBytes)
+	}
+	return h, err
+}
+
+func (c *cursor) bumpBody() (byte, error) {
 	if _, err := c.varInt(); err != nil { // block height
 		return 0, err
 	}

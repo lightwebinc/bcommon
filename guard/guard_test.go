@@ -36,7 +36,7 @@ func goodBump(t *testing.T) []byte {
 }
 
 func TestGuardAcceptsAWellFormedBump(t *testing.T) {
-	if err := guardBUMP(goodBump(t), testBound); err != nil {
+	if err := guardBUMP(goodBump(t), testBound, DefaultLimits()); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -57,7 +57,7 @@ func TestGuardRejectsWhatTheBytesCannotEncode(t *testing.T) {
 		"trailing":          {append(append([]byte{}, good...), 0x00), "trailing"},
 	}
 	for name, c := range cases {
-		err := guardBUMP(c.body, testBound)
+		err := guardBUMP(c.body, testBound, DefaultLimits())
 		if err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: err %v, want %q", name, err, c.want)
 		}

@@ -66,11 +66,17 @@ const (
 // three places, each a shape no BEEF this module writes has: trailing bytes,
 // a BEEF of no transactions, and a transaction of no inputs (which is also
 // the extended-format marker's shape) are refused.
+//
+// It also holds the BEEF to DefaultLimits; CheckBEEFWithin takes others.
 func CheckBEEF(b []byte, bound int) error {
+	return checkBEEF(b, bound, DefaultLimits())
+}
+
+func checkBEEF(b []byte, bound int, l Limits) error {
 	if len(b) > bound {
 		return fmt.Errorf("%w: %d bytes, max %d", ErrBEEF, len(b), bound)
 	}
-	c := &cursor{b: b}
+	c := &cursor{b: b, lim: l}
 	if len(b) >= 4 && binary.LittleEndian.Uint32(b) == beefAtomic {
 		if err := c.skip(4 + 32); err != nil { // marker and subject txid
 			return fmt.Errorf("%w: atomic header %v", ErrBEEF, err)
@@ -90,7 +96,11 @@ func CheckBEEF(b []byte, bound int) error {
 // are ParseBeef's: the BEEF, its subject transaction (which may be nil) and
 // the subject's txid.
 func ParseBEEF(b []byte, bound int) (beef *transaction.Beef, tx *transaction.Transaction, txid *chainhash.Hash, err error) {
-	if err := CheckBEEF(b, bound); err != nil {
+	return parseBEEF(b, bound, DefaultLimits())
+}
+
+func parseBEEF(b []byte, bound int, l Limits) (beef *transaction.Beef, tx *transaction.Transaction, txid *chainhash.Hash, err error) {
+	if err := checkBEEF(b, bound, l); err != nil {
 		return nil, nil, nil, err
 	}
 	defer func() {
@@ -106,10 +116,14 @@ func ParseBEEF(b []byte, bound int) (beef *transaction.Beef, tx *transaction.Tra
 // it with the SDK under a recover. An Extended Format transaction is refused
 // as one of no inputs; RawTransaction turns it into the raw form first.
 func ParseTransaction(b []byte, bound int) (tx *transaction.Transaction, err error) {
+	return parseTransaction(b, bound, DefaultLimits())
+}
+
+func parseTransaction(b []byte, bound int, l Limits) (tx *transaction.Transaction, err error) {
 	if len(b) > bound {
 		return nil, fmt.Errorf("%w: %d bytes, max %d", ErrTransaction, len(b), bound)
 	}
-	c := &cursor{b: b}
+	c := &cursor{b: b, lim: l}
 	if err := c.tx(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrTransaction, err)
 	}
@@ -140,6 +154,9 @@ func (c *cursor) beef() error {
 	if !c.fits(nBumps, minBEEFBump) {
 		return fmt.Errorf("declares %d BUMPs, %d bytes remain", nBumps, c.remaining())
 	}
+	if over(nBumps, c.lim.BUMPs) {
+		return limitErr("BUMPs", nBumps, c.lim.BUMPs)
+	}
 	for i := uint64(0); i < nBumps; i++ {
 		h, err := c.bump()
 		if err != nil {
@@ -162,6 +179,9 @@ func (c *cursor) beef() error {
 	}
 	if nTx == 0 {
 		return errors.New("no transactions")
+	}
+	if over(nTx, c.lim.Transactions) {
+		return limitErr("transactions", nTx, c.lim.Transactions)
 	}
 	bumpIndex := func(i uint64) error {
 		idx, err := c.varInt()
@@ -234,13 +254,16 @@ func (c *cursor) tx() error {
 	if !c.fits(nIn, minInputBytes) {
 		return fmt.Errorf("declares %d inputs, %d bytes remain", nIn, c.remaining())
 	}
+	if over(nIn, c.lim.Inputs) {
+		return limitErr("inputs", nIn, c.lim.Inputs)
+	}
 	for i := uint64(0); i < nIn; i++ {
 		if err := c.skip(32 + 4); err != nil { // outpoint
 			return err
 		}
-		l, err := c.varInt()
+		l, err := c.script()
 		if err != nil {
-			return err
+			return fmt.Errorf("input %d script %w", i, err)
 		}
 		if err := c.skipN(l); err != nil {
 			return fmt.Errorf("input %d script %w", i, err)
@@ -256,17 +279,33 @@ func (c *cursor) tx() error {
 	if !c.fits(nOut, minOutputBytes) {
 		return fmt.Errorf("declares %d outputs, %d bytes remain", nOut, c.remaining())
 	}
+	if over(nOut, c.lim.Outputs) {
+		return limitErr("outputs", nOut, c.lim.Outputs)
+	}
 	for i := uint64(0); i < nOut; i++ {
 		if err := c.skip(8); err != nil { // value
 			return err
 		}
-		l, err := c.varInt()
+		l, err := c.script()
 		if err != nil {
-			return err
+			return fmt.Errorf("output %d script %w", i, err)
 		}
 		if err := c.skipN(l); err != nil {
 			return fmt.Errorf("output %d script %w", i, err)
 		}
 	}
 	return c.skip(4) // locktime
+}
+
+// script reads a script's length and holds it to the Script limit; the
+// caller still bounds it by the bytes present.
+func (c *cursor) script() (uint64, error) {
+	l, err := c.varInt()
+	if err != nil {
+		return 0, err
+	}
+	if over(l, c.lim.Script) {
+		return 0, fmt.Errorf("declares %d bytes, the limit is %d", l, c.lim.Script)
+	}
+	return l, nil
 }

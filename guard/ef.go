@@ -39,7 +39,7 @@ func RawTransaction(b []byte, bound int) ([]byte, error) {
 		return nil, fmt.Errorf("%w: %d bytes, max %d", ErrTransaction, len(b), bound)
 	}
 	if !IsEF(b) {
-		c := &cursor{b: b}
+		c := &cursor{b: b, lim: DefaultLimits()}
 		if err := c.tx(); err != nil {
 			return nil, fmt.Errorf("%w: %v", ErrTransaction, err)
 		}
@@ -71,7 +71,7 @@ func efWalk(b []byte, out *[]byte) (int, error) {
 			*out = append(*out, b[from:to]...)
 		}
 	}
-	c := &cursor{b: b}
+	c := &cursor{b: b, lim: DefaultLimits()}
 	if c.remaining() < 4+len(efMarker)+1+minEFInputBytes+1+4 {
 		return 0, errTruncated
 	}
@@ -88,15 +88,18 @@ func efWalk(b []byte, out *[]byte) (int, error) {
 	if !c.fits(nIn, minEFInputBytes) {
 		return 0, fmt.Errorf("declares %d inputs, %d bytes remain", nIn, c.remaining())
 	}
+	if over(nIn, c.lim.Inputs) {
+		return 0, limitErr("inputs", nIn, c.lim.Inputs)
+	}
 	emit(s, c.pos)
 	for i := uint64(0); i < nIn; i++ {
 		s = c.pos
 		if err := c.skip(32 + 4); err != nil { // outpoint
 			return 0, err
 		}
-		l, err := c.varInt()
+		l, err := c.script()
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("input %d script %w", i, err)
 		}
 		if err := c.skipN(l); err != nil {
 			return 0, fmt.Errorf("input %d script %w", i, err)
@@ -108,8 +111,8 @@ func efWalk(b []byte, out *[]byte) (int, error) {
 		if err := c.skip(8); err != nil { // previous satoshis
 			return 0, err
 		}
-		if l, err = c.varInt(); err != nil {
-			return 0, err
+		if l, err = c.script(); err != nil {
+			return 0, fmt.Errorf("input %d previous locking script %w", i, err)
 		}
 		if err := c.skipN(l); err != nil {
 			return 0, fmt.Errorf("input %d previous locking script %w", i, err)
@@ -123,13 +126,16 @@ func efWalk(b []byte, out *[]byte) (int, error) {
 	if !c.fits(nOut, minOutputBytes) {
 		return 0, fmt.Errorf("declares %d outputs, %d bytes remain", nOut, c.remaining())
 	}
+	if over(nOut, c.lim.Outputs) {
+		return 0, limitErr("outputs", nOut, c.lim.Outputs)
+	}
 	for i := uint64(0); i < nOut; i++ {
 		if err := c.skip(8); err != nil { // value
 			return 0, err
 		}
-		l, err := c.varInt()
+		l, err := c.script()
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("output %d script %w", i, err)
 		}
 		if err := c.skipN(l); err != nil {
 			return 0, fmt.Errorf("output %d script %w", i, err)
