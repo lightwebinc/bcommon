@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: twenty-seven Go packages under one module,
+bcommon is a library, not a service: twenty-eight Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -72,6 +72,7 @@ beside the standard library and, where noted, go-sdk.
 | 2 | `bwallet` | `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
 | 3 | `verify` | `carrier`, `guard` | yes |
+| 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
 | 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
 | 5 | `payee` | `guard`, `purse`, `termsafe` | yes |
@@ -85,6 +86,7 @@ Every edge inside the module:
   producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
   verify   ──▶ carrier ──▶ pushdrop ──▶ guard
   chaintoken ▶ pushdrop, guard
+  acceptance ▶ chainview, nodeapi, publish
   chainview ─▶ nodeapi
   verify   ──▶ guard
   carrier  ──▶ guard
@@ -106,7 +108,7 @@ unlocker as a parameter, so it needs neither `pushdrop` nor `carrier`, and
 needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
-`TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`,
+`TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`, `acceptance`,
 `testchain`, `sanitize`, `payee`, `commit` and `chirp` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
@@ -343,6 +345,21 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   payment's coin was spent elsewhere is the purse's answer, from the leg's
   refusal and the node's view of the inputs (`chainview`): `payee` decides
   nothing about the chain itself.
+- **`acceptance`** owns how much evidence a payment needs before the
+  receiver acts on it. `Policy.Decide` is the value discriminator: a
+  payment at or below the threshold is `Fast`, one above it is `Hold`, and
+  the threshold is static satoshis or US cents through a `PriceSource`, zero
+  (everything held) when the price is unknown or stale. `Exposure` bounds
+  what the fast path has taken and not seen mined, per payer and in total,
+  within a window, and holds a flagged payer. `Verifier.Accept` checks a
+  payment (well formed, final, pays each `Output`, no more out than in, SPV
+  of its ancestry to mined proofs against the receiver's headers),
+  broadcasts it on the receiver's own leg, and for a fast decision asks the
+  broadcasters' status and the node's spend view, through an optional
+  watch window. `Verifier.Confirm` waits for a held payment's proof and
+  checks it against the headers; `Monitor` watches fast payments until
+  they mine, and reports and flags one that is lost. The zero `Policy`
+  holds every payment.
 
 ### Reader
 
@@ -498,6 +515,7 @@ to read what a producer wrote:
 | `chaintoken.ReadOutput`, `Output.LockedTo`, `Output.Signed`, `Output.SignedBy`, `Spends`, `VerifyField`, `CheckDER` | `readTokenOutput`, `tokenLockedTo`, `tokenSigned`, `tokenSignedBy`, `tokenSpends`, `verifyField`, `strictSignature` |
 | `sanitize.Filter`, `sanitize.UnicodeVersion` | `filterText` (a string) and `filterBytes` (UTF-8 bytes), `UnicodeVersion` |
 | `commit.HashLeaf`, `NodeHash`, `RootOfBytes`, `RootOfLeafHashes`, `RootOfSubtrees`, `ProveBytes`, `ProveLeafHashes`, `ProveSubtrees`, `VerifyBytes`, `PathLen`, `VerifyAt`, `Builder`, `SegmentRoot`, `SegmentWriter` | `hashLeaf`, `hashNode`, `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `proveLeafHashes`, `proveSubtrees`, `verifyBytes`, `pathLength`, `verifyAt`, `RootBuilder`, `segmentRoot`, `SegmentWriter` |
+| `acceptance.DefaultPolicy`, `Policy.Threshold`, `Policy.Decide`, `Exposure`, the fast path's reading of an `ArcadeStatus` | `defaultAcceptancePolicy`, `paymentThreshold`, `decidePayment`, `PaymentExposure`, `arcadeVerdict` |
 | `chirp.EncodeRoot`, `EncodeBranch`, `DecodeRoot`, `DecodeBranch`, `Kind`, `BuildTree`, `Build`, `Verify`, `Identifier`, `ParseIdentifier`, `URL`, `ParseURL`, `ValidMediaType`, `Reason` | `encodeRoot`, `encodeBranch`, `decodeRoot`, `decodeBranch`, `nodeKind`, `buildChirpTree`, `buildChirp`, `verifyClosure` (async over the fetch), `chirpIdentifier`, `parseChirpIdentifier`, `chirpURL`, `parseChirpURL`, `validMediaType`, `ChirpError.code` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
@@ -553,10 +571,18 @@ a host checks them.
 
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the 32-byte-leaf
 RFC 6962 functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
+`acceptance`'s `Verifier` and `Monitor`,
 `chainview` and `testchain` have no TypeScript twin: a topic manager reads
 outputs, it does not build them, pay for them, or hold a key. A host's
 ledger is written by the host itself, and `payee` reads and writes the same
 bytes.
+
+A host that answers a priced question takes the payment in TypeScript, so
+it needs the value discriminator there too: the twin is the decision alone
+(the threshold, the price's fail-safe, the per-payer and total exposure,
+and how a broadcaster's status reads), with the same reason labels. The
+evidence (the host's own broadcast, the status read, the node's spend
+view) is gathered by the host with its own clients.
 
 The runtime entry point imports nothing but its peer `@bsv/sdk`, pinned
 exactly at 2.7.1, and nothing from `node:`, so a browser can load it too.

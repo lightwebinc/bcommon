@@ -145,3 +145,21 @@ export type {
   RestoreStorage,
   TopicManager,
 } from './engine-types.js'
+export {
+  DefaultThresholdSats,
+  PaymentExposure,
+  SatsPerCoin,
+  arcadeVerdict,
+  decidePayment,
+  defaultAcceptancePolicy,
+  paymentThreshold,
+  zeroAcceptancePolicy,
+  type AcceptanceDecision,
+  type AcceptancePolicy,
+  type AcceptanceReason,
+  type AcceptanceVerdict,
+  type ArcadeVerdict,
+  type CoinPrice,
+  type PaymentRequest,
+  type PriceSource,
+} from './acceptance.js'

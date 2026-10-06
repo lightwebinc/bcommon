@@ -43,6 +43,7 @@ change between v0 minor versions. One tag versions both languages. See
 | `chainview` | Whether a transaction can still mine: a settlement leg's error read as a definitive refusal or as transient, and the input another transaction spent |
 | `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
 | `payee` | The payee's side of those payments: the payee key, a host's versioned ledger of accepted payments read and written byte for byte, the host's replay and conflict rule, and an idempotent settle run into the pool with its counts |
+| `acceptance` | The value discriminator for an incoming payment: fast on SPV, the receiver's own broadcast and the network's verdict at or below a threshold, held for a proof above it, bounded per payer and in total, and a monitor that flags a payer whose fast payment is lost |
 | `headers` | A chain tracker over WhatsOnChain, chaintracks or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |

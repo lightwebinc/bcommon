@@ -239,6 +239,61 @@ the host's variable, `<APP>_PAYEE_KEY`; `KeyLine` is the line that sets it;
 one (`ErrKeyFileExists`), and returns what the command says when it has.
 The flags that choose a file or standard output are the application's.
 
+## Payment acceptance: `acceptance`
+
+### `acceptance.Policy`
+
+The zero `Policy` holds every payment for its block. `DefaultPolicy()` is
+the recommended starting point.
+
+| Field | Type | Default (`DefaultPolicy`) | |
+|---|---|---|---|
+| `ThresholdSats` | `uint64` | 25,000,000 | the largest payment the fast path takes; inclusive |
+| `ThresholdCents` | `uint64` | 0 | the threshold in US cents, converted through `Price`; with `ThresholdSats` set too the smaller applies |
+| `Price` | `PriceSource` | none | the price a cents threshold converts through; any error, a zero price or one older than `MaxPriceAge` makes the threshold zero |
+| `MaxPriceAge` | `time.Duration` | 1h | how old a dated price may be; an undated price (`StaticPrice`) never goes stale |
+| `Window` | `time.Duration` | 1h | how long a fast payment counts against its payer and the total unless it mines first; zero counts it until it mines or is released |
+| `PayerLimit` | `uint64` | 25,000,000 | satoshis one payer may have on the fast path and unmined within `Window`; zero allows nothing |
+| `TotalLimit` | `uint64` | 250,000,000 | the same across every payer; zero allows nothing |
+| `Agree` | `int` | 0 (one) | how many status sources must answer a fast payment accepted |
+| `Wait` | `time.Duration` | 10s | how long the fast path waits for that acceptance |
+| `Watch` | `time.Duration` | 0 | how long it keeps watching for a conflict before it answers fast |
+| `Poll` | `time.Duration` | 500ms | the pace of both, and of `Confirm` |
+
+`DefaultThresholdSats` is 25 US dollars at 100 US dollars a coin: below that
+price it is worth less than 25 dollars, which is the safe side. Review it
+against the price on a schedule, or set `ThresholdCents` with a price source
+the application trusts. The library names no live price service;
+`StaticPrice` is a fixed price and `CachedPrice` asks a source at most once
+per `TTL`, answering its last good price with that price's own date, so
+`MaxPriceAge` still ends it.
+
+### `acceptance.Verifier`
+
+| Field | Type | Default | |
+|---|---|---|---|
+| `Policy` | `acceptance.Policy` | zero, holds everything | the rule |
+| `Exposure` | `*acceptance.Exposure` | none: nothing is fast | what the fast path has taken and not seen mined, and the flagged payers; `NewExposure` |
+| `Headers` | `chaintracker.ChainTracker` | none, refused | the receiver's own headers: SPV and every proof |
+| `Settler` | `publish.Settler` | none: nothing is fast | the receiver's broadcast leg |
+| `Status` | `[]acceptance.StatusSource` | none: nothing is fast | broadcasters asked for the network's verdict (`*publish.Arcade`) |
+| `Spends` | `acceptance.SpendView` | none, not asked | the node's spend view (`*nodeapi.Asset`); when set it must answer for every input |
+| `Proofs` | `acceptance.ProofSource` | none | where `Confirm` and `Monitor` read a proof (`*nodeapi.Asset`) |
+
+A `Payment` names the transaction (read from its BEEF through `guard`), the
+payer it is charged to (an identity key; payers that give none share one
+charge), the `Output`s it must hold (the scripts the receiver derived), and
+the payer's `Ask`. A payer may ask to be held; asking to be fast changes
+nothing.
+
+### `acceptance.Monitor`
+
+| Field | Type | Default | |
+|---|---|---|---|
+| `Verifier` | `*acceptance.Verifier` | none | the sources and the `Exposure` it releases and flags in |
+| `MaxAge` | `time.Duration` | 0, never | how long a fast payment may stay unmined before it is reported `Unmined` |
+| `Hook` | `func(acceptance.Event)` | none | each `Confirmed`, `DoubleSpent`, `Refused` or `Unmined` payment |
+
 ## Test chain: `testchain.Chain`
 
 `New(start)` is a chain whose tip is at height `start`. `Hold` keeps
