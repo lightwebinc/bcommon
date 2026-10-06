@@ -7,12 +7,13 @@ a producer wrote, tested against the same vectors as the Go packages.
 | Entry point | What it provides |
 |---|---|
 | `@lightwebinc/bcommon` | `encode`/`decodeValue` (deterministic CBOR), `encodeRefs`/`decodeRefs` (store refs entries), `readerLockingKey` (the reader's BRC-42 derivation), `strictPublicKey`/`strictPublicKeyHex` (a key only in its canonical encoding), `decodeStrictPushDrop` (a PushDrop only as the template writes it), `firstPush`/`pushFields`/`pushDropScript` (a lock read leniently and rebuilt canonically from raw script bytes), `recordReader` and `claimsRecord` (the bounded, ordered reading of an application record), `verifyFieldSignature`, `strictSignature`, `decodeFunding`, `decodeCarrier` and its rules, `checkBEEF` and `readWire` with `tokenShape`, `carrierShape`, `aloneShape`, `tokenBEEF` and the token output readers (the BEEF a host admits a mined token, a carrier and a sweep in, read as declared), `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `verifyAt`, `pathLength`, `RootBuilder` and `segmentRoot` (RFC 6962 roots and compact paths over leaves of any length), `encodeRoot`/`decodeRoot`, `encodeBranch`/`decodeBranch`, `buildChirp`, `buildChirpTree`, `verifyClosure`, `chirpIdentifier` and `parseChirpURL` (CHIRP, BRC-167, version 1 and profile 1), `filterText`/`filterBytes` (the renderer filter a web page runs over text someone else wrote, over the same Unicode 15.1 table as the Go `sanitize` package; the table's data is Unicode's, under the licence NOTICE carries), and the engine interfaces a module satisfies (`Module`, `ModuleHost`, `TopicManager`, `LookupService`, ...) |
+| `@lightwebinc/bcommon/host` | For a Node host module that answers questions on its own listener: `LookupFront` (the terms route: BRC-104 server side with `HandshakeBudget`, `KeyedBudget`, `SeenRequests` and `BoundedSessions`, BRC-105 priced questions, `parsePrices`, `termsDocument`, `termsPath`), the payee ledger (`LedgerReceiver`, `MemoryReceiver`, `TakenPayments`, `ledgerLine`, `readLedgerLine`, `spentOutpoints`), whose lines are the Go `payee` package's byte for byte, and payment acceptance (`PaymentGate`, `ArcadeHttp`, `AssetHttp`, `gateFor`, `parseAcceptConfig`) |
 | `@lightwebinc/bcommon/testing` | `countingHost`, `row`, `fakeStorage`, `spends`, `wireParent`, `beefOf`, `atomicOf`, `minter`, hex helpers, and `engineOrder`, which calls a lookup service's callbacks in the order and with the payloads the engine uses |
 
 **Runtime rules.** Every file behind the runtime entry point imports nothing
 but `@bsv/sdk` and nothing from `node:`, and compiles without Node's types,
-so a browser can load it as well as a host. The testing entry point is for
-Node. The package declares no dependency of its own; `@bsv/sdk` is a peer
+so a browser can load it as well as a host. The host and testing entry
+points are for Node. The package declares no dependency of its own; `@bsv/sdk` is a peer
 at exactly 2.7.1. npm installs the peer beside the package when it is
 missing, so a module shares the host's copy only when its bundle keeps
 `@bsv/sdk` external.

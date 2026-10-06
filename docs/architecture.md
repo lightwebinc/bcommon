@@ -463,6 +463,19 @@ Where the library applies it:
 | A record's store references | `MaxRefs` (64 stores), `MaxRefMembers` (8 members per entry), `MaxRefName` (64 bytes), `MaxMembers` (1024 per manifest) bound the work one record can ask of a reader | `store` |
 | An HTTP response | every body is read to a bound before it is parsed, and most clients refuse one over the bound rather than parse a truncated answer | `headers`, `nodeapi`, `hostset`, `resolve`, `publish`, `wirewallet` |
 
+Beyond the bytes, every walk of `guard` holds what it admits to
+`guard.DefaultLimits` (100,000 transactions and 100,000 BUMPs a BEEF,
+100,000 inputs and 100,000 outputs a transaction, a script of 16 MiB, a
+BUMP of 8 MiB), which bound the work a well-formed object can ask of its
+reader after the parse; `CheckBEEFWithin`, `ParseBEEFWithin`,
+`ParseTransactionWithin` and `ParseBUMPWithin` take a caller's `Limits`
+instead. Fuzz targets cover each walk (`FuzzCheckBEEF`,
+`FuzzCheckBEEFWithin`, `FuzzParseTransaction`, `FuzzParseBUMP`,
+`FuzzRawTransaction`), and `TestNoUnguardedParse` fails when a package
+outside `guard` calls one of go-sdk's readers of transactions, BEEF or
+BUMPs, except at the two calls it lists with their reasons and in the test
+helpers `testchain` and `goldentest`.
+
 After parsing, a reader checks what an answer is before believing what it
 says. `VerifyCarrier` checks the commitment against the one asked for before
 anything the carrier says about itself, applies the caller's expectations

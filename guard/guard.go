@@ -11,7 +11,9 @@
 // party is that a declared length is a claim, checked against the bytes
 // present before it sizes memory. Every walk here allocates nothing, bounds
 // every count and length by the bytes that remain, and must end exactly at
-// the last byte.
+// the last byte. Beyond the bytes, each walk holds counts and lengths to
+// Limits (DefaultLimits unless the caller passes its own), which bound the
+// work a well-formed object asks of its reader.
 //
 // A public key has the same shape of problem in another form: go-sdk accepts
 // a compressed key whose x coordinate is at or above the field prime and
