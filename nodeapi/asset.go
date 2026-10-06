@@ -2,6 +2,7 @@ package nodeapi
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -81,6 +82,41 @@ type Header struct {
 	Prev       string `json:"previousblockhash"`
 	MerkleRoot string `json:"merkleroot"`
 	Height     uint32 `json:"height"`
+	// Version, Time (Unix seconds), Bits (hex) and Nonce are the rest of
+	// the 80 bytes the hash is over; Check rebuilds them.
+	Version uint32 `json:"version"`
+	Time    uint32 `json:"time"`
+	Bits    string `json:"bits"`
+	Nonce   uint32 `json:"nonce"`
+}
+
+// ErrHeader is a header answer whose fields do not hash to its hash.
+var ErrHeader = errors.New("nodeapi: header does not hash to its hash")
+
+// Check rebuilds the 80-byte header from h's fields and refuses, as
+// ErrHeader, one whose double SHA-256 is not h.Hash. A header that passes
+// carries the fields its hash commits to, so its Time is the block's own
+// once the hash is known to be on the chain (through headers, say); before
+// that it is the node's word.
+func (h *Header) Check() error {
+	hash, err1 := chainhash.NewHashFromHex(h.Hash)
+	prev, err2 := chainhash.NewHashFromHex(h.Prev)
+	root, err3 := chainhash.NewHashFromHex(h.MerkleRoot)
+	bits, err4 := strconv.ParseUint(h.Bits, 16, 32)
+	if err := errors.Join(err1, err2, err3, err4); err != nil {
+		return fmt.Errorf("%w: %v", ErrHeader, err)
+	}
+	b := make([]byte, 0, 80)
+	b = binary.LittleEndian.AppendUint32(b, h.Version)
+	b = append(b, prev[:]...)
+	b = append(b, root[:]...)
+	b = binary.LittleEndian.AppendUint32(b, h.Time)
+	b = binary.LittleEndian.AppendUint32(b, uint32(bits))
+	b = binary.LittleEndian.AppendUint32(b, h.Nonce)
+	if chainhash.DoubleHashH(b) != *hash {
+		return fmt.Errorf("%w: %s", ErrHeader, h.Hash)
+	}
+	return nil
 }
 
 // BestHeader reads the tip.
@@ -245,6 +281,28 @@ func (a *Asset) HashAtHeight(ctx context.Context, height uint32) (string, error)
 		}
 	}
 	return "", fmt.Errorf("height %d: block list moved under the read", height)
+}
+
+// BlockTime is the time of the main-chain block at height, from its header,
+// which must hash to the hash the node names for that height (Check). The
+// node is trusted for which block is at the height; a caller that must not
+// trust it checks the header's hash or merkle root against its headers.
+func (a *Asset) BlockTime(ctx context.Context, height uint32) (time.Time, error) {
+	hash, err := a.HashAtHeight(ctx, height)
+	if err != nil {
+		return time.Time{}, err
+	}
+	h, err := a.Header(ctx, hash)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if h.Height != height || !strings.EqualFold(h.Hash, hash) {
+		return time.Time{}, fmt.Errorf("nodeapi: asked for the header of %s at %d, answered %s at %d", hash, height, h.Hash, h.Height)
+	}
+	if err := h.Check(); err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(int64(h.Time), 0).UTC(), nil
 }
 
 // Proof asks once whether txid is mined and returns its proof and height if

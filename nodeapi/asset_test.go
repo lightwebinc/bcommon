@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/script"
@@ -311,5 +313,53 @@ func TestAsset429IsRetried(t *testing.T) {
 	best, err := (&Asset{Base: srv.URL}).BestHeader(context.Background())
 	if err != nil || best.Height != 1200 || hits != 2 {
 		t.Fatalf("after 429: %+v %v hits %d", best, err, hits)
+	}
+}
+
+// The genesis block's header, as a node answers it: public, and its fields
+// hash to its hash.
+const genesisHash = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+
+func genesisHeader(timeField uint32) string {
+	return fmt.Sprintf(`{"hash":%q,"version":1,"previousblockhash":"0000000000000000000000000000000000000000000000000000000000000000",`+
+		`"merkleroot":"4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b","time":%d,"bits":"1d00ffff","nonce":2083236893,"height":0}`, genesisHash, timeField)
+}
+
+func TestBlockTime(t *testing.T) {
+	for _, c := range []struct {
+		name   string
+		header string
+		want   error
+	}{
+		{"the header hashes to its hash", genesisHeader(1231006505), nil},
+		{"a time the hash does not commit to", genesisHeader(1231006506), ErrHeader},
+		{"bits that are not hex", strings.Replace(genesisHeader(1231006505), "1d00ffff", "zz", 1), ErrHeader},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			srv := route(t, map[string]http.HandlerFunc{
+				"/api/v1/bestblockheader/json":            text(`{"hash":"` + strings.Repeat("ab", 32) + `","height":5}`),
+				"/api/v1/blocks":                          text(`{"data":[{"height":0,"hash":"` + genesisHash + `"}]}`),
+				"/api/v1/header/" + genesisHash + "/json": text(c.header),
+			})
+			at, err := (&Asset{Base: srv.URL}).BlockTime(context.Background(), 0)
+			if c.want != nil {
+				if !errors.Is(err, c.want) {
+					t.Fatalf("BlockTime: %v, want %v", err, c.want)
+				}
+				return
+			}
+			if err != nil || !at.Equal(time.Date(2009, 1, 3, 18, 15, 5, 0, time.UTC)) {
+				t.Fatalf("BlockTime: %v %v", at, err)
+			}
+		})
+	}
+	// A node that answers another height for the hash it named is refused.
+	srv := route(t, map[string]http.HandlerFunc{
+		"/api/v1/bestblockheader/json":            text(`{"hash":"` + strings.Repeat("ab", 32) + `","height":5}`),
+		"/api/v1/blocks":                          text(`{"data":[{"height":0,"hash":"` + genesisHash + `"}]}`),
+		"/api/v1/header/" + genesisHash + "/json": text(strings.Replace(genesisHeader(1231006505), `"height":0`, `"height":1`, 1)),
+	})
+	if _, err := (&Asset{Base: srv.URL}).BlockTime(context.Background(), 0); err == nil || !strings.Contains(err.Error(), "answered") {
+		t.Fatalf("BlockTime: %v", err)
 	}
 }
