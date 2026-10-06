@@ -2,8 +2,9 @@
  * The package's import rule. A runtime file imports only other runtime files
  * and '@bsv/sdk', and nothing from node:, so a browser reader can load the
  * runtime entry point. The testing entry point (src/testing/) may add node:
- * builtins and the runtime files. A test file may import anything under src/
- * and node: builtins. Nothing imports a file outside src/ or a package other
+ * builtins and the runtime files. The host entry point (src/host/) may add
+ * node: builtins and the runtime files, and no runtime file imports it. A
+ * test file may import anything under src/ and node: builtins. Nothing imports a file outside src/ or a package other
  * than '@bsv/sdk', and nothing that ships imports a test file.
  *
  * It reads the sources rather than the compiled tree: the sources are what
@@ -49,11 +50,16 @@ function isTesting(name: string): boolean {
   return name.startsWith('testing/') && !isTest(name)
 }
 
+/** A file of the host entry point, which ships for a Node host and may use node:. */
+function isHost(name: string): boolean {
+  return name.startsWith('host/') && !isTest(name)
+}
+
 /** Why spec may not be imported from file (relative to src/), or undefined when it may. */
 function refusal(file: string, spec: string): string | undefined {
   if (spec === '@bsv/sdk') return undefined
   if (spec === '<computed>') return 'a specifier that is not a string literal'
-  const runtime = !isTest(file) && !isTesting(file)
+  const runtime = !isTest(file) && !isTesting(file) && !isHost(file)
   if (spec.startsWith('node:')) return runtime ? 'a node: import in a runtime file' : undefined
   if (!spec.startsWith('./') && !spec.startsWith('../')) return 'a package other than @bsv/sdk'
   if (!spec.endsWith('.js')) return 'a relative import without its .js name'
@@ -62,7 +68,8 @@ function refusal(file: string, spec: string): string | undefined {
   if (!existsSync(target)) return 'a file that does not exist'
   const name = target.slice(rootPath.length).split('\\').join('/')
   if (isTest(name) && !isTest(file)) return 'a test file from a file that ships'
-  if (isTesting(name) && runtime) return 'the testing entry point from a runtime file'
+  if (isTesting(name) && !isTest(file) && !isTesting(file)) return 'the testing entry point from a file that ships'
+  if (isHost(name) && runtime) return 'the host entry point from a runtime file'
   return undefined
 }
 
@@ -113,7 +120,13 @@ test('the rule refuses what it should', () => {
   assert.equal(refusal('carrier.ts', './nothing.js'), 'a file that does not exist')
   assert.equal(refusal('carrier.ts', './carrier.test.js'), 'a test file from a file that ships')
   assert.equal(refusal('testing/index.ts', '../carrier.test.js'), 'a test file from a file that ships')
-  assert.equal(refusal('index.ts', './testing/index.js'), 'the testing entry point from a runtime file')
+  assert.equal(refusal('index.ts', './testing/index.js'), 'the testing entry point from a file that ships')
+  assert.equal(refusal('host/front.ts', '../testing/index.js'), 'the testing entry point from a file that ships')
+  assert.equal(refusal('host/front.ts', 'node:http'), undefined)
+  assert.equal(refusal('host/front.ts', '../acceptance.js'), undefined)
+  assert.equal(refusal('host/front.test.ts', '../testing/index.js'), undefined)
+  assert.equal(refusal('index.ts', './host/index.js'), 'the host entry point from a runtime file')
+  assert.equal(refusal('acceptance.ts', './host/accept.js'), 'the host entry point from a runtime file')
   assert.equal(refusal('carrier.ts', '<computed>'), 'a specifier that is not a string literal')
 })
 
@@ -132,6 +145,12 @@ test('the package imports nothing outside src/ and @bsv/sdk, and runtime files n
     'record.ts',
     'script.ts',
     'store.ts',
+    'host/accept.ts',
+    'host/budget.ts',
+    'host/front.ts',
+    'host/index.ts',
+    'host/ledger.ts',
+    'host/sessions.ts',
     'testing/index.ts',
     'wire.ts',
   ]) {
@@ -175,7 +194,7 @@ test('every entry point in the exports map is built', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', root), 'utf8')) as {
     exports: Record<string, { types: string; default: string }>
   }
-  assert.deepEqual(Object.keys(pkg.exports).sort(), ['.', './testing'])
+  assert.deepEqual(Object.keys(pkg.exports).sort(), ['.', './host', './testing'])
   const files = sources()
   for (const [entry, { types, default: js }] of Object.entries(pkg.exports)) {
     for (const target of [types, js]) {

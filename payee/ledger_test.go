@@ -182,6 +182,66 @@ func TestLineIsTheHostsBytes(t *testing.T) {
 	}
 }
 
+// ledger-decisions.jsonl is what the TypeScript host entry point writes for
+// the version 2 payments with the host's decision, in both of its layouts
+// (ts/src/host/ledger.test.ts holds it to those bytes). Each line reads as
+// the same payment as its version 2 line, and Line writes it back as that
+// line byte for byte: the decision is the host's own, and passed over here.
+func TestADecisionLineIsThePayeeLine(t *testing.T) {
+	v2, err := ReadLedgers(nil, filepath.Join(fixtures, "ledger-v2.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(filepath.Join(fixtures, "ledger-v2.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := map[string]string{}
+	for line := range strings.SplitAfterSeq(string(raw), "\n") {
+		if p, err := ParseLine([]byte(line)); err == nil {
+			lines[p.Txid] = line
+		}
+	}
+	got, err := ReadLedgers(nil, filepath.Join(fixtures, "ledger-decisions.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != len(v2) {
+		t.Fatalf("%d payments, want %d (one per txid)", len(got), len(v2))
+	}
+	raw, err = os.ReadFile(filepath.Join(fixtures, "ledger-decisions.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	n := 0
+	for line := range strings.SplitAfterSeq(string(raw), "\n") {
+		if line == "" {
+			continue
+		}
+		if !strings.Contains(line, `"decision":`) {
+			t.Fatalf("a line with no decision: %s", line)
+		}
+		p, err := ParseLine([]byte(line))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if p.Version() != LedgerV2 {
+			t.Errorf("%s: version %d", p.Txid, p.Version())
+		}
+		b, err := p.Line()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(b) != lines[p.Txid] {
+			t.Errorf("%s: Line wrote\n%s\nthe payee line is\n%s", p.Txid, b, lines[p.Txid])
+		}
+		n++
+	}
+	if n != 2*len(v2) {
+		t.Fatalf("compared %d lines, want %d", n, 2*len(v2))
+	}
+}
+
 // A version 1 line's coins, read from its transaction, are the coins the
 // host recorded for the same payment in a version 2 line.
 func TestSpendsOfAVersion1LineAreTheHosts(t *testing.T) {
