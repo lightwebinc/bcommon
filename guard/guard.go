@@ -5,7 +5,7 @@
 //
 // A reader that sizes a slice from a wire count can be asked, by a handful
 // of bytes, for an allocation that ends the process with an out-of-memory no
-// recover() sees. go-sdk v1.5.2 bounds its own counts, which is why that
+// recover() sees. go-sdk bounds its own counts from v1.5.2, which is why that
 // version is the floor, but the protection belongs in the library that reads
 // the bytes, not in a pin: the rule for length-prefixed data from any other
 // party is that a declared length is a claim, checked against the bytes

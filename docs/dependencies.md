@@ -28,12 +28,12 @@ in [NOTICE](../NOTICE), with their licences, and their full texts are in
 `LICENSE-THIRD-PARTY`, which `make licences-update` regenerates from what the
 packages actually link and `make licences` checks is current.
 
-## Why go-sdk is pinned at exactly v1.5.2
+## Why go-sdk is pinned at exactly v1.7.1
 
 go-sdk releases below v1.5.0 size a slice from a count the input declares
 while parsing a merkle path, so a few hostile bytes can ask for an allocation
 that ends the process with an out-of-memory no `recover` sees. v1.5.2 bounds
-those counts against the bytes present. The `guard` package walks every
+those counts against the bytes present, and so does v1.7.1. The `guard` package walks every
 BUMP, BEEF and raw transaction the library parses before the SDK sees it,
 bounding each count by the bytes present, so the library's own protection
 does not rest on the pin; the floor is the SDK's.
@@ -42,6 +42,17 @@ The pin is exact rather than a minimum because minimal version selection
 takes the higher of two requirements. A raised pin here would silently change
 the go-sdk that every application pinning bcommon builds with, including the
 derivation, script and transaction encodings its records depend on.
+
+v1.7.1 replaced v1.5.2 in v0.12.0. It sends the BRC-103 handshake's
+requested certificate set in the wire shape (`certifiers` and `types`),
+which TypeScript peers on `@bsv/sdk` 2.8 and later require; v1.5.2 sent
+Go's field names and those peers refused the handshake. v1.7.1 still reads
+the old names, so a peer on v1.5.2 keeps working with it in both
+directions. Every vector matched byte for byte across the change.
+
+v1.7.1 still accepts a compressed public key whose x is at or above the
+field prime. `guard.ParsePubKey` stays in front of every key from the wire
+whatever the pin.
 
 ## Raising the pin
 

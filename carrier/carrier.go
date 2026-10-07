@@ -6,7 +6,7 @@
 // A carrier is kept off the chain by BRC-60's device turned the other way
 // round: a far-future nLockTime with a non-final input makes it unmineable in
 // practice, while SPV still verifies it through its funding parent. Nothing in
-// the SDK's verification path reads finality (verified at v1.5.2), so a host
+// the SDK's verification path reads finality (verified at v1.5.2 and v1.7.1), so a host
 // admits it like any other object; the topic manager is what refuses one that
 // could reach the chain.
 //

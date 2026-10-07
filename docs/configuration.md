@@ -60,7 +60,7 @@ counterparty Anyone; the producer's wallet locks with forSelf true, and a
 reader recomputes the key from the identity key alone with
 `ExpectedLockingKey`.
 
-`Derivation.Validate` applies go-sdk v1.5.2's BRC-43 rules when the value is
+`Derivation.Validate` applies go-sdk v1.7.1's BRC-43 rules when the value is
 built, rather than at the first mint: a name of 5 to 400 characters (430 for
 a `specific linkage revelation ` name) of lowercase letters, digits and
 single spaces, measured after trimming and lower-casing, and not ending in

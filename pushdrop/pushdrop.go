@@ -3,7 +3,7 @@
 // field, the application's own fields, and the wallet's signature over them.
 //
 // Every derivation here is counterparty Anyone with forSelf=true. Measured at
-// go-sdk v1.5.2, that is the only setting under which a reader holding just
+// go-sdk v1.5.2 (the key deriver is unchanged through v1.7.1), that is the only setting under which a reader holding just
 // the identity key can recompute the locking key AND the embedded signature
 // verifies under it, so a reader checks an output without asking its
 // producer anything.
@@ -48,7 +48,7 @@ const (
 	maxLinkageName = 430
 )
 
-// Validate applies the BRC-43 rules go-sdk v1.5.2's key deriver applies to a
+// Validate applies the BRC-43 rules go-sdk v1.7.1's key deriver applies to a
 // protocol and key id, in the SDK's order, so an application can refuse a
 // derivation that will never produce a key when it builds one rather than at
 // its first mint. The SDK stays the authority: no method here calls
