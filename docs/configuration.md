@@ -358,7 +358,22 @@ directory whose key lives in a wire wallet.
 | `Signer.Mainnet` | false | address prefix where one is rendered |
 | `Signer.Profile` | none | the fund methods refuse an incomplete profile; calls that never touch the fund key work without one |
 
-### Funding on a chain you mine
+### Funding on mainnet and testnet
+
+Users hold no coinbase, so on mainnet and testnet the pool is funded from a
+payment the user sends from their own wallet to `FundAddress(mainnet)`. Once
+it is mined, the application fetches it with its proof, checks the proof
+against its `headers.Client`, and adds each output paying `FundScript` with
+`Pool.Add(bwallet.Output{TxID, Vout, Satoshis, LockingScript, Height, Raw,
+Bump})`, `Bump` from `funding.BumpHex`. Such an output is not `Coinbase`
+and is spendable at once. Alternatively a BRC-100 wallet reached through
+`wirewallet.Dial` signs as the `Signer.Interface` and pays for each funding
+tree through `producer.Trees.Fund`. Both are worked through in
+[examples.md](examples.md#fund-a-wallet-on-mainnet-or-testnet).
+
+### Coinbase funding (regtest only)
+
+Coinbase: only on a regtest chain you run (development and tests).
 
 `FundFromCoinbase(ctx, signer, pool, rpc, asset, blocks, batch)` mines
 `blocks` blocks paying the fund address and adds the coinbase outputs to the
@@ -389,7 +404,7 @@ the other end.
 | `URL` | none | the JSON-RPC endpoint, for example `http://node.example.com:21292/` |
 | `User`, `Pass` | empty | basic authentication |
 | `ID` | none; `Call` refuses an empty id with `ErrNoID` before sending | the JSON-RPC request id, sent verbatim; the application's to choose |
-| `Client` | 60 s timeout, no proxy, TLS 1.2 minimum | long because `generatetoaddress` mines inline; the lever for a slow node is the batch size |
+| `Client` | 60 s timeout, no proxy, TLS 1.2 minimum | long because `generatetoaddress` (coinbase: only on a regtest chain you run) mines inline; the lever for a slow node is the batch size |
 
 ### `nodeapi.Asset`
 
@@ -885,7 +900,7 @@ whole lookup answer, and `purse.Check` passes it for a payment.
 ## Terminal text: `termsafe`
 
 `Sanitize(s, Options{ANSI, ASCII})` bounds its output at `MaxLines` (200)
-lines of `MaxCols` (512) columns. `ANSI` keeps colour and weight sequences
+lines of `MaxCols` (512) columns. `ANSI` keeps color and weight sequences
 and nothing else, and ends coloured output with a reset; `ASCII` prints
 every rune above 0x7E as `?`. `Validate(field, s)` and
 `ValidateBounded(field, s)` refuse what `Sanitize` would strip, the second

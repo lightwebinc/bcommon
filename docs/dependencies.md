@@ -8,7 +8,7 @@ well as production code, and packages a build constraint leaves out.
 
 Every application that pins bcommon inherits its requirements. A second
 direct dependency would be a cost to every one of them at once: another
-module to audit, another licence to carry, another version for minimal
+module to audit, another license to carry, another version for minimal
 version selection to reconcile with the application's own. The rule is
 enforced rather than intended:
 
@@ -24,7 +24,7 @@ in. `make vectors` checks both, and `TestBoundaryFiles` holds its imports to
 them (see [vectors.md](vectors.md)).
 
 The other modules in `go.mod` are go-sdk's own requirements. They are listed
-in [NOTICE](../NOTICE), with their licences, and their full texts are in
+in [NOTICE](../NOTICE), with their licenses, and their full texts are in
 `LICENSE-THIRD-PARTY`, which `make licences-update` regenerates from what the
 packages actually link and `make licences` checks is current.
 

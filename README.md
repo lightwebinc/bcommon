@@ -4,7 +4,14 @@
 [![CodeQL](https://github.com/lightwebinc/bcommon/actions/workflows/codeql.yml/badge.svg)](https://github.com/lightwebinc/bcommon/actions/workflows/codeql.yml)
 [![Release](https://img.shields.io/github/v/release/lightwebinc/bcommon)](https://github.com/lightwebinc/bcommon/releases)
 [![Go Reference](https://pkg.go.dev/badge/github.com/lightwebinc/bcommon.svg)](https://pkg.go.dev/github.com/lightwebinc/bcommon)
+[![Go version](https://img.shields.io/github/go-mod/go-version/lightwebinc/bcommon)](go.mod)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+
+> [!WARNING]
+> **Experimental software.** bcommon is part of [bstack](https://github.com/lightwebinc/bstack),
+> the applications and patterns built on [BSV Layered Multicast](https://github.com/lightwebinc/bsv-multicast).
+> It is published to be built on and improved. Interfaces, formats and behavior may change
+> rapidly between releases; pin an exact version.
 
 bcommon is a Go library of building blocks for BSV overlay applications that
 publish and verify committed records: the codec a record is written in, the
@@ -15,9 +22,8 @@ the SPV check a reader runs. An
 application supplies its own schema, derivation, tags and wallet profile as
 parameters; nothing here names one.
 
-**Status:** pre-1.0. Every application pins an exact tag, and the API may
-change between v0 minor versions. One tag versions both languages. See
-[docs/versioning.md](docs/versioning.md).
+One tag versions both the Go module and the TypeScript package; what a v0
+minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 
 ## Packages
 
@@ -70,7 +76,7 @@ same vectors as the Go packages. It has three entry points:
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.4.0
+go get github.com/lightwebinc/bcommon@v0.12.1
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -78,10 +84,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.4.0 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.4.0.tgz
+git clone --depth 1 --branch v0.12.1 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.12.1.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.4.0.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.12.1.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage
@@ -120,19 +126,35 @@ import { readerLockingKey } from '@lightwebinc/bcommon'
 const key = readerLockingKey([1, 'example app'], 'record', identityHex)
 ```
 
-[docs/examples.md](docs/examples.md) walks through deriving and decoding a
-PushDrop lock, building a funding tree and a carrier on an in-process test
-chain, verifying a carrier from a BEEF, guarding a proof, RFC 6962 proofs,
-stores and CBOR, reading an application record, admitting a mined token
-from its BEEF, committing to a key and wrapping it, paying fees and minting
-the next funding tree as a producer, and filtering text for a terminal. Every Go example there is an
-`Example` test that `go test` compiles and checks.
+### Mainnet and testnet
+
+The library works on BSV mainnet and testnet: `headers.New("woc:main")` or
+`headers.New("woc:test")` checks proofs against WhatsOnChain headers (with
+proof of work checked), `bwallet.Embedded.Mainnet` picks the address
+prefix, and `publish.Arcade` broadcasts through any ARC-compatible service.
+An application's coin comes from its user: the wallet prints its fund
+address, the user pays a small amount to it from their own wallet, and the
+application imports that payment once it is mined and its proof holds, or
+it hands funding to a BRC-100 wallet the user already runs.
+[docs/examples.md](docs/examples.md#fund-a-wallet-on-mainnet-or-testnet)
+shows both. The coinbase helpers (`bwallet.FundFromCoinbase`,
+`bwallet.Rescan`) work only on a regtest chain you run, for development and
+tests.
+
+[docs/examples.md](docs/examples.md) also walks through deriving and
+decoding a PushDrop lock, building a funding tree and a carrier, verifying a
+carrier from a BEEF, guarding a proof, RFC 6962 proofs, stores and CBOR,
+reading an application record, admitting a mined token from its BEEF,
+committing to a key and wrapping it, paying fees and minting the next
+funding tree as a producer, and filtering text for a terminal. Those Go
+examples are `Example` tests that `go test` compiles and checks, on an
+in-process test chain.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md): the package layers and import graph, what each package owns, the parse-and-guard rule, application-supplied constants, and the Go and TypeScript twins
 - [Configuration](docs/configuration.md): every caller-supplied parameter and option struct, the defaults, and the values frozen once used on chain
-- [Examples](docs/examples.md): offline how-to, backed by compiled example tests
+- [Examples](docs/examples.md): funding a wallet on mainnet or testnet, then task-by-task how-to backed by compiled example tests
 - [Registry](docs/registry.md): the derivation protocols, tags, record magic, topics and baskets that applications built on bcommon have chosen, so that no two collide
 - [Vectors](docs/vectors.md): the tests compare the library's output byte for byte with vectors from an independent generator
 - [Dependencies](docs/dependencies.md): the one direct dependency and why its version is exact
@@ -140,7 +162,7 @@ the next funding tree as a producer, and filtering text for a terminal. Every Go
 
 ## Requirements
 
-Go 1.26.2 or later, and github.com/bsv-blockchain/go-sdk pinned at exactly
+Go 1.27.1 or later, and github.com/bsv-blockchain/go-sdk pinned at exactly
 v1.7.1, the library's only direct dependency. See
 [docs/dependencies.md](docs/dependencies.md). The TypeScript package needs
 Node 24 and `@bsv/sdk` 2.7.1 exactly, as a peer; `make ts-test` builds and
@@ -149,13 +171,13 @@ tests it, and nothing in the Go build needs Node.
 ## Build and test
 
 ```bash
-make verify     # formatting, vet, the dependency rule, licences, vectors, build, tests
+make verify     # formatting, vet, the dependency rule, licenses, vectors, build, tests
 make ts-test    # the TypeScript package: type-check, build, tests (Node 24)
 ```
 
 Every Go target runs with `GOWORK=off`, so what is checked is what a tag ships.
 
-## Licence
+## License
 
 Apache-2.0 ([LICENSE](LICENSE)). Third-party notices are in
 [NOTICE](NOTICE) and [LICENSE-THIRD-PARTY](LICENSE-THIRD-PARTY).

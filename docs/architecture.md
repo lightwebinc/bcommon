@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: twenty-eight Go packages under one module,
+bcommon is a library, not a service: thirty-one Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -245,7 +245,10 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`bwallet`** owns an embedded BRC-100 wallet backend (an identity file
   and a coin pool, both written atomically at mode 0600), a `Signer` that
   signs through any `wallet.Interface`, BRC-29 payment derivations, and
-  coinbase funding on a chain the application mines itself. Every method it
+  coinbase funding (coinbase: only on a regtest chain you run, development
+  and tests). On mainnet and testnet the pool is funded from a payment the
+  user sends to the fund address, added with `Pool.Add` once it is mined
+  and proven. Every method it
   does not implement returns `ErrNotSupported` rather than `nil, nil`.
 - **`wirewallet`** owns the wallet wire: a client for a BRC-100 wallet on
   the loopback interface only, and a handler that serves any
@@ -395,7 +398,7 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 
 - **`termsafe`** owns what reaches a terminal from text someone else wrote:
   `Sanitize` passes printable text and newlines, drops every control
-  character, every escape sequence but a colour one the reader asked for,
+  character, every escape sequence but a color one the reader asked for,
   and the zero-width and bidirectional characters that disguise one string
   as another, and bounds the result at 200 lines of 512 columns.
   `Validate` and `ValidateBounded` are the publishing side of the same

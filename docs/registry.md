@@ -182,7 +182,7 @@ underscore and the suffix taking 19 characters, `<name>` has at most 31.
 
 ### borg
 
-Organisations and groups replicated by overlay hosts: a membership roll and
+Organizations and groups replicated by overlay hosts: a membership roll and
 groups as chains of mined tokens, membership grants (BRC-52 certificates) and
 epoch-key wraps on unmined carriers.
 **Provisional** until its first publish (not yet committed on chain;
@@ -191,21 +191,21 @@ assigned here).
 | Kind | Value | Use |
 |---|---|---|
 | Protocol | `[1, "borg organisation"]` | Every borg derivation (`[1, "borg"]` is under five characters and cannot derive) |
-| Key id | `org` | An organisation token's lock and field signature |
+| Key id | `org` | An organization token's lock and field signature |
 | Key id | `group` | A group token's lock and field signature |
 | Key id | `record` | A wrap carrier's record output and field signature, and the outputs of funding trees that fund wraps |
 | Key id | `grant` | A grant carrier's record output and field signature, and the outputs of funding trees that fund grants |
 | Key id | `chain` | The outputs of funding trees that pay for a chain's first token; never a carrier's |
 | Key id | `fund` | The embedded wallet's funding key |
-| Key id | `signer` | The organisation's signer key: a member key every instance of the organisation's tooling derives from the organisation's identity key, to which an epoch key is wrapped like any member's, so that a second device catches up on a key the first one sampled. No host or reader rule reads it |
-| Tag | `bo` `0x01` | Organisation token, first field |
+| Key id | `signer` | The organization's signer key: a member key every instance of the organization's tooling derives from the organization's identity key, to which an epoch key is wrapped like any member's, so that a second device catches up on a key the first one sampled. No host or reader rule reads it |
+| Tag | `bo` `0x01` | Organization token, first field |
 | Tag | `bo` `0x02` | Funding-tree output |
 | Tag | `bo` `0x03` | Group token, first field |
-| Record magic | `boo` `0x01` | Organisation record, version 1 |
+| Record magic | `boo` `0x01` | Organization record, version 1 |
 | Record magic | `bog` `0x01` | Group record, version 1 |
 | Record magic | `bom` `0x01` | Membership grant record, version 1 |
 | Record magic | `bow` `0x01` | Epoch-key wrap record, version 1 |
-| Topics | `tm_borg_<name>_<suffix>` | One topic per hall, shared by many organisations; `<suffix>` is 10 random lowercase letters chosen when the hall is created |
+| Topics | `tm_borg_<name>_<suffix>` | One topic per hall, shared by many organizations; `<suffix>` is 10 random lowercase letters chosen when the hall is created |
 | Lookup service | `ls_borg` | Lookup service for every hall on a host |
 | Host route | `<base>/ls_borg/terms` | The host terms document for priced questions |
 | Baskets | `borg fund`, `borg grant funding`, `borg record funding`, `borg chain funding`, `borg chain`, `borg kill tombstone` | Wallet baskets |
