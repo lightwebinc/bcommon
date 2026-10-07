@@ -32,38 +32,67 @@ pkg.go.dev shows each example beside the function it documents.
 
 Everything an application publishes is paid for from coin its user owns.
 Users have no coinbase outputs, so on mainnet and testnet the coin arrives
-one of two ways:
+one of three ways:
 
-1. **A payment to the wallet's fund address.** The application prints the
-   address, the user sends a small amount to it from their own wallet, and
-   the application imports that payment by its txid once it is mined. This
-   is the path for an application with an embedded wallet (`bwallet`).
-2. **A BRC-100 wallet the user already runs.** Reach it with
-   `wirewallet.Dial` (loopback only; see
+1. **The user's wallet hands over the payment as BEEF.** The application
+   prints its fund address, the user pays it from their own wallet (a
+   BRC-100 `createAction` answers with the payment as Atomic BEEF), and
+   `bwallet.ImportBEEF` checks it: no lookup at all, and the payment need
+   not have mined yet.
+2. **A payment to the fund address, imported by txid.** Once it has a
+   block, `bwallet.ImportTxid` fetches it with its proof from a chain view
+   (WhatsOnChain, or a node) and checks the proof.
+3. **A BRC-100 wallet the user already runs pays for each funding tree.**
+   Reach it with `wirewallet.Dial` (loopback only; see
    [configuration.md](configuration.md#wallet-wire-wirewallet)), sign
    through it as a `bwallet.Signer`, and let it pay for each funding tree
    through `producer.Trees.Fund` (a function the application writes that
    has the wallet build, fund and broadcast the tree), so trees are paid
    from the user's wallet rather than from the pool.
 
-`bwallet.FundFromCoinbase` and `bwallet.Rescan` are neither. They mine
+`bwallet.FundFromCoinbase` and `bwallet.Rescan` are none of these. They mine
 coinbase to the fund address, which works only on a regtest chain you run
 (development and tests); see
 [configuration.md](configuration.md#coinbase-funding-regtest-only).
 
-### Which networks
+### Which networks, with no infrastructure
 
-| Network | Header source (`headers.New`) | Address prefix | Broadcast (`publish.Arcade.Base`) |
+None of this needs a node. The zero-infrastructure profile is three
+specifications, one per role:
+
+| Role | mainnet | testnet | What it is |
 |---|---|---|---|
-| mainnet | `woc:main` | `bwallet.Embedded.Mainnet = true` | an ARC service, for example `https://arc.gorillapool.io/v1` |
-| testnet | `woc:test` | `Mainnet = false` | an ARC testnet service, for example `https://arc-test.taal.com/v1` (many public services require a `Key`) |
-| a regtest chain you run | your own bridge or chaintracks | `Mainnet = false` | your node (`publish.RPCSettler`) or its ARC |
+| Headers (`headers.New`) | `woc:main` | `woc:test` | WhatsOnChain headers, each hashed and held to its proof of work |
+| Chain view (`nodeapi.ParseChain`) | `woc:main` | `woc:test` | WhatsOnChain: transactions, proofs, spends |
+| Broadcast (`publish.ParseSettler`) | `arcade:main` | `arcade:test` | GorillaPool's public arcade (`publish.DefaultSettle`) |
 
-A header source is the root of trust for every proof checked against it.
-WhatsOnChain headers are not taken at their word: each one is hashed and
-must carry the proof of work its bits claim, and on mainnet at least
-`headers.MainnetMinDifficulty`. Running your own chaintracks or node is
-stronger still.
+A regtest chain you run has no public services: use your own node
+(`asset:URL` for the chain view, `rpc:URL` to broadcast) and your own
+header source.
+
+What is trusted, and what is checked:
+
+- **Headers** are a third party, but every header is hashed and must carry
+  the proof of work its bits claim, on mainnet at least
+  `headers.MainnetMinDifficulty`, so a lie costs a mined block. Running
+  block-headers-service (`bhs:URL`) or arcade's header server
+  (`arcade:URL`) yourself is the sovereign option.
+- **Transactions and proofs** from WhatsOnChain are checked: a transaction
+  must hash to its txid, and `nodeapi.ParseChain` wraps every proof in
+  `nodeapi.Checked`, so it must verify against your headers.
+- **"Unspent", "not known" and "not mined"** cannot be checked and are
+  WhatsOnChain's word. Its spent endpoint tells an unknown output (400)
+  from an unspent one (404), and only the 404 reads as unspent. A node of
+  your own (`asset:URL`, or `spend=asset:URL` for the spend view alone)
+  removes that trust.
+- **Broadcast** is arcade's policy and verdict. Arcade can answer
+  "accepted" for a transaction whose input was already spent and mined, so
+  its verdict is held to the chain view's spends (`publish.Arcade.Spends`).
+
+WhatsOnChain's free tier allows 3 requests a second, and the chain view
+paces itself to that. A busy application (a bstore provider, say) needs an
+API key (`nodeapi.ChainOptions.WoCKey`, with `WoCRate` raised to the plan's
+rate) or a node.
 
 ### Step 1: create the wallet and show the fund address
 
@@ -81,7 +110,7 @@ var profile = bwallet.Profile{
 w, err := bwallet.Create(dir, profile) // bwallet.Open(dir, profile) on every later run
 w.Mainnet = true                        // false for testnet
 addr, err := w.FundAddress(w.Mainnet)
-fmt.Println("send a small amount to", addr, "from your own wallet, then import its txid")
+fmt.Println("send a small amount to", addr, "from your own wallet, then import it")
 ```
 
 `dir` holds `identity.json`, the root key, at mode 0600. Back it up: the
@@ -89,117 +118,101 @@ coin in the pool is spendable only with that key.
 
 ### Step 2: import the user's payment
 
-Once the payment has a block, fetch it with its proof, check the proof
-against your header source, and add the outputs that pay the fund address
-to the pool. The answer is not trusted: the guard bounds it before go-sdk
-parses it, and the txid and the proof are checked here.
+The headers and the chain view, built once per run:
 
 ```go
-func importPayment(ctx context.Context, w *bwallet.Embedded, network, txid string) (int, error) {
-	tracker := headers.New("woc:" + network) // "main" or "test"
-
-	// WhatsOnChain serves a mined transaction with its proof as BEEF.
-	url := "https://api.whatsonchain.com/v1/bsv/" + network + "/tx/" + txid + "/beef"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return 0, err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 16<<20))
-	if err != nil {
-		return 0, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("%s: status %d; import it once it is mined", txid, resp.StatusCode)
-	}
-	b, err := hex.DecodeString(strings.TrimSpace(string(body)))
-	if err != nil {
-		return 0, err
-	}
-	_, tx, _, err := guard.ParseBEEF(b, guard.DefaultBound)
-	if err != nil {
-		return 0, err
-	}
-	if tx == nil || tx.TxID().String() != txid || tx.MerklePath == nil {
-		return 0, fmt.Errorf("%s: not the mined transaction asked for", txid)
-	}
-	if ok, err := tx.MerklePath.Verify(ctx, tx.TxID(), tracker); err != nil || !ok {
-		return 0, fmt.Errorf("%s: proof does not hold against the header source: %v", txid, err)
-	}
-
-	fund, err := w.FundScript()
-	if err != nil {
-		return 0, err
-	}
-	var outs []bwallet.Output
-	for i, o := range tx.Outputs {
-		if o.LockingScript == nil || !bytes.Equal(*o.LockingScript, *fund) {
-			continue
-		}
-		outs = append(outs, bwallet.Output{
-			TxID: txid, Vout: uint32(i), Satoshis: o.Satoshis,
-			LockingScript: o.LockingScript.String(), Height: tx.MerklePath.BlockHeight,
-			Raw: tx.Hex(), Bump: funding.BumpHex(tx.MerklePath),
-		})
-	}
-	if len(outs) == 0 {
-		return 0, fmt.Errorf("%s pays nothing to the fund address", txid)
-	}
-	return w.Pool.Add(outs...) // an output already held is not added twice
-}
+network := "main" // or "test"
+tracker := headers.New("woc:" + network)
+chain, err := nodeapi.ParseChain("woc:"+network, nodeapi.ChainOptions{Headers: tracker})
+fund, err := w.FundScript()
 ```
 
-An application that runs a Teranode node can read the payment from it
-instead: `nodeapi.Asset.TxRaw`, `guard.ParseTransaction` and
-`nodeapi.Asset.Proof`, then the same proof check and `Pool.Add`.
+From the BEEF the user's wallet handed over (a file, or standard input):
+
+```go
+im, err := bwallet.ImportBEEF(ctx, beef, fund, tracker, bwallet.ImportOptions{})
+```
+
+A mined payment's proof must verify against the headers. An unmined one is
+accepted as long as it is final and every parent it spends carries a proof
+the headers hold; its scripts are then verified against those parents.
+Its outputs go into the pool held back (`Output.Unproven`) until its proof
+arrives, and `im.BeefHex` is the BEEF to keep for it meanwhile. Set
+`ImportOptions.RefuseUnmined` to take mined payments only.
+
+Or by txid, once the payment has a block:
+
+```go
+im, err := bwallet.ImportTxid(ctx, txid, fund, chain, tracker)
+```
+
+A payment not mined yet is `bwallet.ErrUnmined`. Either way, add what it
+pays the wallet to the pool:
+
+```go
+n, err := w.Pool.Add(im.Outputs...)
+fmt.Printf("%s: %d output(s), %d satoshis\n", im.Txid, n, im.Sats)
+```
 
 Run against the public services with a fresh wallet, and given a mined
-mainnet transaction that pays someone else, step 1 and step 2 print:
+mainnet transaction that pays someone else, step 1 and the import by txid
+print:
 
 ```text
-send a small amount to 12nPSaLaEDhmeCrjJ8g9TrrkY7kpxg2Bi8 from your own wallet, then import its txid
-1c80205fca5da7894d410d0173951807984ab22beba4e0c27f28ca4778739e10 pays nothing to the fund address
+send a small amount to 1Q1gYwcmqcBzVd2xtYbEo5Me8NE1WAeu6G from your own wallet, then import it
+bwallet: the payment pays nothing to this wallet's fund address: 52854619b1c2e78d6c1e9a91fdb14c4bef1b8d1897de3253a538e152bd055be6
 ```
 
-The proof was fetched and held against the WhatsOnChain headers before the
-outputs were read; the user's own payment to the printed address adds its
-outputs instead. On testnet (`Mainnet = false`, `woc:test`) the address
-starts with `m` or `n`. Each new wallet has a new random key, so the
-address differs every time.
+The transaction was fetched from WhatsOnChain and its proof held against
+the WhatsOnChain headers before its outputs were read; the user's own
+payment to the printed address adds its outputs instead. On testnet
+(`Mainnet = false`, `woc:test`) the address starts with `m` or `n`. Each
+new wallet has a new random key, so the address differs every time.
 
 ### Step 3: spend from the pool
 
-The pool now holds a mined, proven coin that is spendable at once (only
-coinbase waits for maturity). A `producer.Payer` takes fee inputs from it
-and `producer.Trees` mints funding trees from it, settling through
-`publish.Arcade`:
+The pool now holds the user's coin. A `producer.Payer` takes fee inputs
+from it and `producer.Trees` mints funding trees from it, settling through
+arcade, with the chain view in place of a node:
 
 ```go
-settle := &publish.Arcade{Base: "https://arc.gorillapool.io/v1"} // plus Key where the service needs one
-if err := settle.Ping(ctx); err != nil {                        // reads /policy; spends nothing
+spec, err := publish.DefaultSettle(network) // "arcade:main"
+settler, arcade, err := publish.ParseSettler(spec, publish.SettleOptions{Spends: chain})
+if err := arcade.Ping(ctx); err != nil { // reads /policy; spends nothing
 	return err
 }
+
+payer := &producer.Payer{
+	Pool: w.Pool, Keys: map[string]*bwallet.Signer{w.Signer().IdentityHex(): w.Signer()},
+	Kept: kept, Settler: settler, Chain: chain, Async: true, Fees: mint.DefaultFees,
+}
+proofs := producer.Proofs{Arcade: arcade, Source: chain, Spends: chain}
 ```
 
-The sections below ([Pay a fee from the pool](#pay-a-fee-from-the-pool-as-a-producer),
+`Proofs` asks arcade first for what it was sent and the chain view for the
+rest, such as an imported payment that was not mined at import; a
+`producer.Collector` with `Pool` set releases that payment's outputs once
+its proof arrives. ARC (`arc:https://arc.gorillapool.io`, or TAAL's with a
+`Key`), a self-hosted arcade and a node (`rpc:URL`) are the other
+broadcasters. The sections below
+([Pay a fee from the pool](#pay-a-fee-from-the-pool-as-a-producer),
 [Spend from a funding tree](#spend-from-a-funding-tree-minting-the-next))
 show the Payer and Trees with every field.
 
 ### What it costs
 
-`mint.DefaultFees` pays 1 satoshi per byte with a 250 satoshi floor, which
-is above the 100 satoshis per 1000 bytes that BSV mainnet miners publish
-(an ARC service answers its own policy at `/v1/policy`). Measured on the
-examples below: a funding tree of four outputs is 388 bytes and pays 390
-satoshis, a simple payment pays the 250 satoshi floor, and a carrier is
-never mined and pays no fee; it spends one funding output (1000 satoshis
-in the examples, `producer.Trees.Sats` in an application). A deposit of a
-few tens of thousands of satoshis covers many operations. Send only what
-the application needs: the key is a hot key on the machine it runs on.
+`mint.DefaultFees` pays the network's rate, 100 satoshis per 1000 bytes
+(what GorillaPool's and TAAL's ARC and GorillaPool's arcade publish at
+`/v1/policy`), with a 250 satoshi floor per transaction. `mint.NetworkFees`
+is the same rate with a floor of 1 satoshi, so a 225-byte payment pays 23
+satoshis. A funding tree of four outputs is 388 bytes and pays the floor; a
+carrier is never mined and pays no fee; it spends one funding output (1000
+satoshis in the examples, `producer.Trees.Sats` in an application). To
+follow the broadcaster's published rate instead of a fixed one, use
+`feepolicy` (see [configuration.md](configuration.md#fee-policy-feepolicy)).
+A deposit of a few tens of thousands of satoshis covers many operations.
+Send only what the application needs: the key is a hot key on the machine
+it runs on.
 
 ## Derive a PushDrop lock
 

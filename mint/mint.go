@@ -77,7 +77,7 @@ var DefaultFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 250, Dust: 250
 var NetworkFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 1, Dust: 1}
 
 // LegacyFees is one satoshi per byte with a 250 satoshi floor: DefaultFees
-// before v0.14.0. A test vector that pins its fee amounts names it, so a
+// until the network rate became the default. A test vector that pins its fee amounts names it, so a
 // change of default never moves a pinned byte.
 var LegacyFees = Fees{SatPerByte: 1, Floor: 250}
 

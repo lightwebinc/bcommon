@@ -98,7 +98,8 @@ no application: protocol `vector sample` at security level 1, key ids
 `object` and `state`, funding tag `vx` 0x02 and state tag `vx` 0x01. The key
 is 32 bytes of 0x42, `goldentest.FixedKey`. It is a test key and must never
 be used for anything real. Fees are one satoshi per byte with a 250 satoshi
-floor.
+floor (`mint.LegacyFees`), named explicitly so that a change of
+`mint.DefaultFees` never moves a pinned byte.
 
 The JSON records only what an application chooses. The rest of the
 mechanism is fixed in the library, so it is not a field, and a rebuild in

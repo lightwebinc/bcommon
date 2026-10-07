@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: thirty-one Go packages under one module,
+bcommon is a library, not a service: thirty-two Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -30,9 +30,9 @@ would have to trust. It pins the identity key it saw.
   ────────                                   ──────
   cbor ─▶ store/commit (roots)               resolve ─▶ hostset ─▶ lookup
   pushdrop ─▶ carrier (payload lock)                         │
-  mint ─▶ funding tree, state token                          ▼
+  mint, feepolicy ─▶ funding tree, token                     ▼
   bwallet / wirewallet (keys, coin)          verify ─▶ carrier, pushdrop
-  nodeapi (mine, prove) ─▶ guard             headers (chain tracker)
+  nodeapi (node, WoC views) ─▶ guard         headers (chain tracker)
   publish: settlement leg │ object leg       knownkeys (pins)
   producer: fees, trees, kept, proofs        termsafe (what it prints)
 ```
@@ -65,11 +65,12 @@ beside the standard library and, where noted, go-sdk.
 | 1 | `pushdrop` | `guard` | yes |
 | 1 | `funding` | `guard` | yes |
 | 1 | `nodeapi` | `guard` | yes |
+| 1 | `feepolicy` | `mint` | no |
 | 1 | `lookup` | `hostset` | no |
 | 2 | `carrier` | `guard`, `pushdrop` | yes |
 | 2 | `chaintoken` | `guard`, `pushdrop` | yes |
 | 2 | `chainview` | `nodeapi` | yes |
-| 2 | `bwallet` | `guard`, `nodeapi`, `pushdrop` | yes |
+| 2 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
@@ -93,6 +94,8 @@ Every edge inside the module:
   bwallet  ──▶ pushdrop
   bwallet  ──▶ nodeapi ──▶ guard
   bwallet  ──▶ guard
+  bwallet  ──▶ funding
+  feepolicy ─▶ mint
   funding  ──▶ guard
   knownkeys ─▶ guard
   publish  ──▶ nodeapi
@@ -109,7 +112,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`, `acceptance`,
-`testchain`, `sanitize`, `payee`, `commit` and `chirp` to these edges, tests included.
+`testchain`, `sanitize`, `payee`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -244,7 +247,16 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`mint`** owns the mined transactions: a state-token transition, a
   funding tree and a payment, with a fee loop that signs to measure the size
   and rebuilds at the rate until the fee covers it. It holds no key material:
-  every input arrives with the template that signs it.
+  every input arrives with the template that signs it. A fee rate is
+  `Rate{Sats, Bytes}` exactly as miners publish it, computed in integer
+  arithmetic with no float; the fee policy (`Fees`) adds a floor, a
+  change-drop threshold (`Dust`), a rate cap (`MaxRate`) and a per-transaction
+  ceiling (`Max`) that refuses rather than pays.
+- **`feepolicy`** owns where the fee rate comes from: a static policy, or the
+  policy a broadcaster publishes at `/v1/policy`, cached, held to minimum
+  and maximum rates (the endpoint is unsigned, so its worst case is
+  bounded), and degrading to the last good answer and then to the static
+  rate. It does the I/O so that `mint` stays pure.
 - **`funding`** owns the state an application keeps about its funding tree
   between runs (`Tree`, whose JSON form is part of the application's state
   file) and the BEEF it keeps for a transaction published before it mined.
@@ -253,22 +265,37 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   signs through any `wallet.Interface`, BRC-29 payment derivations, and
   coinbase funding (coinbase: only on a regtest chain you run, development
   and tests). On mainnet and testnet the pool is funded from a payment the
-  user sends to the fund address, added with `Pool.Add` once it is mined
-  and proven. Every method it
+  user sends to the fund address, checked by `ImportBEEF` (the BEEF the
+  user's wallet hands over, mined or with every parent proven) or
+  `ImportTxid` (fetched from a chain view, mined) and added with
+  `Pool.Add`. Every method it
   does not implement returns `ErrNotSupported` rather than `nil, nil`.
 - **`wirewallet`** owns the wallet wire: a client for a BRC-100 wallet on
   the loopback interface only, and a handler that serves any
   `wallet.Interface` over the wire.
-- **`nodeapi`** owns a Teranode JSON-RPC and asset API client: mining,
-  direct submission, placement and proofs. Every body is bounded before it
-  is parsed, and every proof is checked to name the transaction it was asked
-  for.
+- **`nodeapi`** owns the chain views an application reads, as narrow
+  interfaces (`TxSource`, `ProofSource`, `SpendSource`, `KnownSource`,
+  `Chain`), and the backends behind them: a Teranode JSON-RPC and asset API
+  client (`RPC`, `Asset`: mining, direct submission, placement and proofs),
+  WhatsOnChain (`WoC`), and `Sources`, a backend per method built from a
+  specification (`ParseChain`). Presence answers are checked (a transaction
+  must hash to its txid, a proof must name it and verify against the
+  caller's headers through `Checked`); absence answers ("unspent", "not
+  known", "not mined") come from one backend that tells "unknown" from
+  "unspent", never from a fall-through. Every body is bounded before it is
+  parsed.
 - **`publish`** owns the two submission legs, which never share a
   connection. The settlement leg (`TCPIngress`, `RPCSettler`, `Arcade`) only
   ever takes a `*transaction.Transaction`; the object leg (`Facade`) only
   ever takes a BEEF, and refuses anything else before sending. No exported
   function takes both, and a test walks the package's exported declarations
-  to hold that. It also owns the per-transition `Journal`.
+  to hold that. It also owns the per-transition `Journal` and the
+  settlement specification (`ParseSettler`), whose default is a public
+  arcade (`arcade:main`, `arcade:test`); ARC, a self-hosted arcade and a
+  node are the opt-in alternatives. `Arcade` is also a proof source for
+  what it was sent, and its verdict is held to a spend view (a node, or
+  WhatsOnChain) because arcade has accepted a transaction whose input was
+  already spent.
 - **`producer`** owns the orchestration around those builders that every
   producer runs the same way. `Payer` takes a fee input from the coin pool,
   signed by the key its coin is locked to and large enough to pay (never
@@ -375,8 +402,11 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`headers`** owns the chain tracker, the root of trust for every proof a
   reader checks. A 404 from the header service is "not held yet", and any
   other failure is an error, never a false answer, so an outage is not read
-  as a forged proof. A source that serves header fields has each header's
-  proof of work checked against the network's floor.
+  as a forged proof. A source that serves header fields (WhatsOnChain,
+  chaintracks, block-headers-service, arcade's header server) has each
+  header's proof of work checked against the network's floor, and
+  `HeaderAt` hands an application with no node a block's checked hash and
+  time by height.
 - **`hostset`** owns which address answers for an overlay host: DNS or a
   static list as the source, a first, random or all policy, and an optional
   quorum of distinct hosts whose bodies the caller compares.

@@ -100,10 +100,27 @@ and `Sequence` 0.
 
 | Parameter | Default | |
 |---|---|---|
-| `Fees.SatPerByte` | none; `mint.DefaultFees` is 1 | rate per byte of the signed transaction |
-| `Fees.Floor` | none; `mint.DefaultFees` is 250 | minimum fee in satoshis; change below it goes to the fee |
+| `Fees.Rate` | none; `mint.DefaultFees` is `{100, 1000}` | `mint.Rate{Sats, Bytes}`: `Sats` satoshis per `Bytes` bytes of the signed transaction, exactly as miners publish it (ARC's `miningFee`; JSON `{"satoshis", "bytes"}`). The fee is `ceil(size * Sats / Bytes)` in integer arithmetic; a fee that overflows 64 bits, or `Sats` over zero `Bytes`, is `mint.ErrRate` |
+| `Fees.SatPerByte` | none | the older whole-number rate, read only when `Rate` is zero, as `Rate{SatPerByte, 1}`. A `Fees` written before `Rate` existed means what it meant |
+| `Fees.Floor` | none; `mint.DefaultFees` is 250 | the least fee a transaction pays, in satoshis |
+| `Fees.Dust` | zero, which means `Floor` | the least change kept as an output; change below it goes to the fee. `mint.DefaultFees` sets 250, the rule before `Dust` existed |
+| `Fees.MaxRate` | none | caps `Rate` (and `SatPerByte`): a rate above it is lowered to it |
+| `Fees.Max` | none | the most one transaction may pay in fee; a fee above it is refused with `mint.ErrFeeTooHigh` rather than paid |
 | `Input{Tx, Vout, Unlocker}` | none | an input's source transaction, output index and the template that signs it. The template keeps key material out of `mint` |
 | `change` | none; a nil script is `ErrNoChange` | where the fee input's remainder goes |
+
+Three fee policies are named:
+
+| Name | Rate | Floor | Dust | |
+|---|---|---|---|---|
+| `mint.DefaultFees` | `{100, 1000}` | 250 | 250 | the network's rate, with the floor and change rule kept while the floor is decided |
+| `mint.NetworkFees` | `{100, 1000}` | 1 | 1 | the network's rate with no padding: a 225-byte payment pays 23 satoshis |
+| `mint.LegacyFees` | `SatPerByte` 1 | 250 | 250 (from `Floor`) | `DefaultFees` until the network rate became the default; test vectors that pin fee amounts name it, so a change of default never moves a pinned byte |
+
+`Fees.For(size)` is the fee for a signed size under the policy, and
+`mint.ParseRate("100/1000")` reads a rate written as a flag (a bare whole
+number is satoshis a byte). `Rate.Cmp` compares two rates by value and
+`Rate.Clamp(lo, hi)` holds one to bounds.
 
 `FundingTree(lock, count, sats, fee, change, fees)` builds `count` outputs of
 `sats` each under `lock` (normally `carrier.FundingLock`), plus change.
@@ -115,6 +132,60 @@ anything is signed.
 create and the previous token (with its unlocker, which is required) for an
 update. `Payment(ctx, dest, sats, fee, change, fees)` pays `dest`, normally a
 BRC-29 destination from `bwallet`.
+
+## Fee policy: `feepolicy`
+
+A `feepolicy.Source` answers the `mint.Fees` a build uses now. `mint` itself
+reaches no network; the policy fetch lives here.
+
+- `feepolicy.Static(fees)` is a fixed policy, the default.
+- `*feepolicy.ARC` is the policy a broadcaster publishes at
+  `GET /v1/policy` (ARC, and arcade, which answers the same shape). It is
+  opt-in, and its URLs follow the broadcaster a deployment settles through.
+
+| `ARC` field | Default | |
+|---|---|---|
+| `URLs` | none | broadcaster URLs; a bare host is asked at `/v1/policy`, a URL with a path at that path plus `/policy` (so `https://arc.taal.com/v1` and `https://arcade.gorillapool.io` both work) |
+| `Key` | none | a bearer token |
+| `Base` | none | the fees returned with the policy's rate in place of their own: floor, dust and `Max`, and the rate used when no policy is at hand |
+| `Min`, `Max` | `DefaultMinRate` `{100, 1000}`, `DefaultMaxRate` `{1, 1}` | the policy's rate is raised to `Min` and lowered to `Max`; `Max` is also set as `Fees.MaxRate` |
+| `TTL` | 5 minutes | one fetch per TTL, also after a failure |
+| `Stale` | 24 hours | how long the last good answer is used while the endpoints fail; after it, `Base`'s rate |
+| `Timeout` | 5 s | the fetch bound; a mint never waits longer on the policy |
+| `Client`, `Note`, `Now` | no proxy; none; `time.Now` | |
+
+An answer is held to `policy.miningFee` as whole numbers, satoshis at least
+1 and bytes 1 to 1e9 (`ParsePolicy`, refusing as `ErrPolicy`): GorillaPool's
+testnet ARC publishes 0 satoshis today, which is refused. Across several
+URLs the highest rate is taken (a transaction must be accepted by whichever
+is used) and the lowest stated `maxtxsizepolicy` and `maxscriptsizepolicy`
+(`ARC.Policy`). `ARC.Fees` never fails on the network; `ARC.Status` says
+what it used (`arc`, `cache` or `static`), how old, and the last error, for
+a metric or a status line.
+
+`feepolicy.Config` is the fee block of an application's configuration,
+keys sorted:
+
+```json
+"fee": {
+  "dust": 250,
+  "floor": 250,
+  "max_rate": {"bytes": 1, "satoshis": 1},
+  "max_tx": 0,
+  "min_rate": {"bytes": 1000, "satoshis": 100},
+  "policy_urls": ["https://arcade.gorillapool.io"],
+  "rate": {"bytes": 1000, "satoshis": 100},
+  "source": "static"
+}
+```
+
+Every key is optional; `Config.Fees(defaults)` lays it over `defaults`
+(usually `mint.DefaultFees`) and `Config.Build(defaults)` returns the
+`Source`: `static` (the default) or `arc` (also `arcade`), which needs
+`policy_urls`. `ParseConfig` refuses unknown keys. `MergeLegacy(c,
+satPerByte, floor)` folds the older keys `fee_sat_per_byte` and
+`fee_floor` in as `rate {fee_sat_per_byte, 1}` and `floor`, and refuses
+either beside the new key it aliases.
 
 ## Funding-tree state: `funding.Tree`
 
@@ -175,6 +246,7 @@ the host's own header source.
 | `MaxPay` | `uint64` | 0 | the most one `CreateAction` pays, in satoshis; zero pays nothing |
 | `Settler` | `publish.Settler` | none | the leg an internalized payment is broadcast on |
 | `Asset` | `*nodeapi.Asset` | none | the node a payment's proof is read from, and its inputs checked against |
+| `Chain` | `nodeapi.Chain` | none | the same in `Asset`'s place, from a chain view that needs no node |
 | `Headers` | `chaintracker.ChainTracker` | none | what an incoming payment is verified against before anything is broadcast; `Check` refuses without one |
 | `Wait` | `time.Duration` | `producer.DefaultTimeout` | how long `Await` waits for a payment to mine |
 | `Poll` | `time.Duration` | `producer.DefaultPoll` | how often it asks |
@@ -361,12 +433,31 @@ directory whose key lives in a wire wallet.
 ### Funding on mainnet and testnet
 
 Users hold no coinbase, so on mainnet and testnet the pool is funded from a
-payment the user sends from their own wallet to `FundAddress(mainnet)`. Once
-it is mined, the application fetches it with its proof, checks the proof
-against its `headers.Client`, and adds each output paying `FundScript` with
-`Pool.Add(bwallet.Output{TxID, Vout, Satoshis, LockingScript, Height, Raw,
-Bump})`, `Bump` from `funding.BumpHex`. Such an output is not `Coinbase`
-and is spendable at once. Alternatively a BRC-100 wallet reached through
+payment the user sends from their own wallet to `FundAddress(mainnet)`, and
+the application imports it once, checked:
+
+- `ImportBEEF(ctx, beef, fund, headers, ImportOptions)` takes the payment
+  as the BEEF (or Atomic BEEF) the user's wallet hands over, with no
+  lookup. A mined payment's proof must verify against `headers`. An unmined
+  one is accepted by default (`ImportOptions.RefuseUnmined` refuses it) when
+  it is final and every parent carries a proof `headers` hold
+  (`ErrUnprovenParent` otherwise), and its scripts verify against those
+  parents.
+- `ImportTxid(ctx, txid, fund, chain, headers)` fetches a mined payment and
+  its proof from a chain view (`nodeapi.ParseChain`, a node, WhatsOnChain)
+  and checks the proof; a payment not mined yet is `ErrUnmined`.
+
+Either returns an `*Import`: the outputs paying `fund` as `[]Output` for
+`Pool.Add` (`ErrPaysNothing` when there are none), their total, and whether
+the payment is mined and at what height. A mined payment's outputs carry
+`Raw`, `Bump` and `Height` and are spendable at once (they are not
+`Coinbase`). An unmined payment's outputs are `Unproven`, held back until a
+`producer.Collector` with `Pool` set collects the proof by txid (its
+`Proofs` needs a source that knows a transaction the wallet broadcast, such
+as `Source` set to the chain view), and `Import.BeefHex` is the BEEF to keep
+for it meanwhile, from which a `producer.Kept` loader rebuilds it
+(`funding.Rebuild`) should `Allow` let it pay a fee before then.
+Alternatively a BRC-100 wallet reached through
 `wirewallet.Dial` signs as the `Signer.Interface` and pays for each funding
 tree through `producer.Trees.Fund`. Both are worked through in
 [examples.md](examples.md#fund-a-wallet-on-mainnet-or-testnet).
@@ -443,6 +534,70 @@ changes nothing and asks again later. `SpentElsewhere` refuses only on a
 cannot answer for, so its nil says no input is shown spent elsewhere, not
 that every input is unspent.
 
+### Chain views: `nodeapi` interfaces
+
+What an application reads from the chain is four narrow views, each an
+interface that `*nodeapi.Asset` (a node), `*nodeapi.WoC` (WhatsOnChain) and
+`*nodeapi.Sources` satisfy:
+
+| Interface | Method | Answers |
+|---|---|---|
+| `TxSource` | `TxRaw(ctx, txid)` | the raw transaction; not held is an error for which `IsNotFound` is true (`ErrTxNotFound`, or a 404) |
+| `ProofSource` | `Proof(ctx, txid)` | the proof and height, or `ErrNotMined` (not mined, or not known); `*publish.Arcade` is one too, for what it was sent |
+| `SpendSource` | `Spender(ctx, txid, vout)` | the spender, `""` and nil only for unspent, `ErrSpendUnknown` otherwise |
+| `KnownSource` | `Known(ctx, txid)` | whether the source holds the transaction at all, mined or not; `*publish.Arcade` too |
+
+`Chain` is `TxSource`, `ProofSource` and `SpendSource` together, the view
+`producer.Payer.Chain` and `purse.Purse.Chain` take in place of `Asset`.
+`SpentElsewhereIn(ctx, spends, tx)`, `WaitMinedOn(ctx, proofs, txid, poll)`
+and `WaitSettledOn(ctx, proofs, spends, tx, poll)` are `SpentElsewhere`,
+`WaitMined` and `WaitSettled` over any view. `Checked{Source, Headers}` is
+a `ProofSource` whose every proof must name the txid and verify against the
+caller's headers (`CheckProof`), or is refused as `ErrProofRefused`.
+
+`ParseChain(spec, ChainOptions)` builds a `*Sources` from a specification,
+in the style of `headers.Parse`: comma-separated backends, each optionally
+qualified by the one method it serves (`tx=`, `proof=`, `spend=`,
+`known=`).
+
+| Specification | |
+|---|---|
+| `woc:main`, `woc:test` | WhatsOnChain, no node |
+| `asset:http://node:8090` | a node for everything |
+| `asset:http://node:8090,woc:main` | a node, WhatsOnChain for transactions and proofs the node lacks |
+| `woc:test,spend=asset:http://node:8090` | WhatsOnChain, with a node's spend view |
+
+Transactions and proofs are asked of every backend that serves them, in
+order, since each answer is checked; "spent", "unspent" and "known" come
+from one backend only, the first that serves them, so an absence answer is
+never a fall-through. `ChainOptions.Headers` is required, and every proof
+is wrapped in `Checked` against it. `ChainOptions.WoCKey` and `WoCRate` are
+the WhatsOnChain API key and its rate; `Client` is every backend's HTTP
+client.
+
+### `nodeapi.WoC`
+
+| Field | Default | |
+|---|---|---|
+| `Network` | none | `main` or `test` (`NewWoC` refuses anything else) |
+| `Base` | `https://api.whatsonchain.com/v1/bsv/<Network>` | a mirror, or a test server |
+| `Key` | none | sent as the `Authorization` header, as WhatsOnChain documents for an API key |
+| `Rate` | `WoCFreeRate`, 3 a second | requests a second, shared by every call on the value; a 429 is retried after 200 ms, 1 s and 3 s (or `Retry-After`) |
+| `MaxTx` | `guard.DefaultBound` | the largest transaction read |
+| `Client` | 30 s timeout, no proxy | |
+
+| Method | Endpoint | |
+|---|---|---|
+| `TxRaw` | `/tx/<txid>/hex` | must hash to the txid; a 404 is `ErrTxNotFound` |
+| `TxBEEF` | `/tx/<txid>/beef` | served but undocumented; a 422 (it declines some unmined transactions) is `ErrNotMined`, a 404 or its 500 "No such mempool or blockchain transaction" is `ErrTxNotFound` |
+| `Proof` | `/tx/<txid>/beef`, else `/tx/<txid>/proof/tsc` | the BEEF's proof; when that endpoint fails otherwise, the TSC proof converted to a BUMP (`TSCProof.MerklePath`) at the height `/block/<hash>/header` names |
+| `Spender` | `/tx/<txid>/<vout>/spent` | 200 names the spender (mined or not); 404 is unspent, WhatsOnChain's "known but spent details are not found"; 400 is its "UTXO is unknown" (also its answer for an unspendable output) and is `ErrSpendUnknown`, never unspent |
+| `Known` | `/tx/hash/<txid>` | 200 is known, 404 is not |
+
+GorillaPool's ordinals `spends` endpoint answers an empty 200 for an
+unspent output and for one that does not exist alike, so no backend here
+reads it, and nothing reads it as evidence of "unspent".
+
 ## Publishing: `publish`
 
 | Type and field | Default | |
@@ -458,6 +613,7 @@ that every input is unspent.
 | `Arcade.Poll` | 1 s | interval between status checks while waiting |
 | `Arcade.Note` | nil | receives lines a caller may show: a verdict that did not arrive, a backoff |
 | `Arcade.Asset` | nil | the node arcade's acceptance is held to: an input it shows spent by another transaction is a refusal wrapping `nodeapi.ErrDoubleSpent`, whatever arcade answered |
+| `Arcade.Spends` | nil | the same, from any spend view in `Asset`'s place (`nodeapi.WoC`, a `nodeapi.Sources`), so the accepted-but-spent case stays refused with no node |
 | `Facade.Base` | none | the overlay host's root; the BEEF goes to `<Base>/submit` |
 | `Facade.HTTP` | 30 s timeout, no proxy | |
 | `Journal.Dir` | none | one `<seq>-<txid>.json` file per transition attempt, mode 0600, created on first write |
@@ -467,6 +623,29 @@ refuses a body without a BEEF marker (`ErrNotBEEF`) and a topic that is empty
 or contains a comma, space, tab, CR or LF, both before sending anything.
 The facade's answer is refused over 1 MiB; arcade's answers are read to at
 most 64 KiB (submit) and 1 MiB (status) before they are parsed.
+
+`Arcade.Proof(ctx, txid)` is arcade as a `nodeapi.ProofSource` for what it
+was sent: the merkle path once mined, held to the BUMP guard, the txid and
+the height arcade reports; not mined, or a transaction arcade does not hold
+(`ErrArcadeUnknown`), is `nodeapi.ErrNotMined`, so a caller asks another
+source; a refusal is `ErrArcadeRefused`. `Arcade.Known(ctx, txid)` is
+arcade as a `nodeapi.KnownSource`.
+
+`ParseSettler(spec, SettleOptions)` builds the settlement leg from a
+specification, and returns the `*Arcade` when the leg is one:
+
+| Specification | Leg |
+|---|---|
+| `arcade:main`, `arcade:test` | GorillaPool's public arcade, `ArcadeMainnet` (`https://arcade.gorillapool.io`) or `ArcadeTestnet` (`https://testnet.arcade.gorillapool.io`): the default broadcaster, no key |
+| `arcade:https://host` | any arcade installation, your own included |
+| `arc:https://host` | an ARC installation, opt-in: `/v1` is added to a URL with no path, so `arc:https://arc.gorillapool.io` and `arc:https://arc.taal.com` (which needs a `Key`) both work |
+| `rpc:http://node:port` | a node's `sendrawtransaction` (`RPCSettler`) |
+| `tcp:host:port` | a fabric ingress, bare EF, no answer (`TCPIngress`) |
+
+`DefaultSettle(network)` is `arcade:main` or `arcade:test`; a regtest chain
+has no default. `SettleOptions` carries what a specification does not:
+`Key`, `RPCUser`, `RPCPass` and `RPCID`, `Client`, `Spends` and `Asset`
+(the views arcade's verdict is held to), and `Note`.
 
 ## Producer: `producer`
 
@@ -482,8 +661,9 @@ most 64 KiB (submit) and 1 MiB (status) before they are parsed.
 | `Allow` | none allowed | the kept transactions whose unproven change `Take` may spend when no proven coin is left |
 | `Settler` | none | the settlement leg; `Settle` refuses without one |
 | `Asset` | none | the node a proof is waited for from and where a coin's parent is fetched: with `Async`, any parent not held with its proof; otherwise one the pool holds no bytes of (a coinbase). With none, such a parent is a placeholder that signs but that `funding.BEEF` and `funding.KeepBEEF` refuse to write (`funding.ErrPlaceholder`) |
+| `Chain` | none | a `nodeapi.Chain` asked everything `Asset` is asked, in its place: a chain view that needs no node (`nodeapi.ParseChain`, WhatsOnChain with every proof checked against the producer's headers). `Trees.Recover` asks it too |
 | `Async` | false | settle on the leg's acceptance and collect the proof later |
-| `Fees` | the zero policy | fees for what the Payer mints itself (a funding tree); `mint.DefaultFees` is the usual one, and zero pays no fee |
+| `Fees` | the zero policy | fees for what the Payer mints itself (a funding tree); `mint.DefaultFees` is the usual one, and zero pays no fee. A `feepolicy.Source` answers it per run for a live rate |
 | `Timeout` | `DefaultTimeout` (10 min) | how long a wait for a proof lasts |
 | `Poll` | `DefaultPoll` (5 s) | how often the wait asks |
 | `Note` | discard | receives each progress line |
@@ -771,7 +951,7 @@ which makes the first two rarer.
 
 | Field | Default | |
 |---|---|---|
-| `Proofs` | nothing mined | `producer.Proofs{Arcade, Asset, Tx}`: arcade first, when it is the settlement leg, then the node; an unmined transaction one of whose inputs the node shows spent by another is refused (`OfTx`, or `Of` with `Tx`) |
+| `Proofs` | nothing mined | `producer.Proofs{Arcade, Asset, Source, Spends, Tx}`: arcade first, when it is the settlement leg, then the node (or `Source` in its place, a chain view such as `nodeapi.ParseChain` builds); an unmined transaction one of whose inputs the node (or `Spends`) shows spent by another is refused (`OfTx`, or `Of` with `Tx`) |
 | `Kept`, `Pool`, `Journal` | nil | the copy handed out gets the proof; held change is released; journal entries are stamped |
 | `Facade`, `Topic` | nil | where a proven transaction is published again; nil publishes nothing |
 | `Retry` | empty | ends the note about a proof that could not be published with how to send it again |
@@ -789,7 +969,9 @@ which makes the first two rarer.
 | Specification | Source | Reads |
 |---|---|---|
 | `woc:main`, `woc:test` | the public WhatsOnChain API | `/block/{h}/header`, `/chain/info` |
-| `chaintracks:https://host/v2` | a chaintracks v2 service | `/header/height/{h}`, `/height` |
+| `chaintracks:https://host/v2` | a chaintracks v2 service (status envelope) | `/header/height/{h}`, `/height` |
+| `bhs:https://host:8080` | a [block-headers-service](https://github.com/bsv-blockchain/block-headers-service); `/api/v1` is added to a URL with no path | `/chain/header/byHeight?height={h}&count=1`, `/chain/tip/longest` |
+| `arcade:https://host` | the chaintracks server an [arcade](https://github.com/bsv-blockchain/arcade) installation embeds, under `/chaintracks/v2` (bare values, no envelope) | `/header/height/{h}`, `/height` |
 | `https://host:port` | an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge) header read API | `/v1/root/{h}`, `/v1/tip` |
 
 `headers.NewSource(spec)` returns the parse error instead; `New` returns a
@@ -798,8 +980,9 @@ client that answers every call with it.
 | Field | Default | |
 |---|---|---|
 | `Base` | from the specification | the source's base URL, with no path suffix |
-| `Kind` | from the specification | `Native`, `WhatsOnChain` or `Chaintracks` |
-| `Network` | `main` for WhatsOnChain main and chaintracks, `test` for WhatsOnChain test, none for a bridge | sets the proof-of-work floor |
+| `Kind` | from the specification | `Native`, `WhatsOnChain`, `Chaintracks`, `BlockHeadersService` or `Arcade` |
+| `Network` | `main` for WhatsOnChain main, chaintracks, bhs and arcade, `test` for WhatsOnChain test, none for a bridge | sets the proof-of-work floor; set `test` for a testnet chaintracks, bhs or arcade |
+| `Token` | none | a bearer token sent on every request: a block-headers-service requires one unless its operator turned authentication off |
 | `MinDifficulty` | `MainnetMinDifficulty` (4e9) on `main`, none otherwise | overrides the floor |
 | `HTTP` | a client with no proxy | |
 | `Timeout` | 10 s | used only when `HTTP` is nil |
@@ -807,11 +990,18 @@ client that answers every call with it.
 Answers are bounded at 1 MiB. Which header source a reader trusts is the
 security decision behind every proof it checks. A bridge's `/v1` answers
 carry no header fields and are taken as given, so point at one that received
-its headers itself. A WhatsOnChain or chaintracks answer is not taken as
+its headers itself. An answer from any other kind is not taken as
 given: every header is hashed, must carry the work its bits claim, and on
 mainnet must claim at least the floor, so a source that lies has to mine a
 block to do it. A header that fails is `ErrProofOfWork`, an error and never a
-false answer. For the strongest check run your own chaintracks or node.
+false answer. For the strongest check run your own block-headers-service, chaintracks or
+node. block-headers-service's `merkleroot/verify` is never asked: it would
+give up the proof-of-work check.
+
+`Client.HeaderAt(ctx, height)` returns the checked header (hash, time,
+merkle root): how an application with no node reads a block's hash or time
+by height. A height the source does not hold is `ErrUnknownHeight`; a
+bridge source carries no header fields and is an error.
 
 ## Hosts: `hostset.Client`
 

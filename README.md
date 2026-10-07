@@ -38,19 +38,20 @@ minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 | `carrier` | An unmineable carrier transaction that commits a payload, and the funding lock, decode and sweep it spends from |
 | `chaintoken` | The BEEF a host admits a mined chain token, an unmined carrier and a mined sweep in, read exactly as declared on the wire and held to exactly what the object needs, and a token output held to its key |
 | `keyed` | The content key of BRC-369 keyed content, its symmetric key and commitment, the check on an unwrapped key, BRC-2's symmetric form, one BRC-369 segment, and a content key's wrap under a group epoch with the application's domain string |
-| `mint` | Builders for a state transition, a funding tree of at most 1023 funding outputs and a payment, with a fee loop that signs to measure the size and rebuilds at the rate until the fee covers it |
+| `mint` | Builders for a state transition, a funding tree of at most 1023 funding outputs and a payment, with a fee loop that signs to measure the size and rebuilds at an exact integer rate (satoshis per bytes, as miners publish it) until the fee covers it |
+| `feepolicy` | Where the fee rate comes from: a static policy, or a broadcaster's published `/v1/policy`, cached and held to minimum and maximum rates |
 | `funding` | Funding-tree state kept between runs, and the BEEF kept for transactions spent before they mine |
 | `guard` | A structural walk of a BRC-74 BUMP, a BEEF or a raw transaction before the SDK allocates for it, and a public key taken only in its canonical encoding |
-| `nodeapi` | A Teranode JSON-RPC and asset API client with bounded responses and a txid-in-proof check |
-| `bwallet` | An embedded BRC-100 wallet backend and coin pool, a Signer, and BRC-29 derivations, keyed by an application profile |
+| `nodeapi` | The chain views an application reads (transactions, proofs, spends, known) as narrow interfaces, over a Teranode JSON-RPC and asset API client or WhatsOnChain, picked per method from a specification, with every proof checked against the caller's headers |
+| `bwallet` | An embedded BRC-100 wallet backend and coin pool, a Signer, BRC-29 derivations, and the import of a funding payment from the user's wallet BEEF or by txid, keyed by an application profile |
 | `wirewallet` | A BRC-100 wallet over the wallet wire, loopback only, and a handler that serves one |
-| `publish` | The settlement leg (EF to an ingress, hex to a node RPC, arcade) and the BEEF object leg to an overlay host, which never share a socket, plus a transition journal |
+| `publish` | The settlement leg (EF to an ingress, hex to a node RPC, arcade by default, ARC) and the BEEF object leg to an overlay host, which never share a socket, plus a transition journal |
 | `producer` | A producer's orchestration: fee inputs and change from a coin pool, settlement, the funding-tree lifecycle, the one kept copy of each unproven transaction, and proof collection that republishes what has mined |
 | `chainview` | Whether a transaction can still mine: a settlement leg's error read as a definitive refusal or as transient, and the input another transaction spent |
 | `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
 | `payee` | The payee's side of those payments: the payee key, a host's versioned ledger of accepted payments read and written byte for byte, the host's replay and conflict rule, and an idempotent settle run into the pool with its counts |
 | `acceptance` | The value discriminator for an incoming payment: fast on SPV, the receiver's own broadcast and the network's verdict at or below a threshold, held for a proof above it, bounded per payer and in total, and a monitor that flags a payer whose fast payment is lost |
-| `headers` | A chain tracker over WhatsOnChain, chaintracks or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
+| `headers` | A chain tracker over WhatsOnChain, chaintracks, block-headers-service, arcade's header server or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
 | `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy |
@@ -128,14 +129,17 @@ const key = readerLockingKey([1, 'example app'], 'record', identityHex)
 
 ### Mainnet and testnet
 
-The library works on BSV mainnet and testnet: `headers.New("woc:main")` or
-`headers.New("woc:test")` checks proofs against WhatsOnChain headers (with
-proof of work checked), `bwallet.Embedded.Mainnet` picks the address
-prefix, and `publish.Arcade` broadcasts through any ARC-compatible service.
-An application's coin comes from its user: the wallet prints its fund
-address, the user pays a small amount to it from their own wallet, and the
-application imports that payment once it is mined and its proof holds, or
-it hands funding to a BRC-100 wallet the user already runs.
+The library works on BSV mainnet and testnet with no infrastructure of
+your own: `headers.New("woc:main")` checks proofs against WhatsOnChain
+headers (with proof of work checked), `nodeapi.ParseChain("woc:main", ...)`
+reads transactions, proofs and spends from WhatsOnChain, and
+`publish.ParseSettler("arcade:main", ...)` broadcasts through GorillaPool's
+public arcade (`test` for testnet throughout). A node, block-headers-service
+or a self-hosted arcade replaces any of them by configuration. An
+application's coin comes from its user: the wallet prints its fund address,
+the user pays it from their own wallet, and the application imports the
+payment from the BEEF the user's wallet hands over or by txid once it is
+mined, or it hands funding to a BRC-100 wallet the user already runs.
 [docs/examples.md](docs/examples.md#fund-a-wallet-on-mainnet-or-testnet)
 shows both. The coinbase helpers (`bwallet.FundFromCoinbase`,
 `bwallet.Rescan`) work only on a regtest chain you run, for development and
