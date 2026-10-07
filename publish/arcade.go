@@ -3,6 +3,7 @@ package publish
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,6 +51,10 @@ type Arcade struct {
 	// another transaction is a refusal (errors.Is nodeapi.ErrDoubleSpent)
 	// whatever arcade says, and is checked while Submit waits too.
 	Asset *nodeapi.Asset
+	// Spends, when set, is that view in Asset's place: a spend view that
+	// needs no node, such as WhatsOnChain (nodeapi.WoC), so that the
+	// ACCEPTED-but-spent case stays refused without one.
+	Spends nodeapi.SpendSource
 }
 
 // DefaultVerdict is long enough for a network to see a transaction in the
@@ -167,10 +172,16 @@ func (a *Arcade) Submit(ctx context.Context, tx *transaction.Transaction) error 
 // spentElsewhere is the node's word on tx's inputs, as a refusal, or nil
 // with no Asset or when the node shows none spent by another transaction.
 func (a *Arcade) spentElsewhere(ctx context.Context, tx *transaction.Transaction) error {
-	if a.Asset == nil {
+	var s nodeapi.SpendSource
+	switch {
+	case a.Spends != nil:
+		s = a.Spends
+	case a.Asset != nil:
+		s = a.Asset
+	default:
 		return nil
 	}
-	if err := a.Asset.SpentElsewhere(ctx, tx); err != nil {
+	if err := nodeapi.SpentElsewhereIn(ctx, s, tx); err != nil {
 		return fmt.Errorf("publish: the network refused %s: %w", tx.TxID(), err)
 	}
 	return nil
@@ -336,4 +347,60 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 	case <-t.C:
 		return nil
 	}
+}
+
+// ErrArcadeRefused is a transaction arcade reports the network refused
+// (REJECTED, DOUBLE_SPEND_ATTEMPTED). It never mines.
+var ErrArcadeRefused = errors.New("arcade: the network refused the transaction")
+
+var (
+	_ nodeapi.ProofSource = (*Arcade)(nil)
+	_ nodeapi.KnownSource = (*Arcade)(nil)
+)
+
+// Proof is arcade's proof of a transaction it was sent, as a
+// nodeapi.ProofSource: the merkle path once MINED, held to the checks a
+// node's proof is (it parses through the BUMP guard, names txid, and
+// agrees with the height arcade reports). A transaction not mined yet, or
+// one arcade does not hold (ErrArcadeUnknown: it was broadcast some other
+// way), is nodeapi.ErrNotMined, so that a caller asks another source; one
+// the network refused is ErrArcadeRefused. Check the proof against your
+// headers (nodeapi.Checked).
+func (a *Arcade) Proof(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
+	st, err := a.Status(ctx, txid)
+	switch {
+	case errors.Is(err, ErrArcadeUnknown):
+		return nil, 0, fmt.Errorf("%w: %w", nodeapi.ErrNotMined, err)
+	case err != nil:
+		return nil, 0, err
+	case st.Refused():
+		return nil, 0, fmt.Errorf("%w: %s: %s", ErrArcadeRefused, txid, st.Why())
+	case !st.Mined():
+		return nil, 0, fmt.Errorf("%w: arcade holds %s as %s", nodeapi.ErrNotMined, txid, st.TxStatus)
+	}
+	raw, err := hex.DecodeString(st.MerklePath)
+	if err != nil {
+		return nil, 0, fmt.Errorf("arcade's proof for %s is not hex: %w", txid, err)
+	}
+	mp, err := nodeapi.ProofFor(raw, txid)
+	if err != nil {
+		return nil, 0, fmt.Errorf("arcade's proof for %s: %w", txid, err)
+	}
+	if st.BlockHeight != 0 && st.BlockHeight != mp.BlockHeight {
+		return nil, 0, fmt.Errorf("arcade's proof for %s: proof height %d, reported height %d", txid, mp.BlockHeight, st.BlockHeight)
+	}
+	return mp, mp.BlockHeight, nil
+}
+
+// Known reports whether arcade holds txid, in any status: true for a
+// transaction it was sent, false for ErrArcadeUnknown.
+func (a *Arcade) Known(ctx context.Context, txid string) (bool, error) {
+	_, err := a.Status(ctx, txid)
+	switch {
+	case err == nil:
+		return true, nil
+	case errors.Is(err, ErrArcadeUnknown):
+		return false, nil
+	}
+	return false, err
 }
