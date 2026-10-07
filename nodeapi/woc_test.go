@@ -427,7 +427,7 @@ func TestWaitOn(t *testing.T) {
 }
 
 func TestParseChain(t *testing.T) {
-	s, err := nodeapi.ParseChain("woc:main", nodeapi.ChainOptions{WoCKey: "k", WoCRate: 10})
+	s, err := nodeapi.ParseChain("woc:main", nodeapi.ChainOptions{WoCKey: "k", WoCRate: 10, Headers: headersAt900000()})
 	if err != nil || len(s.Tx) != 1 || len(s.Proofs) != 1 {
 		t.Fatal(err)
 	}
@@ -435,14 +435,14 @@ func TestParseChain(t *testing.T) {
 	if !ok || w.Network != "main" || w.Key != "k" || w.Rate != 10 || s.Knows != nodeapi.KnownSource(w) {
 		t.Fatalf("%+v", s)
 	}
-	s, err = nodeapi.ParseChain(" asset:http://node:8090/ , woc:test ", nodeapi.ChainOptions{})
+	s, err = nodeapi.ParseChain(" asset:http://node:8090/ , woc:test ", nodeapi.ChainOptions{Headers: headersAt900000()})
 	if err != nil || len(s.Tx) != 2 || len(s.Proofs) != 2 {
 		t.Fatal(err)
 	}
 	if a, ok := s.Spends.(*nodeapi.Asset); !ok || a.Base != "http://node:8090" {
 		t.Fatalf("the first backend answers spends: %T", s.Spends)
 	}
-	s, err = nodeapi.ParseChain("woc:test,spend=asset:https://node,known=asset:https://node2,proof=woc:main,tx=woc:main", nodeapi.ChainOptions{})
+	s, err = nodeapi.ParseChain("woc:test,spend=asset:https://node,known=asset:https://node2,proof=woc:main,tx=woc:main", nodeapi.ChainOptions{Headers: headersAt900000()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -456,8 +456,37 @@ func TestParseChain(t *testing.T) {
 		t.Fatalf("%d %d", len(s.Tx), len(s.Proofs))
 	}
 	for _, bad := range []string{"", " , ", "woc:regtest", "woc:", "asset:", "asset:ftp://x", "node:8090", "gp:main", "spends=woc:main", "http://node"} {
-		if _, err := nodeapi.ParseChain(bad, nodeapi.ChainOptions{}); !errors.Is(err, nodeapi.ErrChainSpec) {
+		if _, err := nodeapi.ParseChain(bad, nodeapi.ChainOptions{Headers: headersAt900000()}); !errors.Is(err, nodeapi.ErrChainSpec) {
 			t.Errorf("%q: %v", bad, err)
 		}
+	}
+	if _, err := nodeapi.ParseChain("woc:main", nodeapi.ChainOptions{}); !errors.Is(err, nodeapi.ErrChainSpec) {
+		t.Fatalf("no headers: %v", err)
+	}
+	for _, p := range s.Proofs {
+		if _, ok := p.(nodeapi.Checked); !ok {
+			t.Fatalf("an unchecked proof source: %T", p)
+		}
+	}
+}
+
+// End to end with no node: ParseChain over WhatsOnChain answers a proof
+// only once the headers hold its root.
+func TestParseChainChecksProofs(t *testing.T) {
+	ctx := context.Background()
+	srv, _ := newWoC(t, realRoutes(t))
+	s, err := nodeapi.ParseChain("woc:main", nodeapi.ChainOptions{Client: srv.Client(), WoCRate: 1000, Headers: headersAt900000()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.Spends.(*nodeapi.WoC).Base = srv.URL
+	if _, h, err := s.Proof(ctx, wocTx); err != nil || h != 900000 {
+		t.Fatalf("%d %v", h, err)
+	}
+	bad, _ := nodeapi.ParseChain("woc:main", nodeapi.ChainOptions{Client: srv.Client(), WoCRate: 1000,
+		Headers: &goldentest.Tracker{Roots: map[uint32]string{900000: strings.Repeat("22", 32)}}})
+	bad.Spends.(*nodeapi.WoC).Base = srv.URL
+	if _, _, err := bad.Proof(ctx, wocTx); !errors.Is(err, nodeapi.ErrProofRefused) {
+		t.Fatalf("a root the headers do not hold: %v", err)
 	}
 }

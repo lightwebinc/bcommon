@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 )
 
 // ErrChainSpec is a chain view specification that cannot be used.
@@ -20,6 +22,9 @@ type ChainOptions struct {
 	WoCRate float64
 	// Client, when set, is every backend's HTTP client.
 	Client *http.Client
+	// Headers is required: every proof a backend answers is checked
+	// against it (Checked) before the Sources return it.
+	Headers chaintracker.ChainTracker
 }
 
 // ParseChain reads a chain view specification, in the style of
@@ -28,7 +33,8 @@ type ChainOptions struct {
 //	woc:main | woc:test     the public WhatsOnChain API (*WoC)
 //	asset:http://node:8090  a Teranode asset API (*Asset)
 //
-// optionally qualified by the one method it serves: tx=, proof=, spend= or
+// with every proof checked against opt.Headers (Checked), optionally
+// qualified by the one method it serves: tx=, proof=, spend= or
 // known=. An unqualified backend serves every method. Transactions and
 // proofs are asked of every backend that serves them, in order, since each
 // answer is checked. "Spent", "unspent" and "known" come from one backend
@@ -42,6 +48,9 @@ type ChainOptions struct {
 //	asset:http://node:8090,woc:main        a node, WhatsOnChain for what it lacks
 //	woc:test,spend=asset:http://node:8090  WhatsOnChain, a node's spend view
 func ParseChain(spec string, opt ChainOptions) (*Sources, error) {
+	if opt.Headers == nil {
+		return nil, fmt.Errorf("%w: no headers: every proof is checked against the caller's headers", ErrChainSpec)
+	}
 	s := &Sources{}
 	found := false
 	for _, item := range strings.Split(spec, ",") {
@@ -61,7 +70,7 @@ func ParseChain(spec string, opt ChainOptions) (*Sources, error) {
 		switch method {
 		case "":
 			s.Tx = append(s.Tx, b)
-			s.Proofs = append(s.Proofs, b)
+			s.Proofs = append(s.Proofs, Checked{Source: b, Headers: opt.Headers})
 			if s.Spends == nil {
 				s.Spends = b
 			}
@@ -71,7 +80,7 @@ func ParseChain(spec string, opt ChainOptions) (*Sources, error) {
 		case "tx":
 			s.Tx = append(s.Tx, b)
 		case "proof":
-			s.Proofs = append(s.Proofs, b)
+			s.Proofs = append(s.Proofs, Checked{Source: b, Headers: opt.Headers})
 		case "spend":
 			s.Spends = b
 		case "known":
