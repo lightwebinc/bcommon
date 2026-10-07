@@ -3,12 +3,12 @@ module vectors
 go 1.26.2
 
 require (
-	github.com/bsv-blockchain/go-sdk v1.5.2
+	github.com/bsv-blockchain/go-sdk v1.7.1
 	github.com/fxamacker/cbor/v2 v2.9.4
 )
 
 require (
-	github.com/mrz1836/go-whatsonchain v1.1.0 // indirect
+	github.com/mrz1836/go-whatsonchain v1.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect

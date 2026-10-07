@@ -6,7 +6,7 @@
 .PHONY: verify build test fmt-check vet deps-check licences licences-update vectors vectors-update ts ts-test ts-licences ts-licences-update
 
 SDK := github.com/bsv-blockchain/go-sdk
-SDK_VERSION := v1.5.2
+SDK_VERSION := v1.7.1
 VECTORS := tools/vectors
 CBOR_ORACLE := github.com/fxamacker/cbor/v2
 
