@@ -496,7 +496,8 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 // sanitize is character rules over a table it embeds, and its tests compare
 // it with termsafe; payee is the payee's side of a payment over the purse,
 // and settles nothing the purse does not, and its tests run it on the local
-// chain.
+// chain; feepolicy does the policy fetch so that mint stays pure, and
+// reaches nothing but mint.
 var layers = map[string]struct {
 	module []string
 	tests  []string
@@ -511,6 +512,7 @@ var layers = map[string]struct {
 	"sanitize":   {tests: []string{"termsafe"}},
 	"chirp":      {sdk: true},
 	"commit":     {},
+	"feepolicy":  {module: []string{"mint"}},
 	"payee":      {module: []string{"guard", "purse", "termsafe"}, tests: []string{"bwallet", "mint", "nodeapi", "producer", "publish", "testchain"}, sdk: true},
 }
 
