@@ -1,14 +1,15 @@
 // Package headers is a chain tracker over a header source: an overlay
 // bridge's native /v1 routes (github.com/lightwebinc/overlay-bridge), the
-// public WhatsOnChain API, or a chaintracks v2 service.
+// public WhatsOnChain API, a chaintracks v2 service, a block-headers-service,
+// or the chaintracks server an arcade installation embeds.
 //
 // It is the root of trust for every proof checked against it. A transaction
 // is only as trustworthy as the headers its BUMP is checked against, so the
 // question of WHO answers "what root does height N commit to" is the whole
 // security question, not a configuration detail. A bridge that received the
 // headers itself, off the same network that delivered the transaction, needs
-// no further check. A source that serves header fields (WhatsOnChain,
-// chaintracks) is not taken at its word: every header it answers is hashed
+// no further check. A source that serves header fields (every other kind)
+// is not taken at its word: every header it answers is hashed
 // here and must carry the work its bits claim, at or above the network's
 // floor, so a lie costs a mined block rather than an edited response.
 //
@@ -54,6 +55,10 @@ type Client struct {
 	HTTP *http.Client
 	// Timeout defaults to 10s when HTTP is nil.
 	Timeout time.Duration
+	// Token, when set, is sent as a bearer token on every request: a
+	// block-headers-service requires one unless its operator turned
+	// authentication off.
+	Token string
 
 	err error
 
@@ -189,6 +194,9 @@ func (c *Client) getOnce(ctx context.Context, path string, into any) (int, strin
 		return 0, "", err
 	}
 	req.Header.Set("Accept", "application/json")
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
 
 	resp, err := c.httpClient().Do(req)
 	if err != nil {
@@ -317,6 +325,22 @@ func (c *Client) CurrentHeight(ctx context.Context) (uint32, error) {
 			return 0, fmt.Errorf("header service: tip: status %d %q", status, env.Status)
 		}
 		return env.Value.Height, nil
+	case BlockHeadersService, Arcade:
+		var tip struct {
+			Height *uint32 `json:"height"`
+		}
+		path := "/height"
+		if c.Kind == BlockHeadersService {
+			path = "/chain/tip/longest"
+		}
+		status, err := c.get(ctx, path, &tip)
+		if err != nil {
+			return 0, err
+		}
+		if status != http.StatusOK || tip.Height == nil {
+			return 0, fmt.Errorf("header service: tip: status %d", status)
+		}
+		return *tip.Height, nil
 	}
 	var answer struct {
 		Height uint32 `json:"height"`

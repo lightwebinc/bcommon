@@ -19,6 +19,14 @@ const (
 	// Chaintracks is a chaintracks v2 service (GET /height and
 	// GET /header/height/{h} under the base).
 	Chaintracks
+	// BlockHeadersService is a block-headers-service (bsv-blockchain)
+	// API: GET /chain/tip/longest and GET /chain/header/byHeight under
+	// /api/v1, with a bearer token when the service requires one.
+	BlockHeadersService
+	// Arcade is the chaintracks server an arcade installation embeds,
+	// under /chaintracks/v2: GET /height and GET /header/height/{h}, each
+	// answering the value bare rather than in a status envelope.
+	Arcade
 )
 
 func (k Kind) String() string {
@@ -27,6 +35,10 @@ func (k Kind) String() string {
 		return "whatsonchain"
 	case Chaintracks:
 		return "chaintracks"
+	case BlockHeadersService:
+		return "block-headers-service"
+	case Arcade:
+		return "arcade"
 	default:
 		return "native"
 	}
@@ -60,10 +72,16 @@ const wocBase = "https://api.whatsonchain.com/v1/bsv/"
 //
 //	woc:main | woc:test          the public WhatsOnChain API
 //	chaintracks:https://host/v2  a chaintracks v2 service
+//	bhs:https://host:8080        a block-headers-service (/api/v1 is added
+//	                             to a URL with no path); set Client.Token
+//	                             when it requires one
+//	arcade:https://host          an arcade installation's embedded
+//	                             chaintracks server (/chaintracks/v2)
 //	https://host:port            an overlay bridge's native /v1 routes
 //
 // and reports the kind, the base URL and the network the kind implies ("" for
-// a native source, which carries no header fields to check).
+// a native source, which carries no header fields to check). chaintracks,
+// bhs and arcade imply mainnet; set Client.Network for a testnet one.
 func Parse(spec string) (Kind, string, string, error) {
 	s := strings.TrimSpace(spec)
 	switch {
@@ -81,12 +99,37 @@ func Parse(spec string) (Kind, string, string, error) {
 			return 0, "", "", fmt.Errorf("%w: %q: %v", ErrSource, spec, err)
 		}
 		return Chaintracks, base, Mainnet, nil
+	case strings.HasPrefix(s, "bhs:"):
+		base, err := withPath(strings.TrimPrefix(s, "bhs:"), "/api/v1")
+		if err != nil {
+			return 0, "", "", fmt.Errorf("%w: %q: %v", ErrSource, spec, err)
+		}
+		return BlockHeadersService, base, Mainnet, nil
+	case strings.HasPrefix(s, "arcade:"):
+		base := strings.TrimRight(strings.TrimPrefix(s, "arcade:"), "/")
+		if err := httpURL(base); err != nil {
+			return 0, "", "", fmt.Errorf("%w: %q: %v", ErrSource, spec, err)
+		}
+		return Arcade, base + "/chaintracks/v2", Mainnet, nil
 	default:
 		if err := httpURL(s); err != nil {
-			return 0, "", "", fmt.Errorf("%w: %q: %v (use woc:main, chaintracks:URL or a bridge URL)", ErrSource, spec, err)
+			return 0, "", "", fmt.Errorf("%w: %q: %v (use woc:main, chaintracks:URL, bhs:URL, arcade:URL or a bridge URL)", ErrSource, spec, err)
 		}
 		return Native, strings.TrimRight(s, "/"), "", nil
 	}
+}
+
+// withPath is s with def as its path when it has none, trailing slashes
+// dropped.
+func withPath(s, def string) (string, error) {
+	if err := httpURL(s); err != nil {
+		return "", err
+	}
+	u, _ := url.Parse(s)
+	if strings.Trim(u.Path, "/") == "" {
+		u.Path = def
+	}
+	return strings.TrimRight(u.String(), "/"), nil
 }
 
 func httpURL(s string) error {

@@ -179,6 +179,24 @@ func (w *wireHeader) decode() (*header, error) {
 	return h, nil
 }
 
+// bhsHeader is a block-headers-service header answer
+// (BlockHeaderResponse): the six fields under its own names and no height,
+// which is the one asked for.
+type bhsHeader struct {
+	Hash    string `json:"hash"`
+	Version int32  `json:"version"`
+	Prev    string `json:"prevBlockHash"`
+	Root    string `json:"merkleRoot"`
+	Time    uint32 `json:"creationTimestamp"`
+	Bits    uint32 `json:"difficultyTarget"`
+	Nonce   uint32 `json:"nonce"`
+}
+
+func (b bhsHeader) wire(height uint32) wireHeader {
+	return wireHeader{Height: height, Version: uint32(b.Version), Hash: b.Hash, Root: b.Root, Prev: b.Prev, //nolint:gosec // the header's four bytes
+		Time: b.Time, Bits: flexUint(b.Bits), Nonce: b.Nonce}
+}
+
 // fullHeader fetches the header at height from a source that serves header
 // fields. A 404 is (nil, nil): the source does not know that height.
 func (c *Client) fullHeader(ctx context.Context, height uint32) (*header, error) {
@@ -203,6 +221,22 @@ func (c *Client) fullHeader(ctx context.Context, height uint32) (*header, error)
 			}
 			err = json.Unmarshal(env.Value, &w)
 		}
+	case Arcade:
+		status, err = c.get(ctx, "/header/height/"+h, &w)
+	case BlockHeadersService:
+		var list []bhsHeader
+		status, err = c.get(ctx, "/chain/header/byHeight?count=1&height="+h, &list)
+		if err == nil && status == http.StatusOK {
+			// The service answers a height it does not hold with a 404, or
+			// with no header past its tip; either is "not yet".
+			if len(list) == 0 {
+				return nil, nil
+			}
+			if len(list) != 1 {
+				return nil, fmt.Errorf("header service: header at height %d: %d headers answered", height, len(list))
+			}
+			w = list[0].wire(height)
+		}
 	default:
 		return nil, fmt.Errorf("header service: %s sources carry no header fields", c.Kind)
 	}
@@ -217,4 +251,45 @@ func (c *Client) fullHeader(ctx context.Context, height uint32) (*header, error)
 		return nil, fmt.Errorf("header service: header at height %d: status %d", height, status)
 	}
 	return w.decode()
+}
+
+// Header is a block header a source served, its proof of work checked: the
+// fields its hash commits to, the hash, and the height the source placed it
+// at. Time is the block's own timestamp (Unix seconds).
+type Header struct {
+	Height     uint32
+	Hash       chainhash.Hash
+	Prev       chainhash.Hash
+	MerkleRoot chainhash.Hash
+	Version    uint32
+	Time       uint32
+	Bits       uint32
+	Nonce      uint32
+}
+
+// ErrUnknownHeight is a height the source does not hold yet.
+var ErrUnknownHeight = errors.New("headers: the source does not hold that height")
+
+// HeaderAt reads the header at height from a source that serves header
+// fields (WhatsOnChain, chaintracks, block-headers-service, arcade) and
+// checks it as IsValidRootForHeight does: its fields hash to its hash, the
+// hash carries the work its bits claim, at or above the network's floor. It
+// is how an application with no node reads a block's hash or time by height.
+// A native source carries no header fields and is an error.
+func (c *Client) HeaderAt(ctx context.Context, height uint32) (*Header, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	h, err := c.fullHeader(ctx, height)
+	if err != nil {
+		return nil, err
+	}
+	if h == nil {
+		return nil, fmt.Errorf("%w: %d", ErrUnknownHeight, height)
+	}
+	if err := h.check(height, c.minDifficulty()); err != nil {
+		return nil, err
+	}
+	return &Header{Height: h.Height, Hash: h.Hash, Prev: h.Prev, MerkleRoot: h.Root,
+		Version: h.Version, Time: h.Time, Bits: h.Bits, Nonce: h.Nonce}, nil
 }

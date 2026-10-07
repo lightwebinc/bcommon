@@ -66,13 +66,16 @@ func TestParse(t *testing.T) {
 		{"woc:test", WhatsOnChain, "https://api.whatsonchain.com/v1/bsv/test", Testnet},
 		{"chaintracks:https://ct.example.com/v2/", Chaintracks, "https://ct.example.com/v2", Mainnet},
 		{"http://bridge.example.com:9178/", Native, "http://bridge.example.com:9178", ""},
+		{"bhs:http://bhs.example.com:8080", BlockHeadersService, "http://bhs.example.com:8080/api/v1", Mainnet},
+		{"bhs:https://bhs.example.com/headers/api/v1/", BlockHeadersService, "https://bhs.example.com/headers/api/v1", Mainnet},
+		{"arcade:https://arcade.example.com/", Arcade, "https://arcade.example.com/chaintracks/v2", Mainnet},
 	} {
 		kind, base, network, err := Parse(tc.spec)
 		if err != nil || kind != tc.kind || base != tc.base || network != tc.network {
 			t.Errorf("Parse(%q) = %v %q %q %v", tc.spec, kind, base, network, err)
 		}
 	}
-	for _, bad := range []string{"", "woc:", "woc:regtest", "chaintracks:", "chaintracks:ftp://x", "bridge.example.com", "file:///etc"} {
+	for _, bad := range []string{"", "woc:", "woc:regtest", "chaintracks:", "chaintracks:ftp://x", "bridge.example.com", "file:///etc", "bhs:", "bhs:ftp://x", "arcade:", "arcade:bhs.example.com"} {
 		if _, _, _, err := Parse(bad); !errors.Is(err, ErrSource) {
 			t.Errorf("Parse(%q) = %v, want ErrSource", bad, err)
 		}
