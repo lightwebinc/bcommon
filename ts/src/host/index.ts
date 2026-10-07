@@ -10,12 +10,17 @@
  *   replay refusal (budget.ts), and bounded sessions (sessions.ts);
  * - the payee ledger a host writes and reads (ledger.ts), the Go `payee`
  *   package's lines;
- * - payment acceptance over arcade and the node (accept.ts), on the
+ * - payment acceptance over arcade and the node, or WhatsOnChain for a host
+ *   with no node (accept.ts), on the
  *   runtime entry point's acceptance decision.
  */
 export {
   ArcadeHttp,
   AssetHttp,
+  WocHttp,
+  WocFreeRate,
+  tscMerklePath,
+  type TscProof,
   BroadcastRefused,
   EventKinds,
   PaymentGate,

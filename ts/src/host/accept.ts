@@ -145,6 +145,122 @@ export class AssetHttp implements NodeView {
   }
 }
 
+/** WhatsOnChain's free tier: "Up to 3 requests/sec". */
+export const WocFreeRate = 3
+
+/** One entry of WhatsOnChain's /tx/{txid}/proof/tsc answer. */
+export interface TscProof {
+  index: number
+  txOrId: string
+  target: string
+  nodes: string[]
+}
+
+/** A TSC merkle proof of txid as a BRC-74 path at height; throws on a proof of something else. */
+export function tscMerklePath(p: TscProof, txid: string, height: number): MerklePath {
+  if (typeof p.txOrId !== 'string' || p.txOrId.toLowerCase() !== txid.toLowerCase()) throw new Error(`the tsc proof is for ${String(p.txOrId)}, not ${txid}`)
+  if (!Array.isArray(p.nodes) || p.nodes.length > 64 || !Number.isSafeInteger(p.index) || p.index < 0) throw new Error('the tsc proof is malformed')
+  if (p.nodes.length < 53 && p.index >= 2 ** p.nodes.length) throw new Error(`tsc index ${p.index} does not fit ${p.nodes.length} levels`)
+  const path: Array<Array<{ offset: number; hash?: string; txid?: boolean; duplicate?: boolean }>> = [[{ offset: p.index, hash: txid.toLowerCase(), txid: true }]]
+  p.nodes.forEach((n, level) => {
+    const offset = Math.floor(p.index / 2 ** level) ^ 1
+    if (n !== '*' && !isTxid(n)) throw new Error(`tsc node ${level} is not a hash`)
+    const el = n === '*' ? { offset, duplicate: true } : { offset, hash: n.toLowerCase() }
+    path[level] = [...(path[level] ?? []), el].sort((a, b) => a.offset - b.offset)
+  })
+  return new MerklePath(height, path)
+}
+
+/**
+ * WhatsOnChain as the node view, for a host with no node: who spent an
+ * output, from GET /tx/{txid}/{vout}/spent, where a 404 is WhatsOnChain's
+ * "known, not spent" and a 400 its "unknown" (also its answer for an
+ * unspendable output), which throws and is never read as unspent; and a
+ * proof, from the undocumented GET /tx/{txid}/beef with the documented
+ * /proof/tsc as the fallback. The gate checks every proof against the
+ * host's headers. Requests are paced to rate a second (default the free
+ * tier's 3); a key is sent as the Authorization header.
+ */
+export class WocHttp implements NodeView {
+  private next = 0
+  private readonly base: string
+  constructor(
+    network: 'main' | 'test',
+    private readonly key?: string,
+    base?: string,
+    private readonly rate = WocFreeRate,
+  ) {
+    if (network !== 'main' && network !== 'test') throw new Error(`WhatsOnChain serves main or test, not ${String(network)}`)
+    this.base = (base ?? `https://api.whatsonchain.com/v1/bsv/${network}`).replace(/\/+$/, '')
+  }
+
+  private async get(p: string): Promise<Response> {
+    const gap = 1000 / (this.rate > 0 ? this.rate : WocFreeRate)
+    for (let attempt = 0; ; attempt++) {
+      const now = Date.now()
+      const slot = Math.max(now, this.next)
+      this.next = slot + gap
+      if (slot > now) await sleep(slot - now)
+      const headers: Record<string, string> = {}
+      if (this.key !== undefined && this.key !== '') headers.authorization = this.key
+      const res = await fetch(`${this.base}${p}`, { headers, signal: AbortSignal.timeout(timeout) })
+      if (res.status === 429 && attempt < 3) {
+        await sleep([200, 1000, 3000][attempt] ?? 3000)
+        continue
+      }
+      return res
+    }
+  }
+
+  async spender(txid: string, vout: number): Promise<string> {
+    if (!isTxid(txid) || !Number.isSafeInteger(vout) || vout < 0) throw new Error('not an outpoint')
+    const res = await this.get(`/tx/${txid}/${vout}/spent`)
+    if (res.status === 404) return ''
+    if (res.status === 400) throw new Error(`WhatsOnChain does not know ${txid}.${vout}`)
+    if (res.status !== 200) throw new Error(`WhatsOnChain answers ${res.status} for ${txid}.${vout}`)
+    const s = (await res.json()) as { txid?: unknown }
+    if (!isTxid(s?.txid)) throw new Error('WhatsOnChain names a spender that is not a txid')
+    return s.txid.toLowerCase()
+  }
+
+  async proof(txid: string): Promise<MerklePath | undefined> {
+    if (!isTxid(txid)) throw new Error('not a txid')
+    let failed: string
+    const res = await this.get(`/tx/${txid}/beef`)
+    const body = await res.text()
+    if (res.status === 422 || res.status === 404 || (res.status === 500 && body.includes('No such mempool or blockchain transaction'))) return undefined
+    if (res.status === 200) {
+      try {
+        const tx = Transaction.fromHexBEEF(body.trim())
+        if (tx.id('hex') !== txid.toLowerCase()) throw new Error(`the BEEF is transaction ${tx.id('hex')}`)
+        if (tx.merklePath === undefined) return undefined
+        return held(tx.merklePath, txid)
+      } catch (e) {
+        failed = `beef: ${(e as Error).message}`
+      }
+    } else {
+      failed = `beef: ${res.status}`
+    }
+    const tsc = await this.get(`/tx/${txid}/proof/tsc`)
+    if (tsc.status !== 200) throw new Error(`WhatsOnChain proof of ${txid}: ${failed}; tsc: ${tsc.status}`)
+    const answer = (await tsc.json()) as TscProof[] | TscProof | null
+    if (answer === null) return undefined
+    const p = (Array.isArray(answer) ? answer : [answer]).find((x) => typeof x?.txOrId === 'string' && x.txOrId.toLowerCase() === txid.toLowerCase())
+    if (p === undefined || !isTxid(p.target)) throw new Error(`WhatsOnChain's tsc answer holds no proof of ${txid}`)
+    const hdr = await this.get(`/block/${p.target}/header`)
+    if (hdr.status !== 200) throw new Error(`block ${p.target}: ${hdr.status}`)
+    const h = (await hdr.json()) as { hash?: string; height?: number }
+    if (h.hash?.toLowerCase() !== p.target.toLowerCase() || !Number.isSafeInteger(h.height)) throw new Error(`block ${p.target}: the answer is another block`)
+    return held(tscMerklePath(p, txid, h.height as number), txid)
+  }
+}
+
+/** A path that names txid at its leaf level, or a throw. */
+function held(mp: MerklePath, txid: string): MerklePath {
+  if (!(mp.path[0] ?? []).some((l) => l.hash === txid.toLowerCase())) throw new Error('the proof does not contain the txid')
+  return mp
+}
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms).unref?.())
 
 export interface GateOptions {
@@ -494,6 +610,10 @@ export class PaymentGate {
 export interface AcceptConfig {
   arcadeURL?: string
   assetURL?: string
+  /** WhatsOnChain as the node view, for a host with no node (<P>_CHAIN=woc:main or woc:test). */
+  chain?: 'main' | 'test'
+  /** The WhatsOnChain API key (<P>_WOC_KEY), if any. */
+  wocKey?: string
   policy: AcceptancePolicy
   watchMs: number
 }
@@ -506,7 +626,8 @@ export function parseDuration(name: string, raw: string): number {
 }
 
 /**
- * Reads <P>_ARCADE_URL, <P>_ASSET_URL and <P>_ACCEPT_THRESHOLD_SATS,
+ * Reads <P>_ARCADE_URL, <P>_ASSET_URL (or <P>_CHAIN, woc:main or woc:test,
+ * with <P>_WOC_KEY, for a host with no node) and <P>_ACCEPT_THRESHOLD_SATS,
  * _PAYER_LIMIT, _TOTAL_LIMIT, _WINDOW, _WATCH. Defaults are bcommon's
  * DefaultPolicy, watch 0.
  */
@@ -532,7 +653,16 @@ export function parseAcceptConfig(prefix: string, env: NodeJS.ProcessEnv): Accep
     if (!/^https?:\/\/[^\s]+$/.test(raw)) throw new Error(`${prefix}_${key}: "${raw}" is not an http(s) URL`)
     return raw
   }
-  return { arcadeURL: url('ARCADE_URL'), assetURL: url('ASSET_URL'), policy, watchMs: dur('ACCEPT_WATCH', 0) }
+  const c: AcceptConfig = { arcadeURL: url('ARCADE_URL'), assetURL: url('ASSET_URL'), policy, watchMs: dur('ACCEPT_WATCH', 0) }
+  const chain = env[`${prefix}_CHAIN`]?.trim()
+  if (chain !== undefined && chain !== '') {
+    if (chain !== 'woc:main' && chain !== 'woc:test') throw new Error(`${prefix}_CHAIN: "${chain}" is woc:main or woc:test`)
+    if (c.assetURL !== undefined) throw new Error(`${prefix}_CHAIN and ${prefix}_ASSET_URL are both set; keep one`)
+    c.chain = chain === 'woc:main' ? 'main' : 'test'
+    const key = env[`${prefix}_WOC_KEY`]?.trim()
+    if (key !== undefined && key !== '') c.wocKey = key
+  }
+  return c
 }
 
 /** The gate for a host's configuration. */
@@ -543,7 +673,7 @@ export function gateFor(app: string, host: ModuleHost, headers: ChainTracker, c:
     headers,
     policy: c.policy,
     arcade: c.arcadeURL === undefined ? undefined : new ArcadeHttp(c.arcadeURL),
-    node: c.assetURL === undefined ? undefined : new AssetHttp(c.assetURL),
+    node: c.assetURL !== undefined ? new AssetHttp(c.assetURL) : c.chain !== undefined ? new WocHttp(c.chain, c.wocKey) : undefined,
     watchMs: c.watchMs,
     stateDir,
   })
