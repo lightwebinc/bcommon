@@ -141,17 +141,23 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   `SegmentWriter` compute a root over leaves or content that arrive as a
   stream; `RootOfSubtrees` and `ProveSubtrees` compose per-block subtree
   roots into the whole tree when every block but the last holds the same
-  power of two of leaves; `PathLen` and `VerifyAt` check a compact path,
-  its hashes alone, whose sides follow from the index and the leaf count
+  power of two of leaves, and `SegmentRoots` does the same for per-block
+  `SegmentRoot`s set in any order from several goroutines; `PathLen` and
+  `VerifyAt` check a compact path, its hashes alone, whose sides follow from the index and the leaf count
   (RFC 9162 section 2.1.3.2). Indices there are 64-bit, so a tree of more
   than 2^31 leaves is described on 32-bit platforms too.
 - **`chirp`** owns CHIRP (BRC-167) version 1 and chunking profile 1: the
   root and branch node encodings (the decoder refuses everything the BRC
   says a consumer rejects, and the encoder refuses what the decoder would),
   profile 1's canonical construction (`Build`, `BuildTree`, the streaming
-  `Chunker`), `Verify`, which fetches a closure object by object, hashing
+  `Chunker`, and `BuildParallel` and `ParallelChunker`, which hash the
+  blobs on several cores and the content on one more, and return the same
+  bytes), `Verify`, which fetches a closure object by object, hashing
   each before reading it, under a reference bound, and checks content hash
-  and canonical construction, and the UHRP object identifier and CHIRP URL
+  and canonical construction, `Incremental`, which runs Verify's walk as
+  the pieces arrive (each hashed on the goroutine that brings it, the walk
+  waiting where Verify would report missing, so the first refusal it
+  reports is Verify's), and the UHRP object identifier and CHIRP URL
   of a hash. It takes go-sdk only for Base58. Minor versions above 0 are
   refused rather than read as 1.0.
 - **`store`** owns how a record commits to a set of other records: the refs
@@ -583,7 +589,10 @@ A host or a provider that checks a stored object needs the byte-leaf roots
 and the CHIRP codec, so both have twins, held to the same vectors
 (`bytetree-v1.json`, `chirp-v1.json`) and the same refusal codes in the same
 order. The streaming `chirp.Chunker` has none: a publisher builds closures,
-a host checks them.
+a host checks them. Nor do `ParallelChunker`, `BuildParallel`,
+`Incremental` and `commit.SegmentRoots`: they are speed, not rules, and a
+host module checks a closure with `verifyClosure`, whose answer they do
+not change.
 
 The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the 32-byte-leaf
 RFC 6962 functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
