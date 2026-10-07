@@ -31,8 +31,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          # A current toolchain, not the go.mod floor, for the reason ci.yml
-          # gives.
+          # The go.mod go line.
           go-version: "1.27.1"
 
       - name: Initialize CodeQL

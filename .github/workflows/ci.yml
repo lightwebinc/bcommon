@@ -23,10 +23,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          # A current toolchain, not the go.mod floor. The floor stays at
-          # 1.26.2 so that pinning this library never raises an application's
-          # own; go-version-file: go.mod would read the floor and exercise a
-          # standard library no application builds with.
+          # The go.mod go line, 1.27.1, stated exactly: the oldest toolchain
+          # an application that pins this library may build it with.
           go-version: "1.27.1"
       - name: gofmt
         run: test -z "$(gofmt -l .)"
@@ -59,15 +57,12 @@ jobs:
       - name: vectors match their independent generator
         run: make vectors
 
-  # go.mod promises Go 1.26.2 or later, while the job above builds with the
-  # current toolchain. go vet refuses a standard-library symbol newer than the
-  # go line, but not a behaviour that differs on 1.26 or a GODEBUG default
-  # that changed since, so the library is also built and tested on the newest
-  # 1.26 release. The version is a
-  # 1.26 range on purpose: a toolchain update must not move this leg off the
-  # line it exists to hold, and check-latest keeps a runner's cached 1.26
-  # from standing in for the newest one.
-  go126:
+  # The job above builds with the go.mod line, 1.27.1, exactly. go vet
+  # refuses a standard-library symbol newer than the go line, but not a
+  # behavior that changes in a later 1.27 point release, so the library is
+  # also built and tested on the newest 1.27 release. check-latest keeps a
+  # runner's cached 1.27 from standing in for the newest one.
+  go127:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
