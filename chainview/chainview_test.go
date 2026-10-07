@@ -71,3 +71,27 @@ func TestSpentElsewhereWordsOnlyAPositiveWord(t *testing.T) {
 		}
 	}
 }
+
+type spendsBy string
+
+func (s spendsBy) Spender(context.Context, string, uint32) (string, error) { return string(s), nil }
+
+func TestSpentElsewhereInAnySpendView(t *testing.T) {
+	src, _ := chainhash.NewHashFromHex(strings.Repeat("ef", 32))
+	tx := transaction.NewTransaction()
+	tx.AddInput(&transaction.TransactionInput{SourceTXID: src, SourceTxOutIndex: 3, SequenceNumber: 0xffffffff})
+	by := strings.Repeat("cd", 32)
+	want := "input 0 (" + strings.Repeat("ef", 32) + ".3) is spent by " + by
+	if got := SpentElsewhereIn(context.Background(), spendsBy(by), tx); got != want {
+		t.Fatalf("%q", got)
+	}
+	if got := SpentElsewhereIn(context.Background(), spendsBy(""), tx); got != "" {
+		t.Fatalf("unspent: %q", got)
+	}
+	if got := SpentElsewhereIn(context.Background(), nil, tx); got != "" {
+		t.Fatalf("no view: %q", got)
+	}
+	if got := SpentElsewhere(context.Background(), nil, tx); got != "" {
+		t.Fatalf("no node: %q", got)
+	}
+}

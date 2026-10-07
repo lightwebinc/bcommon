@@ -104,3 +104,32 @@ func TestProofsAskArcadeThenTheNode(t *testing.T) {
 		t.Fatalf("an arcade that fails: %v", err)
 	}
 }
+
+// With no node, Source answers what arcade does not know and Spends holds
+// an unmined transaction to its inputs, exactly as Asset does.
+func TestProofsWithASourceAndSpendsInsteadOfANode(t *testing.T) {
+	ctx := context.Background()
+	l := newTestChain(t)
+	view := chainOnly{l.asset()}
+	p := producer.Proofs{Arcade: l.arcade(), Source: view, Spends: view}
+	elsewhere := strings.Repeat("a4", 32)
+	if _, _, err := p.Of(ctx, elsewhere); !errors.Is(err, nodeapi.ErrNotMined) {
+		t.Fatalf("unknown to both: %v", err)
+	}
+	l.mine(elsewhere)
+	if mp, _, err := p.Of(ctx, elsewhere); err != nil || mp == nil {
+		t.Fatalf("mined, broadcast elsewhere: %v", err)
+	}
+	// Spends refuses a transaction whose input another spent.
+	spent := producer.Proofs{Source: view, Spends: spender{by: strings.Repeat("cd", 32)}}
+	tx := transaction.NewTransaction()
+	src, _ := chainhash.NewHashFromHex(strings.Repeat("ef", 32))
+	tx.AddInput(&transaction.TransactionInput{SourceTXID: src, SequenceNumber: 0xffffffff})
+	if _, _, err := spent.OfTx(ctx, tx); !errors.Is(err, producer.ErrRefused) || !errors.Is(err, nodeapi.ErrDoubleSpent) {
+		t.Fatalf("spent elsewhere: %v", err)
+	}
+}
+
+type spender struct{ by string }
+
+func (s spender) Spender(context.Context, string, uint32) (string, error) { return s.by, nil }

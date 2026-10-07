@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
@@ -190,7 +189,7 @@ func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Out
 	if t.Payer == nil || t.State == nil {
 		return Recovery{}, errors.New("producer: Trees needs a Payer and a State")
 	}
-	asset := t.Payer.Asset
+	asset := t.Payer.chain()
 	if asset == nil {
 		return Recovery{}, fmt.Errorf("funding tree %s: recover: no node to ask", tree.Txid)
 	}
@@ -377,9 +376,9 @@ func (t *Trees) spent(tree string, coin bwallet.Output) error {
 }
 
 // knows reports whether the node serves the transaction txid, mined or not.
-func knows(ctx context.Context, asset *nodeapi.Asset, txid string) (bool, error) {
+func knows(ctx context.Context, asset nodeapi.TxSource, txid string) (bool, error) {
 	raw, err := asset.TxRaw(ctx, txid)
-	if nodeapi.IsHTTP(err, http.StatusNotFound) {
+	if nodeapi.IsNotFound(err) {
 		return false, nil
 	}
 	if err != nil {

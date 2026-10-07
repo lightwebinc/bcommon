@@ -68,6 +68,9 @@ type Purse struct {
 	// proof; Headers verify it first. Wait bounds the wait, Poll paces it.
 	Settler publish.Settler
 	Asset   *nodeapi.Asset
+	// Chain, when set, is asked for proofs and spends in Asset's place: a
+	// chain view that needs no node (nodeapi.ParseChain).
+	Chain   nodeapi.Chain
 	Headers chaintracker.ChainTracker
 	Wait    time.Duration
 	Poll    time.Duration
@@ -261,13 +264,25 @@ func (p *Purse) Check(ctx context.Context, args wallet.InternalizeActionArgs) (*
 	return &Incoming{Tx: tx, Txid: txid.String(), outs: outs}, nil
 }
 
+// chain is Chain, else Asset, else nil.
+func (p *Purse) chain() nodeapi.Chain {
+	if p.Chain != nil {
+		return p.Chain
+	}
+	if p.Asset != nil {
+		return p.Asset
+	}
+	return nil
+}
+
 // Broadcast hands a checked payment to the settlement leg. One already
 // mined is taken as it is; one the network already holds is not an error.
 func (p *Purse) Broadcast(ctx context.Context, in *Incoming) error {
-	if p.Asset == nil {
+	c := p.chain()
+	if c == nil {
 		return ErrNoNode
 	}
-	if mp, h, err := p.Asset.Proof(ctx, in.Txid); err == nil {
+	if mp, h, err := c.Proof(ctx, in.Txid); err == nil {
 		in.mp, in.h = mp, h
 		return nil
 	}
@@ -286,7 +301,7 @@ func (p *Purse) Broadcast(ctx context.Context, in *Incoming) error {
 		if why, ok := chainview.RefusedAnswer(err); ok {
 			return &RefusedError{Txid: in.Txid, Why: why}
 		}
-		if why := chainview.SpentElsewhere(ctx, p.Asset, in.Tx); why != "" {
+		if why := chainview.SpentElsewhereIn(ctx, c, in.Tx); why != "" {
 			return &RefusedError{Txid: in.Txid, Why: why}
 		}
 		return fmt.Errorf("purse: broadcasting payment %s: %w (the payer may have spent its inputs elsewhere)", in.Txid, err)
@@ -294,7 +309,7 @@ func (p *Purse) Broadcast(ctx context.Context, in *Incoming) error {
 	// A leg's acceptance is not the network's: arcade has answered
 	// ACCEPTED_BY_NETWORK for a payment whose input was already spent and
 	// mined. The node's view of the inputs says before any wait.
-	if why := chainview.SpentElsewhere(ctx, p.Asset, in.Tx); why != "" {
+	if why := chainview.SpentElsewhereIn(ctx, c, in.Tx); why != "" {
 		return &RefusedError{Txid: in.Txid, Why: why}
 	}
 	return nil
@@ -348,9 +363,18 @@ func (p *Purse) Await(ctx context.Context, in *Incoming) error {
 	}
 	wctx, cancel := context.WithTimeout(ctx, wait)
 	defer cancel()
-	mp, h, err := nodeapi.WaitSettled(wctx, p.Asset, in.Tx, poll)
+	c := p.chain()
+	var mp *transaction.MerklePath
+	var h uint32
+	var err error
+	switch {
+	case p.Chain != nil:
+		mp, h, err = nodeapi.WaitSettledOn(wctx, c, c, in.Tx, poll)
+	default:
+		mp, h, err = nodeapi.WaitSettled(wctx, p.Asset, in.Tx, poll)
+	}
 	if err != nil {
-		if why := chainview.SpentElsewhere(ctx, p.Asset, in.Tx); why != "" {
+		if why := chainview.SpentElsewhereIn(ctx, c, in.Tx); why != "" {
 			return &RefusedError{Txid: in.Txid, Why: why}
 		}
 		return fmt.Errorf("%w: payment %s (%v)", ErrNotMined, in.Txid, err)

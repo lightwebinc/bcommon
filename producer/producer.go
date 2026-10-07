@@ -89,6 +89,13 @@ type Proofs struct {
 	Arcade *publish.Arcade
 	// Asset is the node's asset API. With neither set, nothing has mined.
 	Asset *nodeapi.Asset
+	// Source and Spends, when set, are asked in Asset's place: Source for
+	// a proof arcade cannot give (a transaction it was not sent), Spends
+	// for the inputs of one that has not mined. A chain view that needs no
+	// node (nodeapi.ParseChain over WhatsOnChain) is both; wrap a third
+	// party's proofs in nodeapi.Checked.
+	Source nodeapi.ProofSource
+	Spends nodeapi.SpendSource
 	// Tx, when set, returns the transaction Of is asked about (Kept.Tx is
 	// one), so that Of can hold a transaction that has not mined to the
 	// node's view of its inputs, as OfTx does. An error from it only skips
@@ -103,8 +110,8 @@ type Proofs struct {
 // ErrRefused and a *nodeapi.SpentError.
 func (p Proofs) OfTx(ctx context.Context, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
 	mp, height, err := p.of(ctx, tx.TxID().String())
-	if errors.Is(err, nodeapi.ErrNotMined) && p.Asset != nil {
-		if serr := p.Asset.SpentElsewhere(ctx, tx); serr != nil {
+	if s := p.spends(); errors.Is(err, nodeapi.ErrNotMined) && s != nil {
+		if serr := nodeapi.SpentElsewhereIn(ctx, s, tx); serr != nil {
 			return nil, 0, fmt.Errorf("%w: %w", ErrRefused, serr)
 		}
 	}
@@ -122,7 +129,7 @@ func (p Proofs) OfTx(ctx context.Context, tx *transaction.Transaction) (*transac
 // height arcade reported. A proof of some other transaction verifies
 // perfectly and proves nothing.
 func (p Proofs) Of(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
-	if p.Tx != nil && p.Asset != nil {
+	if p.Tx != nil && p.spends() != nil {
 		if tx, err := p.Tx(txid); err == nil && tx != nil && tx.TxID().String() == txid {
 			return p.OfTx(ctx, tx)
 		}
@@ -156,10 +163,25 @@ func (p Proofs) of(ctx context.Context, txid string) (*transaction.MerklePath, u
 			return nil, 0, err
 		}
 	}
-	if p.Asset == nil {
+	src := p.Source
+	if src == nil && p.Asset != nil {
+		src = p.Asset
+	}
+	if src == nil {
 		return nil, 0, nodeapi.ErrNotMined
 	}
-	return p.Asset.Proof(ctx, txid)
+	return src.Proof(ctx, txid)
+}
+
+// spends is Spends, else Asset, else nil.
+func (p Proofs) spends() nodeapi.SpendSource {
+	if p.Spends != nil {
+		return p.Spends
+	}
+	if p.Asset != nil {
+		return p.Asset
+	}
+	return nil
 }
 
 // Kept is the one in-memory copy of each transaction a producer published

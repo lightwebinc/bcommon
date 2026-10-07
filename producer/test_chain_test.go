@@ -417,11 +417,33 @@ func (m *memTrees) Adopt(t funding.Tree) error {
 // payerFor is a Payer over pool with s as its one key, settling to the
 // test chain.
 func payerFor(l *testChain, pool *bwallet.Pool, s *bwallet.Signer, n *notes) *producer.Payer {
-	return &producer.Payer{
+	p := &producer.Payer{
 		Pool: pool, Tip: 100, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s},
 		Kept: &producer.Kept{}, Settler: l.arcade(), Asset: l.asset(), Fees: mint.LegacyFees,
 		Poll: 10 * time.Millisecond, Timeout: 5 * time.Second, Note: n.note,
 	}
+	if viaChain {
+		p.Chain, p.Asset = chainOnly{l.asset()}, nil
+	}
+	return p
+}
+
+// viaChain makes payerFor give a Payer the test chain's node as a Chain,
+// an interface value with no Asset behind it, as an application with no
+// node configures one (TestPayerThroughAChainView).
+var viaChain bool
+
+// chainOnly hides the *nodeapi.Asset behind the nodeapi.Chain interface.
+type chainOnly struct{ a *nodeapi.Asset }
+
+func (c chainOnly) TxRaw(ctx context.Context, txid string) ([]byte, error) {
+	return c.a.TxRaw(ctx, txid)
+}
+func (c chainOnly) Proof(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
+	return c.a.Proof(ctx, txid)
+}
+func (c chainOnly) Spender(ctx context.Context, txid string, vout uint32) (string, error) {
+	return c.a.Spender(ctx, txid, vout)
 }
 
 // fundingLock is s's funding lock under the test parameters.

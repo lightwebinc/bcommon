@@ -36,6 +36,8 @@ type rig struct {
 	chain *testchain.Chain
 	asset *nodeapi.Asset
 	rpc   *nodeapi.RPC
+	// viaChain gives the purse its node as a nodeapi.Chain and no Asset.
+	viaChain bool
 }
 
 func newRig(t *testing.T) *rig {
@@ -59,11 +61,29 @@ func (r *rig) purse(t *testing.T, maxPay uint64) *Purse {
 	tip := r.chain.Height()
 	settler := &publish.RPCSettler{RPC: r.rpc}
 	s := e.Signer()
-	return &Purse{Embedded: e, Fees: mint.LegacyFees, MaxPay: maxPay, Settler: settler, Asset: r.asset, Headers: r.chain,
+	p := &Purse{Embedded: e, Fees: mint.LegacyFees, MaxPay: maxPay, Settler: settler, Asset: r.asset, Headers: r.chain,
 		Wait: 5 * time.Second, Poll: 5 * time.Millisecond,
 		NewPayer: func() *producer.Payer {
 			return &producer.Payer{Pool: e.Pool, Tip: tip, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s}, Settler: settler, Asset: r.asset, Fees: mint.LegacyFees}
 		}}
+	if r.viaChain {
+		p.Chain, p.Asset = chainOnly{r.asset}, nil
+	}
+	return p
+}
+
+// chainOnly hides the *nodeapi.Asset behind the nodeapi.Chain interface,
+// as a chain view that needs no node is configured.
+type chainOnly struct{ a *nodeapi.Asset }
+
+func (c chainOnly) TxRaw(ctx context.Context, txid string) ([]byte, error) {
+	return c.a.TxRaw(ctx, txid)
+}
+func (c chainOnly) Proof(ctx context.Context, txid string) (*transaction.MerklePath, uint32, error) {
+	return c.a.Proof(ctx, txid)
+}
+func (c chainOnly) Spender(ctx context.Context, txid string, vout uint32) (string, error) {
+	return c.a.Spender(ctx, txid, vout)
 }
 
 func p2pkhTo(t *testing.T, p *Purse) []byte {
@@ -129,8 +149,15 @@ func TestCreateActionPaysOneOutputUpToItsCap(t *testing.T) {
 	}
 }
 
-func TestInternalizeTakesABRC29PaymentIntoThePool(t *testing.T) {
+func TestInternalizeTakesABRC29PaymentIntoThePool(t *testing.T) { internalizeTakes(t, false) }
+
+// The same with the node given as a nodeapi.Chain and no Asset, as a purse
+// with no node (WhatsOnChain through nodeapi.ParseChain) is configured.
+func TestInternalizeThroughAChainView(t *testing.T) { internalizeTakes(t, true) }
+
+func internalizeTakes(t *testing.T, viaChain bool) {
 	r := newRig(t)
+	r.viaChain = viaChain
 	ctx := context.Background()
 	payer := r.purse(t, 0)
 	payee := r.purse(t, 0)

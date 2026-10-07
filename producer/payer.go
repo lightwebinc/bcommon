@@ -66,6 +66,11 @@ type Payer struct {
 	// Asset is the node proofs are waited for from and, with Async, where a
 	// coin's parent comes from when the pool does not hold it.
 	Asset *nodeapi.Asset
+	// Chain, when set, is asked everything Asset is asked (a coin's parent,
+	// proofs, spends) in its place: a chain view that needs no node, such
+	// as nodeapi.ParseChain builds over WhatsOnChain, with proofs checked
+	// against the producer's headers.
+	Chain nodeapi.Chain
 	// Async settles without waiting for a block: Settle returns once the
 	// leg has accepted a transaction, and the proof is collected later
 	// (Collector). A transaction spending a coin before it mines then
@@ -84,6 +89,17 @@ type Payer struct {
 	Note func(format string, args ...any)
 
 	spent []bwallet.Output
+}
+
+// chain is Chain, else Asset, else nil.
+func (p *Payer) chain() nodeapi.Chain {
+	if p.Chain != nil {
+		return p.Chain
+	}
+	if p.Asset != nil {
+		return p.Asset
+	}
+	return nil
 }
 
 func (p *Payer) note(format string, args ...any) {
@@ -284,10 +300,11 @@ func (p *Payer) spentBy(ctx context.Context, coin bwallet.Output, tx *transactio
 	if errors.As(err, &se) && se.By != "" && strings.EqualFold(se.Outpoint, coin.Outpoint()) {
 		return se.By
 	}
-	if p.Asset == nil {
+	c := p.chain()
+	if c == nil {
 		return ""
 	}
-	by, aerr := p.Asset.Spender(ctx, coin.TxID, coin.Vout)
+	by, aerr := c.Spender(ctx, coin.TxID, coin.Vout)
 	if aerr != nil || by == "" || (tx != nil && strings.EqualFold(by, tx.TxID().String())) {
 		return ""
 	}
@@ -391,11 +408,11 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 			}
 			return tx, nil
 		}
-		if !p.Async || p.Asset == nil {
+		if !p.Async || p.chain() == nil {
 			return tx, nil
 		}
 	}
-	if p.Asset != nil {
+	if p.chain() != nil {
 		return p.fetchParent(ctx, o)
 	}
 	return placeholder(o)
@@ -404,7 +421,8 @@ func (p *Payer) Parent(ctx context.Context, o bwallet.Output) (*transaction.Tran
 // fetchParent is a coin's parent as the node serves it, held to the coin's
 // txid, with its proof.
 func (p *Payer) fetchParent(ctx context.Context, o bwallet.Output) (*transaction.Transaction, error) {
-	raw, err := p.Asset.TxRaw(ctx, o.TxID)
+	c := p.chain()
+	raw, err := c.TxRaw(ctx, o.TxID)
 	if err != nil {
 		return nil, fmt.Errorf("fee input %s: fetching its parent, which a spender kept or published before it mines must carry: %w", o.Outpoint(), err)
 	}
@@ -415,7 +433,7 @@ func (p *Payer) fetchParent(ctx context.Context, o bwallet.Output) (*transaction
 	if tx.TxID().String() != o.TxID {
 		return nil, fmt.Errorf("fee input %s: the node answered transaction %s", o.Outpoint(), tx.TxID())
 	}
-	mp, _, err := p.Asset.Proof(ctx, o.TxID)
+	mp, _, err := c.Proof(ctx, o.TxID)
 	if err != nil {
 		return nil, fmt.Errorf("fee input %s: its parent's proof, which a spender kept or published before it mines must carry: %w", o.Outpoint(), err)
 	}
@@ -539,7 +557,7 @@ func (p *Payer) Settle(ctx context.Context, what string, tx *transaction.Transac
 	// The leg's acceptance is not the node's view: arcade has accepted a
 	// transaction whose input was already spent and mined, and the tcp
 	// ingress answers nothing.
-	if err := p.Asset.SpentElsewhere(ctx, tx); err != nil {
+	if err := nodeapi.SpentElsewhereIn(ctx, p.chain(), tx); err != nil {
 		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: settle: %w: %w", what, ErrRefused, err)
 	}
@@ -572,7 +590,8 @@ func (p *Payer) SettleAndWait(ctx context.Context, what string, tx *transaction.
 // Await returns at once with an error wrapping ErrRefused and a
 // *nodeapi.SpentError rather than waiting out Timeout.
 func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transaction) (*transaction.MerklePath, uint32, error) {
-	if p.Asset == nil {
+	c := p.chain()
+	if c == nil {
 		return nil, 0, fmt.Errorf("%s: waiting for a proof: no node to ask", what)
 	}
 	timeout, poll := p.Timeout, p.Poll
@@ -584,7 +603,14 @@ func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transact
 	}
 	wctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	mp, height, err := nodeapi.WaitSettled(wctx, p.Asset, tx, poll)
+	var mp *transaction.MerklePath
+	var height uint32
+	var err error
+	if p.Chain != nil {
+		mp, height, err = nodeapi.WaitSettledOn(wctx, c, c, tx, poll)
+	} else {
+		mp, height, err = nodeapi.WaitSettled(wctx, p.Asset, tx, poll)
+	}
 	if errors.Is(err, nodeapi.ErrDoubleSpent) {
 		p.dropSpent(ctx, what, tx, err)
 		return nil, 0, fmt.Errorf("%s: %w: %w", what, ErrRefused, err)

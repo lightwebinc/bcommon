@@ -74,8 +74,17 @@ func RefusedAnswer(err error) (string, bool) {
 // passed over. The node's view is bcommon's (nodeapi.Asset.SpentElsewhere);
 // this only words it.
 func SpentElsewhere(ctx context.Context, a *nodeapi.Asset, tx *transaction.Transaction) string {
+	if a == nil {
+		return ""
+	}
+	return SpentElsewhereIn(ctx, a, tx)
+}
+
+// SpentElsewhereIn is SpentElsewhere over any spend view
+// (nodeapi.SpendSource): a node, WhatsOnChain, or a nodeapi.Sources.
+func SpentElsewhereIn(ctx context.Context, s nodeapi.SpendSource, tx *transaction.Transaction) string {
 	var se *nodeapi.SpentError
-	if errors.As(a.SpentElsewhere(ctx, tx), &se) {
+	if errors.As(nodeapi.SpentElsewhereIn(ctx, s, tx), &se) {
 		return fmt.Sprintf("input %d (%s) is spent by %s", se.Input, se.Outpoint, se.By)
 	}
 	return ""
