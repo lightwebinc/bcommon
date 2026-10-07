@@ -16,6 +16,7 @@ import (
 
 	"github.com/lightwebinc/bcommon/carrier"
 	"github.com/lightwebinc/bcommon/goldentest"
+	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/pushdrop"
 )
 
@@ -657,5 +658,33 @@ func TestSweep(t *testing.T) {
 		if err == nil || err.Error() != row.text {
 			t.Errorf("%s: %v", row.name, err)
 		}
+	}
+}
+
+// SweepAt pays a fractional rate exactly: at the network rate a sweep pays
+// its size at 100 satoshis per 1000 bytes rounded up, a tenth of what the
+// whole-satoshi rate asks, and a fee above Max is refused rather than paid.
+func TestSweepAt(t *testing.T) {
+	f := newFixture(t)
+	change, _ := script.NewFromHex("76a914" + "00000000000000000000000000000000000000ff" + "88ac")
+	tx, err := carrier.SweepAt(f.ctx, f.w, originator, params(), f.funding, []uint32{0, 1}, nil, 0, nil, change, mint.NetworkFees)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var in uint64
+	for _, i := range tx.Inputs {
+		in += f.funding.Outputs[i.SourceTxOutIndex].Satoshis
+	}
+	fee := in - tx.Outputs[0].Satoshis
+	if least := (uint64(tx.Size())*100 + 999) / 1000; fee < least || fee >= uint64(tx.Size()) {
+		t.Fatalf("fee %d for %d bytes, want at least %d and under the whole-satoshi rate", fee, tx.Size(), least)
+	}
+	if !f.spv(tx) {
+		t.Fatal("the sweep does not verify")
+	}
+	capped := mint.NetworkFees
+	capped.Max = 1
+	if _, err := carrier.SweepAt(f.ctx, f.w, originator, params(), f.funding, []uint32{0, 1}, nil, 0, nil, change, capped); !errors.Is(err, mint.ErrFeeTooHigh) {
+		t.Fatalf("a fee above Max: %v", err)
 	}
 }

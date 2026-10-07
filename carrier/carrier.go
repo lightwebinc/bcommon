@@ -36,6 +36,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/wallet"
 
 	"github.com/lightwebinc/bcommon/guard"
+	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/pushdrop"
 )
 
@@ -404,6 +405,16 @@ func DecodeFunding(s *script.Script, tag []byte) (*ec.PublicKey, bool) {
 // and without a fee input, are pinned by testdata/vectors/transactions-v1.json.
 func Sweep(ctx context.Context, w wallet.Interface, originator string, p Params, tree *transaction.Transaction, vouts []uint32,
 	fee *transaction.Transaction, feeVout uint32, feeUnlocker transaction.UnlockingScriptTemplate, change *script.Script, feeRate, floor uint64) (*transaction.Transaction, error) {
+	return SweepAt(ctx, w, originator, p, tree, vouts, fee, feeVout, feeUnlocker, change, mint.Fees{SatPerByte: feeRate, Floor: floor})
+}
+
+// SweepAt is Sweep at a fee policy: the rate in fees (a fraction of a
+// satoshi per byte included) rounded up, at least fees.Floor, refused above
+// fees.Max, and change from the fee input kept when it is at least the dust
+// threshold (fees.Dust, or fees.Floor when Dust is zero). Sweep is SweepAt
+// at a whole satoshi rate with the floor as the dust threshold.
+func SweepAt(ctx context.Context, w wallet.Interface, originator string, p Params, tree *transaction.Transaction, vouts []uint32,
+	fee *transaction.Transaction, feeVout uint32, feeUnlocker transaction.UnlockingScriptTemplate, change *script.Script, fees mint.Fees) (*transaction.Transaction, error) {
 	if tree == nil || len(vouts) == 0 || change == nil {
 		return nil, errors.New("carrier: a sweep needs a tree, outputs and a change script")
 	}
@@ -416,6 +427,10 @@ func Sweep(ctx context.Context, w wallet.Interface, originator string, p Params,
 	tombstone, err := FundingLock(ctx, w, originator, p)
 	if err != nil {
 		return nil, err
+	}
+	dust := fees.Dust
+	if dust == 0 {
+		dust = fees.Floor
 	}
 	build := func(feeSats uint64) (*transaction.Transaction, error) {
 		tx := transaction.NewTransaction()
@@ -443,28 +458,27 @@ func Sweep(ctx context.Context, w wallet.Interface, originator string, p Params,
 				return nil, fmt.Errorf("carrier: fee input %d cannot pay fee %d", feeIn, feeSats)
 			}
 			tx.AddOutput(&transaction.TransactionOutput{Satoshis: swept, LockingScript: tombstone})
-			if rest := feeIn - feeSats; rest >= floor {
+			if rest := feeIn - feeSats; rest >= dust {
 				tx.AddOutput(&transaction.TransactionOutput{Satoshis: rest, LockingScript: change})
 			}
 		}
 		return tx, tx.Sign()
 	}
-	feeSats := floor
+	feeSats := fees.Floor
 	for pass := 0; pass < 6; pass++ {
 		tx, err := build(feeSats)
 		if err != nil {
 			return nil, err
 		}
-		need := uint64(tx.Size()) * feeRate //nolint:gosec // serialised length
-		if need < floor {
-			need = floor
+		need, err := fees.For(tx.Size())
+		if err != nil {
+			return nil, err
 		}
 		if need <= feeSats {
 			return tx, nil
 		}
-		feeSats = (uint64(tx.Size()) + 2*uint64(len(tx.Inputs))) * feeRate //nolint:gosec // serialised length
-		if feeSats < floor {
-			feeSats = floor
+		if feeSats, err = fees.For(tx.Size() + 2*len(tx.Inputs)); err != nil {
+			return nil, err
 		}
 	}
 	return nil, errors.New("carrier: sweep fee did not converge")
