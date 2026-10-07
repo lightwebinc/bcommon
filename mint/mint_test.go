@@ -78,7 +78,7 @@ func verifies(t *testing.T, tx *transaction.Transaction) {
 func TestTransition(t *testing.T) {
 	holder, payer := parties(t)
 	fee := payer.coin(5000)
-	created, err := mint.Transition(holder.lock, 1, nil, fee, payer.lock, mint.DefaultFees)
+	created, err := mint.Transition(holder.lock, 1, nil, fee, payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestTransition(t *testing.T) {
 	// An update spends its predecessor first, then the fee input.
 	prev := &mint.Input{Tx: created, Vout: 0, Unlocker: holder.unlock}
 	fee2 := payer.coin(5001)
-	updated, err := mint.Transition(holder.lock, 1, prev, fee2, payer.lock, mint.DefaultFees)
+	updated, err := mint.Transition(holder.lock, 1, prev, fee2, payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,7 +112,7 @@ func TestTransition(t *testing.T) {
 
 func TestFundingTree(t *testing.T) {
 	holder, payer := parties(t)
-	tree, err := mint.FundingTree(holder.lock, 8, 3, payer.coin(5000), payer.lock, mint.DefaultFees)
+	tree, err := mint.FundingTree(holder.lock, 8, 3, payer.coin(5000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestFundingTree(t *testing.T) {
 
 func TestPayment(t *testing.T) {
 	holder, payer := parties(t)
-	tx, err := mint.Payment(context.Background(), holder.lock, 1000, payer.coin(5000), payer.lock, mint.DefaultFees)
+	tx, err := mint.Payment(context.Background(), holder.lock, 1000, payer.coin(5000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,14 +192,14 @@ func TestFeeFloor(t *testing.T) {
 	// 5000 in, 4500 out and the 250 floor leave change of exactly the floor,
 	// which is kept; one satoshi more to the destination leaves 249, which
 	// is dropped and paid to the fee.
-	at, err := mint.Payment(ctx, holder.lock, 4500, payer.coin(5000), payer.lock, mint.DefaultFees)
+	at, err := mint.Payment(ctx, holder.lock, 4500, payer.coin(5000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(at.Outputs) != 2 || at.Outputs[1].Satoshis != 250 || paid(at) != 250 {
 		t.Fatalf("change at the floor: %d outputs, paid %d, want it kept", len(at.Outputs), paid(at))
 	}
-	under, err := mint.Payment(ctx, holder.lock, 4501, payer.coin(5000), payer.lock, mint.DefaultFees)
+	under, err := mint.Payment(ctx, holder.lock, 4501, payer.coin(5000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,17 +216,17 @@ func TestFeeFloor(t *testing.T) {
 // the policy, and verify.
 func TestFeeConverges(t *testing.T) {
 	holder, payer := parties(t)
-	created, err := mint.Transition(holder.lock, 1, nil, payer.coin(5000), payer.lock, mint.DefaultFees)
+	created, err := mint.Transition(holder.lock, 1, nil, payer.coin(5000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
 	prev := &mint.Input{Tx: created, Vout: 0, Unlocker: holder.unlock}
 	for i := 0; i < 40; i++ {
-		tx, err := mint.Transition(holder.lock, 1, prev, payer.coin(3000+uint64(i)*137), payer.lock, mint.DefaultFees)
+		tx, err := mint.Transition(holder.lock, 1, prev, payer.coin(3000+uint64(i)*137), payer.lock, mint.LegacyFees)
 		if err != nil {
 			t.Fatalf("amount %d: %v", i, err)
 		}
-		if got := paid(tx); got < mint.DefaultFees.Floor || got < uint64(tx.Size()) {
+		if got := paid(tx); got < mint.LegacyFees.Floor || got < uint64(tx.Size()) {
 			t.Fatalf("amount %d paid %d for %d bytes", i, got, tx.Size())
 		}
 		verifies(t, tx)
@@ -239,14 +239,14 @@ func TestInsufficient(t *testing.T) {
 	ctx := context.Background()
 	holder, payer := parties(t)
 
-	exact, err := mint.Payment(ctx, holder.lock, 1000, payer.coin(1250), payer.lock, mint.DefaultFees)
+	exact, err := mint.Payment(ctx, holder.lock, 1000, payer.coin(1250), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatalf("outputs plus fee exactly: %v", err)
 	}
 	if len(exact.Outputs) != 1 || paid(exact) != 250 {
 		t.Fatalf("%d outputs, paid %d, want no change and the floor", len(exact.Outputs), paid(exact))
 	}
-	_, err = mint.Payment(ctx, holder.lock, 1001, payer.coin(1250), payer.lock, mint.DefaultFees)
+	_, err = mint.Payment(ctx, holder.lock, 1001, payer.coin(1250), payer.lock, mint.LegacyFees)
 	if !errors.Is(err, mint.ErrInsufficient) {
 		t.Fatalf("one satoshi short: %v", err)
 	}
@@ -254,19 +254,19 @@ func TestInsufficient(t *testing.T) {
 		t.Fatalf("text %q, want %q", err, want)
 	}
 
-	if _, err := mint.FundingTree(holder.lock, 8, 1, payer.coin(1), payer.lock, mint.DefaultFees); !errors.Is(err, mint.ErrInsufficient) {
+	if _, err := mint.FundingTree(holder.lock, 8, 1, payer.coin(1), payer.lock, mint.LegacyFees); !errors.Is(err, mint.ErrInsufficient) {
 		t.Fatalf("one satoshi funded a tree: %v", err)
 	}
 
 	// The previous token's value counts toward the inputs: the same fee
 	// input that cannot pay for a create of 1000 pays for an update that
 	// spends 1000.
-	_, err = mint.Transition(holder.lock, 1000, nil, payer.coin(1000), payer.lock, mint.DefaultFees)
+	_, err = mint.Transition(holder.lock, 1000, nil, payer.coin(1000), payer.lock, mint.LegacyFees)
 	if !errors.Is(err, mint.ErrInsufficient) {
 		t.Fatalf("create: %v", err)
 	}
 	prev := holder.coin(1000)
-	if _, err := mint.Transition(holder.lock, 1000, &prev, payer.coin(1000), payer.lock, mint.DefaultFees); err != nil {
+	if _, err := mint.Transition(holder.lock, 1000, &prev, payer.coin(1000), payer.lock, mint.LegacyFees); err != nil {
 		t.Fatalf("update: %v", err)
 	}
 }
@@ -306,79 +306,79 @@ func TestRefusals(t *testing.T) {
 		want string
 	}{
 		{"transition nil lock", func() (*transaction.Transaction, error) {
-			return mint.Transition(nil, 1, nil, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(nil, 1, nil, fee, payer.lock, mint.LegacyFees)
 		}, noLock},
 		{"transition nil lock before nil change", func() (*transaction.Transaction, error) {
-			return mint.Transition(nil, 1, nil, fee, nil, mint.DefaultFees)
+			return mint.Transition(nil, 1, nil, fee, nil, mint.LegacyFees)
 		}, noLock},
 		{"transition nil change before a bad input", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &past, unsignedFee, nil, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &past, unsignedFee, nil, mint.LegacyFees)
 		}, noChange},
 		{"transition previous without a transaction", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &noTx, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &noTx, fee, payer.lock, mint.LegacyFees)
 		}, prevOut},
 		{"transition previous past the outputs", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &past, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &past, fee, payer.lock, mint.LegacyFees)
 		}, prevOut},
 		{"transition previous without an unlocker", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &unsigned, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &unsigned, fee, payer.lock, mint.LegacyFees)
 		}, "mint: previous token output unsigned"},
 		{"transition previous out of range before unsigned", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &pastUnsigned, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &pastUnsigned, fee, payer.lock, mint.LegacyFees)
 		}, prevOut},
 		{"transition previous before the fee input", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &past, unsignedFee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &past, unsignedFee, payer.lock, mint.LegacyFees)
 		}, prevOut},
 		{"transition unsigned fee input", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, nil, unsignedFee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, nil, unsignedFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"transition previous at 1<<31", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, &wrapPrev, fee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, &wrapPrev, fee, payer.lock, mint.LegacyFees)
 		}, prevOut},
 		{"transition fee at 1<<31", func() (*transaction.Transaction, error) {
-			return mint.Transition(holder.lock, 1, nil, wrapFee, payer.lock, mint.DefaultFees)
+			return mint.Transition(holder.lock, 1, nil, wrapFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"tree no outputs", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 0, 1, fee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 0, 1, fee, payer.lock, mint.LegacyFees)
 		}, badTree},
 		{"tree no value", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 1, 0, fee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 1, 0, fee, payer.lock, mint.LegacyFees)
 		}, badTree},
 		{"tree count before nil lock", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(nil, 0, 1, fee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(nil, 0, 1, fee, payer.lock, mint.LegacyFees)
 		}, badTree},
 		{"tree nil lock", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(nil, 1, 1, fee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(nil, 1, 1, fee, payer.lock, mint.LegacyFees)
 		}, noLock},
 		{"tree nil change", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 1, 1, fee, nil, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 1, 1, fee, nil, mint.LegacyFees)
 		}, noChange},
 		{"tree fee without a transaction", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 1, 1, noTx, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 1, 1, noTx, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"tree unsigned fee input", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 1, 1, unsignedFee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 1, 1, unsignedFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"tree fee at 1<<31", func() (*transaction.Transaction, error) {
-			return mint.FundingTree(holder.lock, 1, 1, wrapFee, payer.lock, mint.DefaultFees)
+			return mint.FundingTree(holder.lock, 1, 1, wrapFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"payment nil destination", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, nil, 1, fee, payer.lock, mint.DefaultFees)
+			return mint.Payment(ctx, nil, 1, fee, payer.lock, mint.LegacyFees)
 		}, badPay},
 		{"payment no amount", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, holder.lock, 0, fee, payer.lock, mint.DefaultFees)
+			return mint.Payment(ctx, holder.lock, 0, fee, payer.lock, mint.LegacyFees)
 		}, badPay},
 		{"payment nil change", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, holder.lock, 1, fee, nil, mint.DefaultFees)
+			return mint.Payment(ctx, holder.lock, 1, fee, nil, mint.LegacyFees)
 		}, noChange},
 		{"payment fee past the outputs", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: fee.Tx, Vout: 1, Unlocker: payer.unlock}, payer.lock, mint.DefaultFees)
+			return mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: fee.Tx, Vout: 1, Unlocker: payer.unlock}, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"payment unsigned fee input", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, holder.lock, 1, unsignedFee, payer.lock, mint.DefaultFees)
+			return mint.Payment(ctx, holder.lock, 1, unsignedFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 		{"payment fee at 1<<31", func() (*transaction.Transaction, error) {
-			return mint.Payment(ctx, holder.lock, 1, wrapFee, payer.lock, mint.DefaultFees)
+			return mint.Payment(ctx, holder.lock, 1, wrapFee, payer.lock, mint.LegacyFees)
 		}, feeOut},
 	} {
 		tx, err := row.call()
@@ -420,14 +420,14 @@ func TestSignerFailures(t *testing.T) {
 	holder, payer := parties(t)
 	g := &grower{}
 	coin := payer.coin(1_000_000)
-	_, err := mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: coin.Tx, Vout: 0, Unlocker: g}, payer.lock, mint.DefaultFees)
+	_, err := mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: coin.Tx, Vout: 0, Unlocker: g}, payer.lock, mint.LegacyFees)
 	if err == nil || err.Error() != "mint: fee did not converge" {
 		t.Fatalf("growing signer: %v", err)
 	}
 	if g.n != 6000 {
 		t.Fatalf("signed %d times, want 6 passes", g.n/1000)
 	}
-	_, err = mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: coin.Tx, Vout: 0, Unlocker: failing{}}, payer.lock, mint.DefaultFees)
+	_, err = mint.Payment(ctx, holder.lock, 1, mint.Input{Tx: coin.Tx, Vout: 0, Unlocker: failing{}}, payer.lock, mint.LegacyFees)
 	if !errors.Is(err, errSign) {
 		t.Fatalf("failing signer: %v", err)
 	}
@@ -437,14 +437,14 @@ func TestSignerFailures(t *testing.T) {
 // largest is built, and one more is refused before anything is signed.
 func TestFundingTreeCap(t *testing.T) {
 	holder, payer := parties(t)
-	tree, err := mint.FundingTree(holder.lock, mint.MaxFundingOutputs, 1, payer.coin(100000), payer.lock, mint.DefaultFees)
+	tree, err := mint.FundingTree(holder.lock, mint.MaxFundingOutputs, 1, payer.coin(100000), payer.lock, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(tree.Outputs) != mint.MaxFundingOutputs+1 {
 		t.Fatalf("%d outputs, want %d and change", len(tree.Outputs), mint.MaxFundingOutputs)
 	}
-	_, err = mint.FundingTree(holder.lock, mint.MaxFundingOutputs+1, 1, payer.coin(100000), payer.lock, mint.DefaultFees)
+	_, err = mint.FundingTree(holder.lock, mint.MaxFundingOutputs+1, 1, payer.coin(100000), payer.lock, mint.LegacyFees)
 	if !errors.Is(err, mint.ErrTreeTooLarge) {
 		t.Fatalf("one over the cap: %v", err)
 	}

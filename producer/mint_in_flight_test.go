@@ -81,7 +81,7 @@ func homeOnChain(t *testing.T, coins int) *chainHome {
 // one for each transaction it pays for.
 func (h *chainHome) payer() *producer.Payer {
 	return &producer.Payer{Pool: h.pool, Tip: h.chain.Height(), Keys: map[string]*bwallet.Signer{h.own.IdentityHex(): h.own},
-		Kept: h.kept, Settler: &publish.RPCSettler{RPC: h.rpc}, Asset: h.asset, Fees: mint.DefaultFees,
+		Kept: h.kept, Settler: &publish.RPCSettler{RPC: h.rpc}, Asset: h.asset, Fees: mint.LegacyFees,
 		Poll: 10 * time.Millisecond, Timeout: 30 * time.Second, Note: h.n.note}
 }
 
@@ -120,7 +120,7 @@ func (h *chainHome) pay(t *testing.T, p *producer.Payer, in mint.Input) *transac
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+	tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -571,7 +571,7 @@ func TestARefusedPaymentDropsACoinSpentElsewhere(t *testing.T) {
 				}
 				c.setup(h, p, coin, other)
 				change, _ := h.own.FundScript()
-				tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+				tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -601,7 +601,7 @@ func TestAPaymentRefusedAfterTheLegDropsItsCoin(t *testing.T) {
 			t.Fatal(err)
 		}
 		change, _ := h.own.FundScript()
-		tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+		tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 		if err != nil {
 			t.Fatal(err)
 		}

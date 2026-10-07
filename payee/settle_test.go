@@ -93,13 +93,13 @@ func (r *rig) pay(t *testing.T, to *bwallet.Embedded, sats uint64, class string,
 		in = *fee
 	} else {
 		pp := &producer.Payer{Pool: r.payer.Pool, Tip: r.chain.Height(), Keys: map[string]*bwallet.Signer{r.payer.Signer().IdentityHex(): r.payer.Signer()},
-			Asset: r.asset, Fees: mint.DefaultFees}
+			Asset: r.asset, Fees: mint.LegacyFees}
 		if in, err = pp.TakeAtLeast(ctx, 10_000); err != nil {
 			t.Fatal(err)
 		}
 	}
 	change, _ := r.payer.Signer().FundScript()
-	tx, err := mint.Payment(ctx, dest, sats, in, change, mint.DefaultFees)
+	tx, err := mint.Payment(ctx, dest, sats, in, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}

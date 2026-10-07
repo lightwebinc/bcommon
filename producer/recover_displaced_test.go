@@ -285,7 +285,7 @@ func TestRecoverADisplacedTreeOnAChain(t *testing.T) {
 			ps := &prepState{memTrees: st, recs: map[string]prepared{}}
 			trees := func(pool *bwallet.Pool) *producer.Trees {
 				p := &producer.Payer{Pool: pool, Tip: chain.Height(), Keys: map[string]*bwallet.Signer{own.IdentityHex(): own},
-					Kept: &producer.Kept{}, Settler: &publish.RPCSettler{RPC: rpc}, Asset: asset, Async: c.async, Fees: mint.DefaultFees,
+					Kept: &producer.Kept{}, Settler: &publish.RPCSettler{RPC: rpc}, Asset: asset, Async: c.async, Fees: mint.LegacyFees,
 					Poll: 10 * time.Millisecond, Timeout: 30 * time.Second, Note: n.note}
 				return &producer.Trees{Payer: p, State: ps, Identity: own.IdentityHex(), Count: 4, Sats: 1, Funder: "pool",
 					Lock: fundingLock(own), Change: own.FundScript, Topic: testTopic, Prepare: ps.Prepare}

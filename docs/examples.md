@@ -270,15 +270,16 @@ output 0: 1000 sats, funding=true
 output 1: 1000 sats, funding=true
 output 2: 1000 sats, funding=true
 output 3: 1000 sats, funding=true
-output 4: 45610 sats, funding=false
-fee: 390 sats for 388 bytes
+output 4: 45750 sats, funding=false
+fee: 250 sats for 388 bytes
 proves through its parent: true <nil>
 carriers it can fund: 4
 ```
 
-The fee is the signed size plus two bytes per input, at one satoshi per
-byte, because a DER signature can grow by a byte when the transaction is
-re-signed. On mainnet or testnet the coin is the user's own payment,
+At `mint.DefaultFees`, 100 satoshis per 1000 bytes, a 388-byte tree
+needs 39 satoshis and pays the 250 satoshi floor. The fee loop targets the
+signed size plus two bytes per input, because a DER signature can grow by a
+byte when the transaction is re-signed. On mainnet or testnet the coin is the user's own payment,
 imported as in [Fund a wallet on mainnet or testnet](#fund-a-wallet-on-mainnet-or-testnet).
 
 ## Mint a carrier

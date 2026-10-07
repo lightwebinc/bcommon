@@ -59,10 +59,10 @@ func (r *rig) purse(t *testing.T, maxPay uint64) *Purse {
 	tip := r.chain.Height()
 	settler := &publish.RPCSettler{RPC: r.rpc}
 	s := e.Signer()
-	return &Purse{Embedded: e, Fees: mint.DefaultFees, MaxPay: maxPay, Settler: settler, Asset: r.asset, Headers: r.chain,
+	return &Purse{Embedded: e, Fees: mint.LegacyFees, MaxPay: maxPay, Settler: settler, Asset: r.asset, Headers: r.chain,
 		Wait: 5 * time.Second, Poll: 5 * time.Millisecond,
 		NewPayer: func() *producer.Payer {
-			return &producer.Payer{Pool: e.Pool, Tip: tip, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s}, Settler: settler, Asset: r.asset, Fees: mint.DefaultFees}
+			return &producer.Payer{Pool: e.Pool, Tip: tip, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s}, Settler: settler, Asset: r.asset, Fees: mint.LegacyFees}
 		}}
 }
 
@@ -145,7 +145,7 @@ func TestInternalizeTakesABRC29PaymentIntoThePool(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, _ := payer.Signer().FundScript()
-	tx, err := mint.Payment(ctx, dest, 4_000, fee, change, mint.DefaultFees)
+	tx, err := mint.Payment(ctx, dest, 4_000, fee, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestWhatAnApplicationWords(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, _ := payer.Signer().FundScript()
-	tx, err := mint.Payment(ctx, dest, 4_000, fee, change, mint.DefaultFees)
+	tx, err := mint.Payment(ctx, dest, 4_000, fee, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}

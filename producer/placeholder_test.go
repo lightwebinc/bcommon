@@ -56,7 +56,7 @@ func TestCoinbaseFeeKeptBEEFReadsBack(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tx, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+		tx, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func TestPlaceholderParentIsNeverKeptAsBEEF(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+	tx, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatalf("a placeholder is still enough to sign against: %v", err)
 	}

@@ -31,23 +31,111 @@ type Input struct {
 	Unlocker transaction.UnlockingScriptTemplate
 }
 
-// Fees is the fee policy: a rate per byte of the signed transaction and a
-// floor under it. The floor keeps a fee meaningful where the per-byte rate
-// alone would round to almost nothing.
+// Fees is the fee policy: a rate on the signed transaction's size, a floor
+// under the fee, the change below which change is dropped, and the bounds
+// that keep a bad rate from draining a wallet.
+//
+// The rate is Rate, satoshis per bytes exactly as miners publish it (ARC's
+// miningFee), computed in integer arithmetic and rounded up. SatPerByte is
+// the older whole-number form and is read only when Rate is zero, as
+// Rate{SatPerByte, 1}; a Fees written before Rate existed means what it
+// meant. The fee for a size is ceil(size*Sats/Bytes), at least Floor, with
+// the rate first lowered to MaxRate when MaxRate is set; above Max it is
+// refused with ErrFeeTooHigh rather than paid.
 type Fees struct {
+	// SatPerByte is a whole number of satoshis per byte, read only when
+	// Rate is zero.
 	SatPerByte uint64
-	Floor      uint64
+	// Floor is the least fee a transaction pays, in satoshis.
+	Floor uint64
+	// Rate is the fee rate. Bytes must be at least 1 when Sats is set.
+	Rate Rate
+	// Dust is the least change kept as an output; change below it is
+	// added to the fee. Zero means Floor, the rule before Dust existed.
+	Dust uint64
+	// MaxRate, when set, caps Rate: a rate above it is lowered to it. It
+	// bounds what a fee rate from someone else's policy endpoint can cost.
+	MaxRate Rate
+	// Max, when set, is the most one transaction may pay in fee. A fee
+	// above it is refused with ErrFeeTooHigh: overpaying is lost money, so
+	// it fails closed.
+	Max uint64
 }
 
-// DefaultFees is one satoshi per byte with a 250 satoshi floor.
-var DefaultFees = Fees{SatPerByte: 1, Floor: 250}
+// DefaultFees is the network's rate, 100 satoshis per 1000 bytes (the
+// miningFee GorillaPool's and TAAL's ARC and GorillaPool's arcade publish),
+// with a 250 satoshi floor and change under 250 satoshis dropped, as
+// before the rate moved.
+//
+// TODO(D3): the floor and the change-drop threshold stay at 250 until the
+// owner rules; NetworkFees is the proposal (floor 1, dust 1).
+var DefaultFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 250, Dust: 250}
 
-func (f Fees) for_(size int) uint64 {
-	fee := uint64(size) * f.SatPerByte //nolint:gosec // size is a serialised length
-	if fee < f.Floor {
-		fee = f.Floor
+// NetworkFees is the network's rate with no padding: 100 satoshis per 1000
+// bytes, a floor of one satoshi, and every change of a satoshi or more
+// kept. A 225-byte payment pays 23 satoshis.
+var NetworkFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 1, Dust: 1}
+
+// LegacyFees is one satoshi per byte with a 250 satoshi floor: DefaultFees
+// before v0.14.0. A test vector that pins its fee amounts names it, so a
+// change of default never moves a pinned byte.
+var LegacyFees = Fees{SatPerByte: 1, Floor: 250}
+
+// ErrFeeTooHigh is a fee above Fees.Max.
+var ErrFeeTooHigh = errors.New("mint: fee above the per-transaction maximum")
+
+// ErrRate is a rate that cannot be computed: satoshis over zero bytes, or a
+// fee that overflows 64 bits.
+var ErrRate = errors.New("mint: bad fee rate")
+
+// rate is the rate in force: Rate, or SatPerByte per byte when Rate is
+// zero, lowered to MaxRate when that is set.
+func (f Fees) rate() (Rate, error) {
+	r := f.Rate
+	if r.IsZero() {
+		r = Rate{Sats: f.SatPerByte, Bytes: 1}
 	}
-	return fee
+	if r.Bytes == 0 {
+		return Rate{}, fmt.Errorf("%w: %d satoshis over zero bytes", ErrRate, r.Sats)
+	}
+	if !f.MaxRate.IsZero() {
+		if f.MaxRate.Bytes == 0 {
+			return Rate{}, fmt.Errorf("%w: maximum of %d satoshis over zero bytes", ErrRate, f.MaxRate.Sats)
+		}
+		if r.Cmp(f.MaxRate) > 0 {
+			r = f.MaxRate
+		}
+	}
+	return r, nil
+}
+
+// dust is the change threshold in force.
+func (f Fees) dust() uint64 {
+	if f.Dust == 0 {
+		return f.Floor
+	}
+	return f.Dust
+}
+
+// For is the fee a signed transaction of size bytes pays: the rate rounded
+// up, at least Floor, and an error above Max.
+func (f Fees) For(size int) (uint64, error) {
+	if size < 0 {
+		return 0, fmt.Errorf("%w: negative size %d", ErrRate, size)
+	}
+	r, err := f.rate()
+	if err != nil {
+		return 0, err
+	}
+	fee, err := r.Fee(uint64(size))
+	if err != nil {
+		return 0, err
+	}
+	fee = max(fee, f.Floor)
+	if f.Max > 0 && fee > f.Max {
+		return 0, fmt.Errorf("%w: %d satoshis for %d bytes, maximum %d", ErrFeeTooHigh, fee, size, f.Max)
+	}
+	return fee, nil
 }
 
 var (
@@ -84,8 +172,8 @@ func outOfRange(vout uint32, tx *transaction.Transaction) bool {
 //
 // Inputs: the previous token output when prev is not nil (an update spends
 // its predecessor; a create spends none), then the fee input. Outputs: the
-// token at index 0, then change. Change below the fee floor is dropped rather
-// than left as dust.
+// token at index 0, then change. Change below the dust threshold
+// (Fees.Dust, the floor when unset) is dropped rather than left as dust.
 //
 // prev.Unlocker is required. The key that signs the previous token is not
 // always the one the new lock names (after a rotation the predecessor signs
@@ -159,7 +247,11 @@ func build(skeleton func() (*transaction.Transaction, uint64, error), change *sc
 	if change == nil {
 		return nil, ErrNoChange
 	}
-	fee := fees.Floor
+	fee, err := fees.For(0)
+	if err != nil {
+		return nil, err
+	}
+	dust := fees.dust()
 	for pass := 0; pass < 6; pass++ {
 		tx, in, err := skeleton()
 		if err != nil {
@@ -169,16 +261,22 @@ func build(skeleton func() (*transaction.Transaction, uint64, error), change *sc
 		if in < out+fee {
 			return nil, fmt.Errorf("%w: inputs %d, outputs %d, fee %d", ErrInsufficient, in, out, fee)
 		}
-		if rest := in - out - fee; rest >= fees.Floor {
+		if rest := in - out - fee; rest >= dust {
 			tx.AddOutput(&transaction.TransactionOutput{Satoshis: rest, LockingScript: change})
 		}
 		if err := tx.Sign(); err != nil {
 			return nil, err
 		}
-		if fees.for_(tx.Size()) <= fee {
+		need, err := fees.For(tx.Size())
+		if err != nil {
+			return nil, err
+		}
+		if need <= fee {
 			return tx, nil
 		}
-		fee = fees.for_(tx.Size() + 2*len(tx.Inputs))
+		if fee, err = fees.For(tx.Size() + 2*len(tx.Inputs)); err != nil {
+			return nil, err
+		}
 	}
 	return nil, errors.New("mint: fee did not converge")
 }

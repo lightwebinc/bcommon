@@ -42,7 +42,7 @@ func TestTakeSpendsACoinUnderTheKeyItIsLockedTo(t *testing.T) {
 		t.Fatal(err)
 	}
 	dest := &script.Script{script.OpTRUE}
-	tx, err := mint.Payment(ctx, dest, 1000, in, change, mint.DefaultFees)
+	tx, err := mint.Payment(ctx, dest, 1000, in, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatalf("the input does not sign under its key: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestTakeSpendsAReceivedPaymentUnderItsOwnersKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	change, _ := owner.FundScript()
-	if _, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 100, in, change, mint.DefaultFees); err != nil {
+	if _, err := mint.Payment(ctx, &script.Script{script.OpTRUE}, 100, in, change, mint.LegacyFees); err != nil {
 		t.Fatalf("the payment does not sign under the derived key: %v", err)
 	}
 
@@ -507,7 +507,7 @@ func paymentFrom(t *testing.T, p *producer.Payer, own *bwallet.Signer) *transact
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.DefaultFees)
+	tx, err := mint.Payment(context.Background(), &script.Script{script.OpTRUE}, 1000, in, change, mint.LegacyFees)
 	if err != nil {
 		t.Fatal(err)
 	}

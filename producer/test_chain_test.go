@@ -419,7 +419,7 @@ func (m *memTrees) Adopt(t funding.Tree) error {
 func payerFor(l *testChain, pool *bwallet.Pool, s *bwallet.Signer, n *notes) *producer.Payer {
 	return &producer.Payer{
 		Pool: pool, Tip: 100, Keys: map[string]*bwallet.Signer{s.IdentityHex(): s},
-		Kept: &producer.Kept{}, Settler: l.arcade(), Asset: l.asset(), Fees: mint.DefaultFees,
+		Kept: &producer.Kept{}, Settler: l.arcade(), Asset: l.asset(), Fees: mint.LegacyFees,
 		Poll: 10 * time.Millisecond, Timeout: 5 * time.Second, Note: n.note,
 	}
 }
