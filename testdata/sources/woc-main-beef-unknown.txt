@@ -1,0 +1,1 @@
+failed to fetch raw tx: unexpected response code 500: No such mempool or blockchain transaction. If using -prune, the transaction may be in a pruned block. Use gettransaction for wallet transactions.

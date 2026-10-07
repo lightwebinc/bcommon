@@ -149,21 +149,10 @@ func isTxid(s string) bool {
 // only on the node's positive word. nil is therefore not evidence that tx's
 // inputs are unspent; a caller that needs that asks Spender per input.
 func (a *Asset) SpentElsewhere(ctx context.Context, tx *transaction.Transaction) error {
-	if a == nil || tx == nil {
+	if a == nil {
 		return nil
 	}
-	txid := tx.TxID().String()
-	for i, in := range tx.Inputs {
-		if in.SourceTXID == nil {
-			continue
-		}
-		src := in.SourceTXID.String()
-		by, err := a.Spender(ctx, src, in.SourceTxOutIndex)
-		if err == nil && by != "" && !strings.EqualFold(by, txid) {
-			return &SpentError{Txid: txid, Input: i, Outpoint: fmt.Sprintf("%s.%d", src, in.SourceTxOutIndex), By: by}
-		}
-	}
-	return nil
+	return SpentElsewhereIn(ctx, a, tx)
 }
 
 // WaitSettled is WaitMined for a transaction the caller holds: while tx has

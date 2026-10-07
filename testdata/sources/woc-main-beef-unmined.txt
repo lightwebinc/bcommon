@@ -1,0 +1,1 @@
+unconfirmed transactions with data (OP_RETURN) outputs are not supported by the BEEF endpoint
