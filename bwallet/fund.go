@@ -9,10 +9,18 @@ import (
 )
 
 // DefaultFundBatch is how many blocks one generatetoaddress call asks for.
+// Coinbase: only on a regtest chain you run (development and tests).
 // It is kept small because a large call can outlast the RPC timeout, most
 // of all while another miner contends for the chain.
 const DefaultFundBatch = 30
 
+// FundFromCoinbase is coinbase funding. Coinbase: only on a regtest chain you run (development and tests).
+// Mainnet and testnet users hold no coinbase: there the pool is funded from
+// a payment the user sends from their own wallet to FundAddress, imported
+// with Pool.Add once it is mined and its proof checked (docs/examples.md,
+// "Fund a wallet on mainnet or testnet"), or a tree is paid for by a BRC-100
+// wallet through producer.Trees.Fund.
+//
 // FundFromCoinbase mines blocks paying the fund address and adds each block's
 // coinbase outputs that pay FundScript to the pool, marked Coinbase with
 // their height so Take applies maturity. An output of zero satoshis is not
@@ -61,6 +69,7 @@ func FundFromCoinbase(ctx context.Context, e *Signer, pool *Pool, rpc *nodeapi.R
 // Rescan walks heights fromHeight..toHeight inclusive and adds any coinbase
 // output paying FundScript that the pool does not already hold. It is the
 // recovery for a funding run that stopped between mining and adding.
+// Coinbase: only on a regtest chain you run (development and tests).
 func Rescan(ctx context.Context, e *Signer, pool *Pool, asset *nodeapi.Asset, fromHeight, toHeight uint32) (int, error) {
 	if toHeight < fromHeight {
 		return 0, fmt.Errorf("bwallet: rescan: toHeight %d below fromHeight %d", toHeight, fromHeight)

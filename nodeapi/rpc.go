@@ -254,6 +254,7 @@ func (r *RPC) GetInfo(ctx context.Context) (*Info, error) {
 // GenerateToAddress mines n blocks paying the coinbase to addr and returns
 // the block hashes. Keep n small: a large call can outlast the RPC timeout,
 // which is why FundFromCoinbase mines in batches.
+// Coinbase: only on a regtest chain you run (development and tests).
 func (r *RPC) GenerateToAddress(ctx context.Context, n int, addr string) ([]string, error) {
 	var hashes []string
 	if err := r.Call(ctx, "generatetoaddress", []any{n, addr}, &hashes); err != nil {

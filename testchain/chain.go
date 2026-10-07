@@ -219,6 +219,7 @@ func (c *Chain) Txids() []string {
 
 // Generate mines n blocks whose coinbase pays addr, and returns their
 // hashes. Waiting transactions are mined first.
+// Coinbase: only on this in-process test chain (development and tests).
 func (c *Chain) Generate(n int, addr string) ([]string, error) {
 	a, err := script.NewAddressFromString(addr)
 	if err != nil {

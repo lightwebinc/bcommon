@@ -39,7 +39,10 @@ const (
 type Payer struct {
 	// Pool is the coin every fee comes from.
 	Pool *bwallet.Pool
-	// Tip is the chain height coinbase maturity is judged at.
+	// Tip is the chain height coinbase maturity is judged at. Only coinbase
+	// (only on a regtest chain you run, development and tests) has a
+	// maturity rule; a payment imported on mainnet or testnet is spendable
+	// on arrival.
 	Tip uint32
 	// Keys is every key the producer signs with, by identity key hex: a coin
 	// locked to one of their fund keys is spent under that key, and change
@@ -360,7 +363,8 @@ func (p *Payer) GiveBack() {
 // carry a parent that verifies on its own; without Async the pool's copy is
 // enough, since the spender is mined before it is published.
 //
-// A parent the pool does not hold at all (a coinbase) is fetched from Asset
+// A parent the pool does not hold at all (a coinbase, which the pool holds
+// only on a regtest chain you run, for development and tests) is fetched from Asset
 // with its proof, Async or not: an application may keep the spender as BEEF
 // before it mines (funding.KeepBEEF), and that BEEF must carry the real
 // parent. Only with no Asset is it a placeholder carrying just the coin's

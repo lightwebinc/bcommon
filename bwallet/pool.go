@@ -13,6 +13,9 @@ import (
 
 // CoinbaseMaturity is how many blocks must bury a coinbase before it may be
 // spent. A pool output is spendable when Height+CoinbaseMaturity <= tip.
+// Pooled coinbase comes from FundFromCoinbase or Rescan: only on a regtest
+// chain you run (development and tests). A payment imported on mainnet or
+// testnet is not coinbase and is spendable on arrival.
 const CoinbaseMaturity = 100
 
 // ErrNoSpendable is returned by Take when nothing in the pool is spendable at
@@ -20,9 +23,11 @@ const CoinbaseMaturity = 100
 var ErrNoSpendable = errors.New("bwallet: no spendable output in the wallet")
 
 // Output is one spendable output the wallet holds. Raw and Bump are optional:
-// a coinbase output straight from generatetoaddress has neither until its
-// block's proof is fetched, and a spend that needs to be a BEEF ancestor asks
-// for them then.
+// a coinbase output straight from generatetoaddress (only on a regtest chain
+// you run) has neither until its block's proof is fetched, and a spend that
+// needs to be a BEEF ancestor asks for them then. A payment imported on
+// mainnet or testnet carries both: its raw transaction in Raw and its proof
+// in Bump (funding.BumpHex).
 //
 // Height and Coinbase are fields of their own because maturity is what
 // decides whether an output is spendable.

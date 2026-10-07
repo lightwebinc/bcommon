@@ -127,8 +127,9 @@ func KeepBEEF(tx *transaction.Transaction, mp *transaction.MerklePath) (string, 
 
 // ErrPlaceholder is BEEF refusing an ancestry that holds a placeholder: a
 // transaction of no inputs standing in for a parent whose bytes were not
-// held, such as producer.Payer builds for a coinbase coin when it has no
-// node to fetch the real one from. A placeholder is enough to sign against,
+// held, such as producer.Payer builds for a coinbase coin (coinbase: only
+// on a regtest chain you run, development and tests) when it has no node to
+// fetch the real one from. A placeholder is enough to sign against,
 // but its bytes are not the transaction its txid names, so written into a
 // BEEF it is a false record that no reader, package guard first, accepts.
 var ErrPlaceholder = errors.New("funding: placeholder parent in a BEEF")

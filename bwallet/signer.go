@@ -67,8 +67,9 @@ func (s *Signer) FundKey() (*ec.PublicKey, error) {
 	return res.PublicKey, nil
 }
 
-// FundScript is the P2PKH locking script of the funding key: what coinbase
-// pays to and what the pool holds.
+// FundScript is the P2PKH locking script of the funding key: what a payment
+// to FundAddress pays to and what the pool holds. On a regtest chain you run
+// (development and tests), FundFromCoinbase mines coinbase to it as well.
 func (s *Signer) FundScript() (*script.Script, error) {
 	pub, err := s.FundKey()
 	if err != nil {
@@ -83,8 +84,11 @@ func (s *Signer) FundScript() (*script.Script, error) {
 	return p2pkh.Lock(addr)
 }
 
-// FundAddress renders the funding key as a base58 address for
-// generatetoaddress.
+// FundAddress renders the funding key as a base58 address: mainnet when
+// mainnet is true, otherwise the testnet and regtest prefix. It is the
+// address a user pays from their own wallet to fund the pool. On a regtest
+// chain you run (development and tests), it is also what generatetoaddress
+// mines to.
 func (s *Signer) FundAddress(mainnet bool) (string, error) {
 	pub, err := s.FundKey()
 	if err != nil {
