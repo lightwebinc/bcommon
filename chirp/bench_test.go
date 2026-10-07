@@ -97,6 +97,12 @@ func BenchmarkVerify(b *testing.B) {
 		for _, br := range built.Branches {
 			order = append(order, br)
 		}
+		// The hashes a provider computed as the pieces arrived, for
+		// AddHashed.
+		sums := make([][32]byte, len(order))
+		for i, p := range order {
+			sums[i] = sha256.Sum256(p)
+		}
 		fetch := func(h [32]byte) ([]byte, error) {
 			if o, ok := objects[h]; ok {
 				return o, nil
@@ -111,28 +117,38 @@ func BenchmarkVerify(b *testing.B) {
 				}
 			}
 		})
-		b.Run("incremental-8/"+s.name, func(b *testing.B) {
-			b.SetBytes(int64(s.size))
-			for b.Loop() {
-				inc := NewIncremental(built.RootHash, fetch, Limits{}, 0)
-				next := make(chan []byte, 8)
-				var wg sync.WaitGroup
-				for range 8 {
-					wg.Go(func() {
-						for p := range next {
-							inc.Add(p)
-						}
-					})
-				}
-				for _, p := range order {
-					next <- p
-				}
-				close(next)
-				wg.Wait()
-				if c, err := inc.Check(); err != nil || c == nil {
-					b.Fatal(err)
-				}
+		for _, hashed := range []bool{false, true} {
+			name := "incremental-8"
+			if hashed {
+				name = "incremental-8-hashed"
 			}
-		})
+			b.Run(name+"/"+s.name, func(b *testing.B) {
+				b.SetBytes(int64(s.size))
+				for b.Loop() {
+					inc := NewIncremental(built.RootHash, fetch, Limits{}, 0)
+					next := make(chan int, 8)
+					var wg sync.WaitGroup
+					for range 8 {
+						wg.Go(func() {
+							for i := range next {
+								if hashed {
+									inc.AddHashed(sums[i], order[i])
+								} else {
+									inc.Add(order[i])
+								}
+							}
+						})
+					}
+					for i := range order {
+						next <- i
+					}
+					close(next)
+					wg.Wait()
+					if c, err := inc.Check(); err != nil || c == nil {
+						b.Fatal(err)
+					}
+				}
+			})
+		}
 	}
 }

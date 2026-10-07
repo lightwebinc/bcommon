@@ -160,7 +160,9 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   and canonical construction, `Incremental`, which runs Verify's walk as
   the pieces arrive (each hashed on the goroutine that brings it, the walk
   waiting where Verify would report missing, so the first refusal it
-  reports is Verify's), and the UHRP object identifier and CHIRP URL
+  reports is Verify's; `AddHashed` takes a hash the caller already
+  computed, trusted for a blob only, whose bytes the content hash still
+  binds, while a root or branch is always hashed again), and the UHRP object identifier and CHIRP URL
   of a hash. It takes go-sdk only for Base58. Minor versions above 0 are
   refused rather than read as 1.0.
 - **`store`** owns how a record commits to a set of other records: the refs

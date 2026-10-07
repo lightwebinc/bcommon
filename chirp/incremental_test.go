@@ -69,7 +69,7 @@ func errText(err error) string {
 }
 
 // arrive hands every object of s to an Incremental in a random order from
-// goroutines goroutines, each stored before it is added, checking after
+// goroutines goroutines, by Add or AddHashed, each stored before it is added, checking after
 // every piece that nothing but the final verdict is ever reported. It
 // returns the outcome after the last piece.
 func arrive(t *testing.T, name string, root [32]byte, s *store, lim Limits, buffer, goroutines int, rng *rand.Rand, want *Closure, wantErr error) {
@@ -100,7 +100,13 @@ func arrive(t *testing.T, name string, root [32]byte, s *store, lim Limits, buff
 		wg.Go(func() {
 			for h := range next {
 				s.hold(h)
-				inc.Add(s.objects[h])
+				// Half the pieces come with the hash their holder computed,
+				// an honest one: the verdict must not change.
+				if p := s.objects[h]; h[1]&1 == 0 {
+					inc.AddHashed(sha256.Sum256(p), p)
+				} else {
+					inc.Add(p)
+				}
 				final("during arrival")
 			}
 		})
@@ -373,5 +379,70 @@ func TestIncrementalBuffer(t *testing.T) {
 	}
 	if _, ok := inc.Waiting(); ok {
 		t.Fatal("waiting once verified")
+	}
+}
+
+// A wrong hash handed to AddHashed never passes bytes other than the
+// content the root commits to: a node is hashed again, and a blob's bytes
+// meet its length and the content hash.
+func TestIncrementalAddHashedWrong(t *testing.T) {
+	content := stream(3*ChunkSize + 77)
+	b, err := Build(content, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	objects := map[[32]byte][]byte{b.RootHash: b.Root}
+	for _, br := range b.Branches {
+		objects[sha256.Sum256(br)] = br
+	}
+	for _, bl := range b.Blobs {
+		objects[sha256.Sum256(bl)] = bl
+	}
+	none := func([32]byte) ([]byte, error) { return nil, errors.New("none") }
+	feed := func(sub map[[32]byte][]byte) (*Closure, error) {
+		inc := NewIncremental(b.RootHash, none, Limits{}, 0)
+		for h, o := range objects {
+			if p, ok := sub[h]; ok {
+				inc.AddHashed(h, p)
+			} else {
+				inc.AddHashed(h, o)
+			}
+		}
+		return inc.Check()
+	}
+	if c, err := feed(nil); err != nil || !c.Canonical {
+		t.Fatalf("honest: %v", err)
+	}
+	// Another blob's bytes, or flipped bytes, under a blob's hash.
+	h1 := sha256.Sum256(b.Blobs[1])
+	flip := append([]byte(nil), b.Blobs[1]...)
+	flip[0] ^= 1
+	for name, p := range map[string][]byte{"other blob": b.Blobs[0], "flipped": flip, "short": b.Blobs[1][1:]} {
+		if _, err := feed(map[[32]byte][]byte{h1: p}); !errors.Is(err, ErrContentHash) && !errors.Is(err, ErrLength) {
+			t.Fatalf("%s: %v, want a content hash or length refusal", name, err)
+		}
+	}
+	// Forged nodes under the root's and a branch's hash.
+	forged := append([]byte(nil), b.Root...)
+	forged[len(forged)-1] ^= 1
+	if _, err := feed(map[[32]byte][]byte{b.RootHash: forged}); !errors.Is(err, ErrHash) {
+		t.Fatalf("forged root: %v", err)
+	}
+	if len(b.Branches) > 0 {
+		hb := sha256.Sum256(b.Branches[0])
+		if _, err := feed(map[[32]byte][]byte{hb: b.Root}); !errors.Is(err, ErrHash) {
+			t.Fatalf("forged branch: %v", err)
+		}
+	}
+	// A right piece under a wrong hash is a stray: the walk waits for it.
+	inc := NewIncremental(b.RootHash, none, Limits{}, 0)
+	for h, o := range objects {
+		if h == h1 {
+			h[0] ^= 1
+		}
+		inc.AddHashed(h, o)
+	}
+	if _, err := inc.Check(); !errors.Is(err, ErrMissing) {
+		t.Fatalf("misfiled: %v", err)
 	}
 }

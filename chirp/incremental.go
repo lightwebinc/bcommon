@@ -13,7 +13,8 @@ import (
 const DefaultBuffer = 16 * ChunkSize
 
 // Incremental is Verify run as the closure's pieces arrive instead of at
-// the end. Each piece handed to Add is hashed there, on the caller's
+// the end. Each piece handed to Add is hashed there (AddHashed takes the
+// caller's hash instead), on the caller's
 // goroutine, so pieces arriving on several goroutines are hashed on several
 // cores; the walk then moves as far as the pieces on hand allow, and the
 // content hash advances over the blobs in order as they come. When the last
@@ -54,7 +55,7 @@ type Incremental struct {
 
 	// mu guards the kept pieces, what the walk waits for and the outcome.
 	mu       sync.Mutex
-	kept     map[[32]byte][]byte
+	kept     map[[32]byte]keptPiece
 	keptLen  int
 	maxKept  int
 	want     [32]byte
@@ -79,6 +80,13 @@ type Incremental struct {
 	out      *Closure
 }
 
+// keptPiece is a piece kept ahead of the walk; vouched when its hash was
+// handed to AddHashed rather than computed by Add.
+type keptPiece struct {
+	b       []byte
+	vouched bool
+}
+
 // frame is one node's child list being walked; depth is the number of
 // nodes above the children, the root counted.
 type frame struct {
@@ -100,7 +108,7 @@ func NewIncremental(rootHash [32]byte, fetch Fetch, lim Limits, buffer int) *Inc
 	if buffer <= 0 {
 		buffer = DefaultBuffer
 	}
-	return &Incremental{rootHash: rootHash, fetch: fetch, lim: lim, kept: map[[32]byte][]byte{}, maxKept: buffer}
+	return &Incremental{rootHash: rootHash, fetch: fetch, lim: lim, kept: map[[32]byte]keptPiece{}, maxKept: buffer}
 }
 
 // Add hands over a piece of the closure, or any object: it is hashed here,
@@ -110,15 +118,43 @@ func NewIncremental(rootHash [32]byte, fetch Fetch, lim Limits, buffer int) *Inc
 // otherwise ignored.
 func (v *Incremental) Add(piece []byte) [32]byte {
 	h := sha256.Sum256(piece)
+	v.add(h, piece, false)
+	return h
+}
+
+// AddHashed is Add for a caller that has already hashed the piece: hash
+// must be sha256 of piece, and the caller vouches for it. It saves the one
+// hash of the piece that Add makes, which is most of Add's cost for a blob.
+//
+// The trust is narrow. A root or branch handed here is hashed again when
+// the walk takes it (nodes are small), so the closure's structure, every
+// reference's hash and length and the content hash it commits to, is
+// always checked as Verify checks it. Only a blob's own hash is taken on
+// the caller's word; its length is still checked against its reference,
+// and its bytes still go into the content hash, which must equal the
+// root's. So with a correct hash the walk and its verdict are Add's, the
+// same as Verify's, byte for byte. With a wrong one, no bytes but the
+// content the root commits to can ever pass: a blob whose bytes differ
+// from the content in its place fails the content hash. What a wrong hash
+// can do is place a piece under a reference that its bytes do not hash to
+// and, where those bytes are the committed content anyway, pass a closure
+// whose blob references Verify would refuse with ErrHash; and a piece kept
+// under a hash that no reference names is ignored, as any stray piece is.
+// A caller that cannot vouch for the hash, or must refuse such malformed
+// closures, calls Add.
+func (v *Incremental) AddHashed(hash [32]byte, piece []byte) {
+	v.add(hash, piece, true)
+}
+
+func (v *Incremental) add(h [32]byte, piece []byte, vouched bool) {
 	v.mu.Lock()
-	if !v.finished && v.kept[h] == nil && ((v.wanting && v.want == h) || v.keptLen+len(piece) <= v.maxKept) {
-		v.kept[h] = append(make([]byte, 0, len(piece)), piece...)
+	if _, have := v.kept[h]; !v.finished && !have && ((v.wanting && v.want == h) || v.keptLen+len(piece) <= v.maxKept) {
+		v.kept[h] = keptPiece{b: append(make([]byte, 0, len(piece)), piece...), vouched: vouched}
 		v.keptLen += len(piece)
 	}
 	v.kick++
 	v.mu.Unlock()
 	v.pump()
-	return h
 }
 
 // Advance moves the walk as far as the pieces kept and fetch allow: after a
@@ -195,36 +231,38 @@ func (v *Incremental) Check() (*Closure, error) {
 	return v.Result()
 }
 
-// obtain returns an object's bytes and whether they are known to hash to
-// h (a kept piece, hashed by Add), or false when there are none yet; in
-// final mode the absence is ErrMissing, as Verify's get.
-func (v *Incremental) obtain(h [32]byte, final bool) ([]byte, bool, bool, error) {
+// obtain returns an object's bytes and how far they are known to hash to
+// h: hashedHere (a kept piece hashed by Add), vouched (a kept piece whose
+// hash came with it to AddHashed), or neither (fetched); or false when
+// there are none yet. In final mode the absence is ErrMissing, as Verify's
+// get.
+func (v *Incremental) obtain(h [32]byte, final bool) (b []byte, hashedHere, vouched, got bool, err error) {
 	v.mu.Lock()
 	v.want, v.wanting = h, true
-	if b, ok := v.kept[h]; ok {
+	if k, ok := v.kept[h]; ok {
 		delete(v.kept, h)
-		v.keptLen -= len(b)
+		v.keptLen -= len(k.b)
 		v.wanting = false
 		v.mu.Unlock()
-		return b, true, true, nil
+		return k.b, !k.vouched, k.vouched, true, nil
 	}
 	v.mu.Unlock()
-	b, err := v.fetch(h)
+	b, err = v.fetch(h)
 	if err != nil {
 		if final {
-			return nil, false, false, fmt.Errorf("%w: %x: %v", ErrMissing, h, err)
+			return nil, false, false, false, fmt.Errorf("%w: %x: %v", ErrMissing, h, err)
 		}
-		return nil, false, false, nil
+		return nil, false, false, false, nil
 	}
 	// A copy kept while fetch was asked is not needed any more.
 	v.mu.Lock()
 	if k, ok := v.kept[h]; ok {
 		delete(v.kept, h)
-		v.keptLen -= len(k)
+		v.keptLen -= len(k.b)
 	}
 	v.wanting = false
 	v.mu.Unlock()
-	return b, false, true, nil
+	return b, false, false, true, nil
 }
 
 func (v *Incremental) settle(c *Closure, err error) {
@@ -300,7 +338,7 @@ func (v *Incremental) walk(final bool) error {
 func isMissing(err error) bool { return errors.Is(err, ErrMissing) }
 
 func (v *Incremental) startRoot(final bool) (bool, error) {
-	rb, pre, ok, err := v.obtain(v.rootHash, final)
+	rb, pre, _, ok, err := v.obtain(v.rootHash, final)
 	if err != nil || !ok {
 		return false, err
 	}
@@ -336,7 +374,7 @@ func (v *Incremental) branch(c Child, depth int, final bool) (bool, error) {
 	}
 	br, ok := v.branches[c.Hash]
 	if !ok {
-		b, pre, got, err := v.obtain(c.Hash, final)
+		b, pre, _, got, err := v.obtain(c.Hash, final)
 		if err != nil || !got {
 			return false, err
 		}
@@ -360,14 +398,16 @@ func (v *Incremental) branch(c Child, depth int, final bool) (bool, error) {
 }
 
 func (v *Incremental) blob(c Child, final bool) (bool, error) {
-	b, pre, got, err := v.obtain(c.Hash, final)
+	b, pre, vouched, got, err := v.obtain(c.Hash, final)
 	if err != nil || !got {
 		return false, err
 	}
 	if uint64(len(b)) != c.Length {
 		return false, fmt.Errorf("%w: blob %x is %d bytes, its reference %d", ErrLength, c.Hash, len(b), c.Length)
 	}
-	if !pre && sha256.Sum256(b) != c.Hash {
+	// A vouched blob's hash is the caller's (see AddHashed); its bytes are
+	// still bound by its length here and by the content hash at the end.
+	if !pre && !vouched && sha256.Sum256(b) != c.Hash {
 		return false, fmt.Errorf("%w: blob %x", ErrHash, c.Hash)
 	}
 	v.content.Write(b)
