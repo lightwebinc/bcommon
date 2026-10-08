@@ -100,3 +100,27 @@ test('configuration: <P>_CHAIN picks WhatsOnChain, never beside an asset URL', (
   assert.throws(() => parseAcceptConfig('APP', { APP_CHAIN: 'woc:main', APP_ASSET_URL: 'http://node' }), /keep one/)
   assert.throws(() => new WocHttp('regtest' as 'main'), /main or test/)
 })
+
+test('raw: the transaction WhatsOnChain answers as hex, held to the txid asked; another transaction or a 404 throws; the main entry exports it', async () => {
+  const { Transaction: Tx, LockingScript } = await import('@bsv/sdk')
+  const main = await import('../index.js')
+  assert.equal(main.WocHttp, WocHttp, 'the browser-safe entry exports the same class')
+  const mk = (n: number) => new Tx(1, [{ sourceTXID: '11'.repeat(32), sourceOutputIndex: n, unlockingScript: LockingScript.fromHex('51') as never, sequence: 0xffffffff }], [{ satoshis: 1, lockingScript: LockingScript.fromHex('51') }], 0)
+  const a = mk(0)
+  const b = mk(1)
+  const { server, base } = await serve(
+    new Map([
+      [`/tx/${a.id('hex')}/hex`, [200, `${a.toHex()}\n`]],
+      [`/tx/${b.id('hex')}/hex`, [200, a.toHex()]],
+    ]),
+  )
+  try {
+    const w = new WocHttp('main', undefined, base, 1000)
+    assert.deepEqual(Array.from(await w.raw(a.id('hex'))), a.toBinary())
+    await assert.rejects(w.raw(b.id('hex')), /asked for transaction/)
+    await assert.rejects(w.raw(unknown), /does not hold/)
+    await assert.rejects(w.raw('xyz'), /not a txid/)
+  } finally {
+    server.close()
+  }
+})
