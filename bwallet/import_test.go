@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -291,5 +292,42 @@ func TestImportTxidOverWhatsOnChain(t *testing.T) {
 	}
 	if _, err := bwallet.ImportTxid(ctx, realTx, realFund(t), nil, realHeaders()); err == nil {
 		t.Fatal("no source")
+	}
+	// The spend is checked first: a spent output is left out, and an
+	// output the view does not know fails the import.
+	im, err = bwallet.ImportTxid(ctx, realTx, realFund(t), woc, realHeaders())
+	if err != nil || len(im.Outputs) == 0 {
+		t.Fatalf("%+v %v", im, err)
+	}
+	all, total := len(im.Outputs), im.Sats
+	spentBy := []byte(`{"txid":"` + strings.Repeat("ef", 32) + `","vin":0,"status":"confirmed"}`)
+	var spent []string
+	for n, o := range im.Outputs {
+		path := "/tx/" + realTx + "/" + strconv.FormatUint(uint64(o.Vout), 10) + "/spent"
+		routes[path], spent = spentBy, append(spent, path)
+		got, err := bwallet.ImportTxid(ctx, realTx, realFund(t), woc, realHeaders())
+		if n == all-1 {
+			if !errors.Is(err, bwallet.ErrSpent) {
+				t.Fatalf("every output spent: %v", err)
+			}
+			break
+		}
+		if err != nil || len(got.Outputs) != all-n-1 || got.Sats >= total {
+			t.Fatalf("%d spent: %+v %v", n+1, got, err)
+		}
+	}
+	for _, p := range spent {
+		delete(routes, p)
+	}
+	unknown := srv.Config.Handler
+	srv.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/spent") {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		unknown.ServeHTTP(w, r)
+	})
+	if _, err := bwallet.ImportTxid(ctx, realTx, realFund(t), woc, realHeaders()); !errors.Is(err, nodeapi.ErrSpendUnknown) {
+		t.Fatalf("unknown output: %v", err)
 	}
 }

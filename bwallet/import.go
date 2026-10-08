@@ -66,6 +66,9 @@ var (
 	// ErrUnprovenParent is an unmined payment one of whose parents carries
 	// no proof: only one unmined hop is taken.
 	ErrUnprovenParent = errors.New("bwallet: the payment spends a parent with no proof")
+	// ErrSpent is a payment every output of which to the fund script the
+	// chain view shows spent already (ImportTxid).
+	ErrSpent = errors.New("bwallet: the payment's outputs to this wallet are spent already")
 )
 
 // ImportBEEF checks a funding payment handed over as BEEF (or Atomic BEEF)
@@ -129,6 +132,13 @@ func ImportBEEF(ctx context.Context, beef []byte, fund *script.Script, headers c
 // node, WhatsOnChain), checks its proof against headers, and reads the
 // outputs that pay fund. A payment not mined yet is ErrUnmined: try again
 // once it has a block, or import the wallet's BEEF instead.
+//
+// When src is also a nodeapi.SpendSource (a node, WhatsOnChain, the
+// Sources nodeapi.ParseChain builds), each output paying fund is checked
+// for a spend first: one shown spent is left out, and when every one is,
+// the import is ErrSpent. An output the view cannot answer for
+// (nodeapi.ErrSpendUnknown) fails the import. "Unspent" is the view's
+// word and is trusted: no proof of absence exists.
 func ImportTxid(ctx context.Context, txid string, fund *script.Script, src interface {
 	nodeapi.TxSource
 	nodeapi.ProofSource
@@ -159,7 +169,36 @@ func ImportTxid(ctx context.Context, txid string, fund *script.Script, src inter
 		return nil, fmt.Errorf("bwallet: import %s: %w", txid, err)
 	}
 	tx.MerklePath = mp
-	return read(tx, fund, true)
+	im, err := read(tx, fund, true)
+	if err != nil {
+		return nil, err
+	}
+	if sp, ok := src.(nodeapi.SpendSource); ok {
+		return unspent(ctx, im, sp)
+	}
+	return im, nil
+}
+
+// unspent leaves out of im the outputs sp shows spent.
+func unspent(ctx context.Context, im *Import, sp nodeapi.SpendSource) (*Import, error) {
+	kept := im.Outputs[:0]
+	var sats uint64
+	for _, o := range im.Outputs {
+		by, err := sp.Spender(ctx, o.TxID, o.Vout)
+		if err != nil {
+			return nil, fmt.Errorf("bwallet: import %s: %w", im.Txid, err)
+		}
+		if by != "" {
+			continue
+		}
+		kept = append(kept, o)
+		sats += o.Satoshis
+	}
+	if len(kept) == 0 {
+		return nil, fmt.Errorf("%w: %s", ErrSpent, im.Txid)
+	}
+	im.Outputs, im.Sats = kept, sats
+	return im, nil
 }
 
 // final is a transaction that can mine as it stands: lock time zero, or
