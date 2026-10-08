@@ -68,7 +68,7 @@ same vectors as the Go packages. It has three entry points:
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
+| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, the writer (funding lock, carrier and self-paying sweep through a BRC-100 wallet), and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
 | `@lightwebinc/bcommon/host` | For Node: what an overlay host module runs beside the engine when it answers questions itself. The terms route (`LookupFront`: BRC-104 server side, BRC-105 priced questions, the terms document and price list), its hardening (handshake budgets checked before any signature work, per-session response budgets, replay refusal, bounded sessions), the payee ledger as a host writes and reads it, the Go `payee` package's lines byte for byte, and payment acceptance over arcade and the node |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
 
@@ -77,7 +77,7 @@ same vectors as the Go packages. It has three entry points:
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.16.0
+go get github.com/lightwebinc/bcommon@v0.17.0
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -85,10 +85,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.16.0 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.16.0.tgz
+git clone --depth 1 --branch v0.17.0 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.17.0.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.16.0.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.17.0.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage

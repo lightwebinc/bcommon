@@ -1,7 +1,7 @@
 {
   "name": "@lightwebinc/bcommon",
-  "version": "0.16.0",
-  "description": "TypeScript twins of the bcommon Go library: deterministic CBOR, the bounded record reader, store references, BRC-42 reader derivation, PushDrop reading and field signatures, funding decode, the carrier check and the BEEF shapes a host admits a carrier and a mined token in, RFC 6962 roots and compact paths over leaves of any length, the CHIRP (BRC-167) profile 1 codec and closure check, for overlay topic managers and lookup services, the renderer filter for text a web page shows, the value discriminator for a payment a host takes, and, for a Node host module, its terms route with BRC-104 hardening, the payee ledger and payment acceptance",
+  "version": "0.17.0",
+  "description": "TypeScript twins of the bcommon Go library: deterministic CBOR, the bounded record reader, store references, BRC-42 reader derivation, PushDrop reading and field signatures, funding decode, the carrier check and the BEEF shapes a host admits a carrier and a mined token in, RFC 6962 roots and compact paths over leaves of any length, the CHIRP (BRC-167) profile 1 codec and closure check, for overlay topic managers and lookup services, the renderer filter for text a web page shows, the value discriminator for a payment a host takes, the writer a page uses through the user's wallet (funding lock, carrier, self-paying sweep), and, for a Node host module, its terms route with BRC-104 hardening, the payee ledger and payment acceptance",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -163,3 +163,4 @@ export {
   type PaymentRequest,
   type PriceSource,
 } from './acceptance.js'
+export { CarrierSequence, feeFor, fundingLock, lockFields, mintCarrier, sweep, unlocker, type Derivation, type Fees, type SigningWallet } from './writer.js'

@@ -570,6 +570,7 @@ to read what a producer wrote:
 | `sanitize.Filter`, `sanitize.UnicodeVersion` | `filterText` (a string) and `filterBytes` (UTF-8 bytes), `UnicodeVersion` |
 | `commit.HashLeaf`, `NodeHash`, `RootOfBytes`, `RootOfLeafHashes`, `RootOfSubtrees`, `ProveBytes`, `ProveLeafHashes`, `ProveSubtrees`, `VerifyBytes`, `PathLen`, `VerifyAt`, `Builder`, `SegmentRoot`, `SegmentWriter` | `hashLeaf`, `hashNode`, `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `proveLeafHashes`, `proveSubtrees`, `verifyBytes`, `pathLength`, `verifyAt`, `RootBuilder`, `segmentRoot`, `SegmentWriter` |
 | `acceptance.DefaultPolicy`, `Policy.Threshold`, `Policy.Decide`, `Exposure`, the fast path's reading of an `ArcadeStatus` | `defaultAcceptancePolicy`, `paymentThreshold`, `decidePayment`, `PaymentExposure`, `arcadeVerdict` |
+| `carrier.FundingLock`, `carrier.Mint`, `carrier.SweepAt` without a fee input, `mint.Fees.For`, `pushdrop.Derivation.Lock` and `Unlocker` | `fundingLock`, `mintCarrier`, `sweep`, `feeFor`, `lockFields` and `unlocker` (the writer, `writer.ts`) |
 | `chirp.EncodeRoot`, `EncodeBranch`, `DecodeRoot`, `DecodeBranch`, `Kind`, `BuildTree`, `Build`, `Verify`, `Identifier`, `ParseIdentifier`, `URL`, `ParseURL`, `ValidMediaType`, `Reason` | `encodeRoot`, `encodeBranch`, `decodeRoot`, `decodeBranch`, `nodeKind`, `buildChirpTree`, `buildChirp`, `verifyClosure` (async over the fetch), `chirpIdentifier`, `parseChirpIdentifier`, `chirpURL`, `parseChirpURL`, `validMediaType`, `ChirpError.code` |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
@@ -626,7 +627,16 @@ a host checks them. Nor do `ParallelChunker`, `BuildParallel`,
 host module checks a closure with `verifyClosure`, whose answer they do
 not change.
 
-The builders (`mint`, `carrier.Mint`, `carrier.Sweep`), the 32-byte-leaf
+A web page that writes through the user's wallet needs the carrier
+builders, so they have twins too (the writer): the funding lock, the
+carrier and the self-paying sweep, every key operation through a BRC-100
+wallet's `getPublicKey` and `createSignature` as the Go builders call
+`wallet.Interface`, held to `transactions-v1.json` byte for byte. The tree
+itself is minted by the wallet's `createAction`, which pays, so `mint`, the
+fee-input sweep and the producer's pool, payer, proofs and recovery stay Go
+only.
+
+The builders `mint` and the fee-input `carrier.Sweep`, the 32-byte-leaf
 RFC 6962 functions, the network clients, `verify`, `keyed`, `purse`, `payee`,
 `acceptance`'s `Verifier` and `Monitor`,
 `chainview` and `testchain` have no TypeScript twin: a topic manager reads
