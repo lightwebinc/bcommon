@@ -102,9 +102,9 @@ and `Sequence` 0.
 |---|---|---|
 | `Fees.Rate` | none; `mint.DefaultFees` is `{100, 1000}` | `mint.Rate{Sats, Bytes}`: `Sats` satoshis per `Bytes` bytes of the signed transaction, exactly as miners publish it (ARC's `miningFee`; JSON `{"satoshis", "bytes"}`). The fee is `ceil(size * Sats / Bytes)` in integer arithmetic; a fee that overflows 64 bits, or `Sats` over zero `Bytes`, is `mint.ErrRate` |
 | `Fees.SatPerByte` | none | the older whole-number rate, read only when `Rate` is zero, as `Rate{SatPerByte, 1}`. A `Fees` written before `Rate` existed means what it meant |
-| `Fees.Floor` | none; `mint.DefaultFees` is 250 | the least fee a transaction pays, in satoshis |
-| `Fees.Dust` | zero, which means `Floor` | the least change kept as an output; change below it goes to the fee. `mint.DefaultFees` sets 250, the rule before `Dust` existed |
-| `Fees.MaxRate` | none | caps `Rate` (and `SatPerByte`): a rate above it is lowered to it |
+| `Fees.Floor` | none; `mint.DefaultFees` is 100 | the least fee a transaction pays, in satoshis |
+| `Fees.Dust` | zero, which means `Floor` | the least change kept as an output; change below it goes to the fee. `mint.DefaultFees` sets 100 |
+| `Fees.MaxRate` | none; `mint.DefaultFees` is `{100, 1000}` | caps `Rate` (and `SatPerByte`): a rate above it is lowered to it |
 | `Fees.Max` | none | the most one transaction may pay in fee; a fee above it is refused with `mint.ErrFeeTooHigh` rather than paid |
 | `Input{Tx, Vout, Unlocker}` | none | an input's source transaction, output index and the template that signs it. The template keeps key material out of `mint` |
 | `change` | none; a nil script is `ErrNoChange` | where the fee input's remainder goes |
@@ -113,7 +113,7 @@ Three fee policies are named:
 
 | Name | Rate | Floor | Dust | |
 |---|---|---|---|---|
-| `mint.DefaultFees` | `{100, 1000}` | 250 | 250 | the network's rate, with the floor and change rule kept while the floor is decided |
+| `mint.DefaultFees` | `{100, 1000}`, capped there | 100 | 100 | the network's rate and never more; the floor is what 1000 bytes pay at that rate |
 | `mint.NetworkFees` | `{100, 1000}` | 1 | 1 | the network's rate with no padding: a 225-byte payment pays 23 satoshis |
 | `mint.LegacyFees` | `SatPerByte` 1 | 250 | 250 (from `Floor`) | `DefaultFees` until the network rate became the default; test vectors that pin fee amounts name it, so a change of default never moves a pinned byte |
 
@@ -148,7 +148,7 @@ reaches no network; the policy fetch lives here.
 | `URLs` | none | broadcaster URLs; a bare host is asked at `/v1/policy`, a URL with a path at that path plus `/policy` (so `https://arc.taal.com/v1` and `https://arcade.gorillapool.io` both work) |
 | `Key` | none | a bearer token |
 | `Base` | none | the fees returned with the policy's rate in place of their own: floor, dust and `Max`, and the rate used when no policy is at hand |
-| `Min`, `Max` | `DefaultMinRate` `{100, 1000}`, `DefaultMaxRate` `{1, 1}` | the policy's rate is raised to `Min` and lowered to `Max`; `Max` is also set as `Fees.MaxRate` |
+| `Min`, `Max` | `DefaultMinRate` `{100, 1000}`, `DefaultMaxRate` `{100, 1000}` | the policy's rate is raised to `Min` and lowered to `Max`; `Max` is also set as `Fees.MaxRate` |
 | `TTL` | 5 minutes | one fetch per TTL, also after a failure |
 | `Stale` | 24 hours | how long the last good answer is used while the endpoints fail; after it, `Base`'s rate |
 | `Timeout` | 5 s | the fetch bound; a mint never waits longer on the policy |
@@ -168,9 +168,9 @@ keys sorted:
 
 ```json
 "fee": {
-  "dust": 250,
-  "floor": 250,
-  "max_rate": {"bytes": 1, "satoshis": 1},
+  "dust": 100,
+  "floor": 100,
+  "max_rate": {"bytes": 1000, "satoshis": 100},
   "max_tx": 0,
   "min_rate": {"bytes": 1000, "satoshis": 100},
   "policy_urls": ["https://arcade.gorillapool.io"],

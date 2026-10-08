@@ -115,8 +115,8 @@ func ExampleFundingTree() {
 	// output 1: 1000 sats, funding=true
 	// output 2: 1000 sats, funding=true
 	// output 3: 1000 sats, funding=true
-	// output 4: 45750 sats, funding=false
-	// fee: 250 sats for 388 bytes
+	// output 4: 45900 sats, funding=false
+	// fee: 100 sats for 388 bytes
 	// proves through its parent: true <nil>
 	// carriers it can fund: 4
 }

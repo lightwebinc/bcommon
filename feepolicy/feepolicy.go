@@ -43,15 +43,14 @@ func (s Static) Fees(context.Context) (mint.Fees, error) {
 	return f, nil
 }
 
-// Guard defaults: the network rate published today as the least a live
-// policy may lower the rate to, and one satoshi a byte, ten times that, as
-// the most it may raise it to.
-//
-// TODO(D4): the maximum follows the proposal (10x the network rate) until
-// the owner rules.
+// Guard defaults: the network rate published today, 100 satoshis per 1000
+// bytes, as both the least a live policy may lower the rate to and the most
+// it may raise it to. A live policy above it is lowered to it, so a miner
+// that raises its rate refuses the transaction until the operator raises
+// max_rate; nothing is ever overpaid by default.
 var (
 	DefaultMinRate = mint.Rate{Sats: 100, Bytes: 1000}
-	DefaultMaxRate = mint.Rate{Sats: 1, Bytes: 1}
+	DefaultMaxRate = mint.Rate{Sats: 100, Bytes: 1000}
 )
 
 // Source names, as Config.Source and Status.Source spell them.
@@ -68,9 +67,9 @@ var ErrConfig = errors.New("feepolicy: bad fee configuration")
 // sorted as they are written:
 //
 //	"fee": {
-//	  "dust": 250,
-//	  "floor": 250,
-//	  "max_rate": {"bytes": 1, "satoshis": 1},
+//	  "dust": 100,
+//	  "floor": 100,
+//	  "max_rate": {"bytes": 1000, "satoshis": 100},
 //	  "max_tx": 0,
 //	  "min_rate": {"bytes": 1000, "satoshis": 100},
 //	  "policy_urls": ["https://arcade.gorillapool.io"],

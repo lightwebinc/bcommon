@@ -203,9 +203,10 @@ show the Payer and Trees with every field.
 
 `mint.DefaultFees` pays the network's rate, 100 satoshis per 1000 bytes
 (what GorillaPool's and TAAL's ARC and GorillaPool's arcade publish at
-`/v1/policy`), with a 250 satoshi floor per transaction. `mint.NetworkFees`
-is the same rate with a floor of 1 satoshi, so a 225-byte payment pays 23
-satoshis. A funding tree of four outputs is 388 bytes and pays the floor; a
+`/v1/policy`), never more, with a 100 satoshi floor per transaction (what a
+1000-byte transaction pays at that rate). `mint.NetworkFees` is the same
+rate with a floor of 1 satoshi, so a 225-byte payment pays 23 satoshis
+rather than 100. A funding tree of four outputs is 388 bytes and pays the floor; a
 carrier is never mined and pays no fee; it spends one funding output (1000
 satoshis in the examples, `producer.Trees.Sats` in an application). To
 follow the broadcaster's published rate instead of a fixed one, use
@@ -283,14 +284,14 @@ output 0: 1000 sats, funding=true
 output 1: 1000 sats, funding=true
 output 2: 1000 sats, funding=true
 output 3: 1000 sats, funding=true
-output 4: 45750 sats, funding=false
-fee: 250 sats for 388 bytes
+output 4: 45900 sats, funding=false
+fee: 100 sats for 388 bytes
 proves through its parent: true <nil>
 carriers it can fund: 4
 ```
 
 At `mint.DefaultFees`, 100 satoshis per 1000 bytes, a 388-byte tree
-needs 39 satoshis and pays the 250 satoshi floor. The fee loop targets the
+needs 39 satoshis and pays the 100 satoshi floor. The fee loop targets the
 signed size plus two bytes per input, because a DER signature can grow by a
 byte when the transaction is re-signed. On mainnet or testnet the coin is the user's own payment,
 imported as in [Fund a wallet on mainnet or testnet](#fund-a-wallet-on-mainnet-or-testnet).

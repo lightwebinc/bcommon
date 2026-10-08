@@ -104,7 +104,7 @@ func TestFeesFor(t *testing.T) {
 	}{
 		{"legacy under the floor", mint.LegacyFees, 225, 250},
 		{"legacy above the floor", mint.LegacyFees, 1000, 1000},
-		{"default under the floor", mint.DefaultFees, 1000, 250},
+		{"default under the floor", mint.DefaultFees, 225, 100},
 		{"default above the floor", mint.DefaultFees, 10000, 1000},
 		{"network, no padding", mint.NetworkFees, 225, 23},
 		{"network, empty", mint.NetworkFees, 0, 1},

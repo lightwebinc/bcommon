@@ -64,12 +64,11 @@ type Fees struct {
 
 // DefaultFees is the network's rate, 100 satoshis per 1000 bytes (the
 // miningFee GorillaPool's and TAAL's ARC and GorillaPool's arcade publish),
-// with a 250 satoshi floor and change under 250 satoshis dropped, as
-// before the rate moved.
-//
-// TODO(D3): the floor and the change-drop threshold stay at 250 until the
-// owner rules; NetworkFees is the proposal (floor 1, dust 1).
-var DefaultFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 250, Dust: 250}
+// never more: MaxRate is the same rate, so a configured or live rate above
+// it is lowered to it. Every transaction pays at least 100 satoshis, what a
+// 1000-byte transaction pays at that rate, and change under 100 satoshis is
+// added to the fee rather than kept.
+var DefaultFees = Fees{Rate: Rate{Sats: 100, Bytes: 1000}, Floor: 100, Dust: 100, MaxRate: Rate{Sats: 100, Bytes: 1000}}
 
 // NetworkFees is the network's rate with no padding: 100 satoshis per 1000
 // bytes, a floor of one satoshi, and every change of a satoshi or more

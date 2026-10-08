@@ -154,6 +154,7 @@ func TestARCTakesTheHighestRateAndLowestLimits(t *testing.T) {
 	down.set(500, []byte("down"))
 	c := &clock{t: time.Unix(1_800_000_000, 0)}
 	a := arc(c, mint.DefaultFees, low.URL, high.URL, down.URL)
+	a.Max = mint.Rate{Sats: 1, Bytes: 1} // above the network rate, which is the default cap
 	f, err := a.Fees(context.Background())
 	if err != nil || f.Rate != (mint.Rate{Sats: 250, Bytes: 1000}) {
 		t.Fatalf("%+v %v", f, err)
@@ -166,7 +167,7 @@ func TestARCTakesTheHighestRateAndLowestLimits(t *testing.T) {
 func TestARCGuards(t *testing.T) {
 	ctx := context.Background()
 	c := &clock{t: time.Unix(1_800_000_000, 0)}
-	// A huge rate is held to the maximum: one satoshi a byte by default.
+	// A huge rate is held to the maximum: the network rate by default.
 	huge := newPolicy(t, []byte(`{"policy":{"miningFee":{"satoshis":18446744073709551615,"bytes":1}}}`))
 	f, err := arc(c, mint.DefaultFees, huge.URL).Fees(ctx)
 	if err != nil || f.Rate != feepolicy.DefaultMaxRate {
@@ -207,6 +208,7 @@ func TestARCDegradesToCacheThenStatic(t *testing.T) {
 	c := &clock{t: time.Unix(1_800_000_000, 0)}
 	var notes []string
 	a := arc(c, mint.DefaultFees, srv.URL)
+	a.Max = mint.Rate{Sats: 1, Bytes: 1} // above the network rate, which is the default cap
 	a.Note = func(f string, args ...any) { notes = append(notes, f) }
 	if f, _ := a.Fees(ctx); f.Rate.Sats != 200 {
 		t.Fatalf("%+v", f)
