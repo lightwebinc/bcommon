@@ -145,6 +145,21 @@ var (
 	ErrTreeTooLarge = errors.New("mint: a funding tree holds at most 1023 funding outputs")
 )
 
+// InsufficientError is ErrInsufficient with what was measured: a caller
+// holding other coins can take one of at least Outputs plus Fee and build
+// again. The fee is the one the transaction measured at the failure, so a
+// coin that size may still fall short by a change output.
+type InsufficientError struct {
+	Inputs, Outputs, Fee uint64
+}
+
+func (e *InsufficientError) Error() string {
+	return fmt.Sprintf("%v: inputs %d, outputs %d, fee %d", ErrInsufficient, e.Inputs, e.Outputs, e.Fee)
+}
+
+// Unwrap is ErrInsufficient.
+func (e *InsufficientError) Unwrap() error { return ErrInsufficient }
+
 // MaxFundingOutputs is the most funding outputs one funding tree holds,
 // its change outputs aside. A sweep of every funding output of a tree with
 // one fee input then spends at most 1024 inputs, the least a host that
@@ -258,7 +273,7 @@ func build(skeleton func() (*transaction.Transaction, uint64, error), change *sc
 		}
 		out := tx.TotalOutputSatoshis()
 		if in < out+fee {
-			return nil, fmt.Errorf("%w: inputs %d, outputs %d, fee %d", ErrInsufficient, in, out, fee)
+			return nil, &InsufficientError{Inputs: in, Outputs: out, Fee: fee}
 		}
 		if rest := in - out - fee; rest >= dust {
 			tx.AddOutput(&transaction.TransactionOutput{Satoshis: rest, LockingScript: change})

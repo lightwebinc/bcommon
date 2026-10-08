@@ -9,6 +9,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
+	"github.com/lightwebinc/bcommon/bwallet"
 	"github.com/lightwebinc/bcommon/carrier"
 	"github.com/lightwebinc/bcommon/funding"
 	"github.com/lightwebinc/bcommon/mint"
@@ -326,4 +327,68 @@ func TestSpendTreeCap(t *testing.T) {
 			t.Fatalf("notes:\n%s", n)
 		}
 	})
+}
+
+// A pool whose smallest coin covers the outputs and the fee floor but not
+// the fee the tree measures (anchor change, say) mints from a larger coin,
+// on demand and ahead, and leaves the short one in the pool.
+func TestSpendPassesOverACoinShortOfTheMeasuredFee(t *testing.T) {
+	short := func(t *testing.T, tr *producer.Trees) string {
+		t.Helper()
+		own := tr.Payer.Keys[tr.Identity]
+		lock, err := own.FundScript()
+		if err != nil {
+			t.Fatal(err)
+		}
+		// Above treeNeed (outputs and the floor), below outputs and the
+		// fee a four-output tree measures at one satoshi a byte; and
+		// older than the pool's other coin, so the pool offers it first.
+		sats := uint64(tr.Count)*tr.Sats + mint.LegacyFees.Floor + 10
+		coin := coinFor(lock, sats, 0x83)
+		if _, err := tr.Payer.Pool.Add(bwallet.Output{TxID: coin.TxID().String(), Vout: 0, Satoshis: sats,
+			LockingScript: lock.String(), Height: 80, Raw: coin.Hex(), Bump: coin.MerklePath.Hex()}); err != nil {
+			t.Fatal(err)
+		}
+		return coin.TxID().String()
+	}
+	t.Run("on demand", func(t *testing.T) {
+		tr, l, st, n := treesFor(t)
+		l.mineOnSubmit = true
+		id := short(t, tr)
+		tree, _, err := tr.Spend(context.Background(), 1)
+		if err != nil {
+			t.Fatalf("%v\n%s", err, n)
+		}
+		if tree.Inputs[0].SourceTXID.String() == id || st.adopted != 1 {
+			t.Fatal("the tree was minted from the short coin")
+		}
+		if !poolHolds(tr, id) {
+			t.Fatal("the short coin left the pool")
+		}
+	})
+	t.Run("ahead", func(t *testing.T) {
+		tr, l, st, n := aheadFor(t)
+		id := short(t, tr)
+		spend(t, tr, st, 1)
+		spend(t, tr, st, 1) // 2 left: the next is minted ahead
+		if err := tr.Wait(context.Background()); err != nil {
+			t.Fatalf("%v\n%s", err, n)
+		}
+		prep := tr.Prepared()
+		if prep == nil || settled(l) != 2 {
+			t.Fatalf("nothing minted ahead:\n%s", n)
+		}
+		if !poolHolds(tr, id) {
+			t.Fatalf("the short coin left the pool:\n%s", n)
+		}
+	})
+}
+
+func poolHolds(tr *producer.Trees, txid string) bool {
+	for _, o := range tr.Payer.Pool.Outputs() {
+		if o.TxID == txid {
+			return true
+		}
+	}
+	return false
 }

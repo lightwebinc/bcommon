@@ -322,25 +322,39 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 			return nil, 0, err
 		}
 	} else {
-		fee, coin, err := t.Payer.take(ctx, t.treeNeed(count))
-		if err != nil {
-			return nil, 0, err
-		}
-		// Every failure before the tree reaches the leg puts the coin back
-		// here, so a caller that returns on the error without a GiveBack
-		// loses no coin.
-		if t.Change == nil {
-			t.Payer.giveBackOne(coin)
-			return nil, 0, errors.New("producer: Trees needs a Change script")
-		}
-		changeTo, err := t.Change()
-		if err != nil {
-			t.Payer.giveBackOne(coin)
-			return nil, 0, err
-		}
-		if tree, err = t.mint(ctx, count, fee, changeTo); err != nil {
-			t.Payer.giveBackOne(coin)
-			return nil, 0, err
+		var coin bwallet.Output
+		var short error
+		for need, try := t.treeNeed(count), 0; ; try++ {
+			var fee mint.Input
+			fee, coin, err = t.Payer.take(ctx, need)
+			if err != nil {
+				if short != nil {
+					// No larger coin: the short one's refusal says more.
+					return nil, 0, short
+				}
+				return nil, 0, err
+			}
+			// Every failure before the tree reaches the leg puts the coin
+			// back here, so a caller that returns on the error without a
+			// GiveBack loses no coin.
+			if t.Change == nil {
+				t.Payer.giveBackOne(coin)
+				return nil, 0, errors.New("producer: Trees needs a Change script")
+			}
+			changeTo, err := t.Change()
+			if err != nil {
+				t.Payer.giveBackOne(coin)
+				return nil, 0, err
+			}
+			if tree, err = t.mint(ctx, count, fee, changeTo); err != nil {
+				t.Payer.giveBackOne(coin)
+				if more, ok := moreNeeded(err, need, try); ok {
+					need, short = more, err
+					continue
+				}
+				return nil, 0, err
+			}
+			break
 		}
 		t.Payer.note("funding tree %s: %d output(s) of %d sat", tree.TxID(), count, t.Sats)
 		if t.DryRun {
@@ -505,16 +519,31 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 	// The reservation and the signing happen here, on the goroutine that
 	// owns the Payer. Only a proven coin is taken: the tree is settled on its
 	// own and carries no kept transaction.
-	o, err := t.Payer.Pool.TakeAtLeast(t.Payer.Tip, t.treeNeed(count), nil)
-	if err != nil {
-		fail(&NoCoinError{Err: err, Held: len(t.Payer.Pool.UnprovenTxids())})
-		return
-	}
-	tree, err := t.mintFrom(ctx, count, o)
-	if err != nil {
-		_ = t.Payer.Pool.Return(o)
-		fail(err)
-		return
+	var o bwallet.Output
+	var tree *transaction.Transaction
+	var short error
+	for need, try := t.treeNeed(count), 0; ; try++ {
+		var err error
+		o, err = t.Payer.Pool.TakeAtLeast(t.Payer.Tip, need, nil)
+		if err != nil {
+			if short != nil {
+				fail(short)
+				return
+			}
+			fail(&NoCoinError{Err: err, Held: len(t.Payer.Pool.UnprovenTxids())})
+			return
+		}
+		tree, err = t.mintFrom(ctx, count, o)
+		if err != nil {
+			_ = t.Payer.Pool.Return(o)
+			if more, ok := moreNeeded(err, need, try); ok {
+				need, short = more, err
+				continue
+			}
+			fail(err)
+			return
+		}
+		break
 	}
 	t.Payer.note("funding tree %s: %d output(s) of %d sat", tree.TxID(), count, t.Sats)
 	if err := t.prepare(tree, count, id, funder, o); err != nil {
@@ -547,6 +576,26 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 		}
 		done <- r
 	}()
+}
+
+// moreNeeded reads a mint refused for want of coin: when the coin taken
+// for need fell short of the tree's outputs and its measured fee, it
+// answers the larger need to take a coin for again. The pool takes the
+// oldest coin that covers a need, and a coin put back keeps its place, so
+// without this a pool holding an old coin just over treeNeed (the change
+// of an anchor, say) would offer it to every mint while larger ones sat
+// unused. Two retries
+// at most: the second need adds a change output's fee.
+func moreNeeded(err error, need uint64, try int) (uint64, bool) {
+	var ie *mint.InsufficientError
+	if try >= 2 || !errors.As(err, &ie) {
+		return 0, false
+	}
+	more := ie.Outputs + ie.Fee + uint64(try)*ie.Fee/10 + 1
+	if more <= need {
+		return 0, false
+	}
+	return more, true
 }
 
 // treeNeed is the least a coin must hold to pay for a tree of count
