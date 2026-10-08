@@ -445,7 +445,13 @@ the application imports it once, checked:
   parents.
 - `ImportTxid(ctx, txid, fund, chain, headers)` fetches a mined payment and
   its proof from a chain view (`nodeapi.ParseChain`, a node, WhatsOnChain)
-  and checks the proof; a payment not mined yet is `ErrUnmined`.
+  and checks the proof; a payment not mined yet is `ErrUnmined`. When the
+  view also answers spends (every one `ParseChain` builds does), each output
+  paying `fund` is checked for a spend first: one shown spent is left out,
+  every one spent is `ErrSpent`, and one the view cannot answer for
+  (`nodeapi.ErrSpendUnknown`) fails the import. With no node, "unspent" is
+  WhatsOnChain's word and is trusted: no proof of absence exists, while a
+  proof and a named spender are checked.
 
 Either returns an `*Import`: the outputs paying `fund` as `[]Output` for
 `Pool.Add` (`ErrPaysNothing` when there are none), their total, and whether
