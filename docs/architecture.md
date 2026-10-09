@@ -77,10 +77,12 @@ beside the standard library and, where noted, go-sdk.
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
 | 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
 | 5 | `payee` | `guard`, `purse`, `termsafe` | yes |
+| 6 | `payeecmd` | `payee` | no |
 
 Every edge inside the module:
 
 ```text
+  payeecmd ──▶ payee
   payee    ──▶ purse, guard, termsafe
   purse    ──▶ producer, bwallet, chainview, funding, guard, mint, nodeapi,
                publish, termsafe
@@ -112,7 +114,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`, `acceptance`,
-`testchain`, `sanitize`, `payee`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
+`testchain`, `sanitize`, `payee`, `payeecmd`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -382,7 +384,16 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   each outcome as it comes, and counts the run in a `Report`. Whether a
   payment's coin was spent elsewhere is the purse's answer, from the leg's
   refusal and the node's view of the inputs (`chainview`): `payee` decides
-  nothing about the chain itself.
+  nothing about the chain itself. `BookFile` keeps a `Book` in a file of its
+  own, for a home whose state has no place to embed one.
+- **`payeecmd`** owns the payee verbs as a user meets them, the same in every
+  application: `payee key -out FILE` and `payee settle <ledger>...
+  [-in-flight N]`, their help, their refusals and their output. An
+  application gives a `Command` its name, the directory of the payee's
+  identity file, its streams, the errors that carry its exit codes and
+  `Open`, which opens its home for settle (the purse, the record, the pool).
+  It binds the flags to the application's own flag set through `FlagSet`,
+  so the library parses no command line itself.
 - **`acceptance`** owns how much evidence a payment needs before the
   receiver acts on it. `Policy.Decide` is the value discriminator: a
   payment at or below the threshold is `Fast`, one above it is `Hold`, and
