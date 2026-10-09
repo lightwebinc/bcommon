@@ -28,6 +28,11 @@ const (
 	// their output against. cborOracle is the independent encoder it
 	// brings in to check the codec against.
 	vectorsDir = "tools/vectors"
+	// devkitDir holds the other nested module: development and test tooling
+	// for applications (a local chain's command, a vector runner, test
+	// hosts). It is held to the library's import rule, but it owns process
+	// concerns (flags, the process's streams, its exit) as a command does.
+	devkitDir  = "devkit"
 	cborOracle = "github.com/fxamacker/cbor/v2"
 	// vectorsNote marks a refusal under the generator's rule rather than
 	// the library's.
@@ -340,7 +345,8 @@ var (
 
 // processConcerns reads every non-test Go file under root, as walkFiles
 // does, and returns each use of a process concern, and how many files it
-// read. The vector generator is a command and is not held to it.
+// read. The vector generator is a command and devkit is command tooling:
+// neither is held to it.
 func processConcerns(root string) (bad []string, files int, err error) {
 	err = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -360,7 +366,7 @@ func processConcerns(root string) (bad []string, files int, err error) {
 			return err
 		}
 		name := filepath.ToSlash(rel)
-		if within(name, vectorsDir) {
+		if within(name, vectorsDir) || within(name, devkitDir) {
 			return nil
 		}
 		files++
@@ -486,18 +492,20 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 
 // layers is what each package added for shared application code may import
 // from this module: module in its production code, and tests beside that in
-// its tests. A package that is not listed is held only to the module's
-// rule. These are listed because their place in the graph is the point of
-// them: record reads bytes and needs no SDK; keyed is keys and one cipher
-// form over the SDK alone; chaintoken reads a BEEF through the guard and a
-// script through pushdrop, and decides nothing an application's record
-// enters; testchain serves the wire formats the clients read without
-// importing a client, and its tests drive it through those clients;
-// sanitize is character rules over a table it embeds, and its tests compare
-// it with termsafe; payee is the payee's side of a payment over the purse,
-// and settles nothing the purse does not, and its tests run it on the local
-// chain; payeecmd is verbs over payee alone, and its tests stand a purse in; feepolicy does the policy fetch so that mint stays pure, and
-// reaches nothing but mint.
+// its tests. A package that is not listed is held only to the module's rule.
+// These are listed because their place in the graph is the point of them:
+// record reads bytes and needs no SDK; keyed is keys and one cipher form
+// over the SDK alone; chaintoken reads a BEEF through the guard and a script
+// through pushdrop, and decides nothing an application's record enters;
+// testchain serves the wire formats the clients read without importing a
+// client, and its tests drive it through those clients; sanitize is
+// character rules over a table it embeds, and its tests compare it with
+// termsafe; payee is the payee's side of a payment over the purse, and
+// settles nothing the purse does not, and its tests run it on the local
+// chain; payeecmd is verbs over payee alone, and its tests stand a purse in;
+// unicast is a submit fan-out over the publish leg and nothing else;
+// feepolicy does the policy fetch so that mint stays pure, and reaches
+// nothing but mint.
 var layers = map[string]struct {
 	module []string
 	tests  []string
@@ -515,6 +523,7 @@ var layers = map[string]struct {
 	"feepolicy":  {module: []string{"mint"}},
 	"payee":      {module: []string{"guard", "purse", "termsafe"}, tests: []string{"bwallet", "mint", "nodeapi", "producer", "publish", "testchain"}, sdk: true},
 	"payeecmd":   {module: []string{"payee"}, tests: []string{"purse"}, sdk: true},
+	"unicast":    {module: []string{"publish"}, sdk: true},
 }
 
 // testOnly are the packages that exist for tests and local trials. No

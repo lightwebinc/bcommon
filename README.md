@@ -50,6 +50,7 @@ minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 | `chainview` | Whether a transaction can still mine: a settlement leg's error read as a definitive refusal or as transient, and the input another transaction spent |
 | `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
 | `payee` | The payee's side of those payments: the payee key, a host's versioned ledger of accepted payments read and written byte for byte, the host's replay and conflict rule, and an idempotent settle run into the pool with its counts |
+| `unicast` | Publishing without the plane: each object submitted to every host on its own, retried per host, counted against a quorum, an answer that admits nothing optionally confirmed by a lookup, per-host tallies, and a facade that fans out for code that publishes through one |
 | `payeecmd` | The payee verbs of an application's command line, `payee key` and `payee settle`, with their flags, help and words, bound to the application's own flag set, streams, exit codes and home |
 | `acceptance` | The value discriminator for an incoming payment: fast on SPV, the receiver's own broadcast and the network's verdict at or below a threshold, held for a proof above it, bounded per payer and in total, and a monitor that flags a payer whose fast payment is lost |
 | `headers` | A chain tracker over WhatsOnChain, chaintracks, block-headers-service, arcade's header server or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
@@ -70,15 +71,15 @@ same vectors as the Go packages. It has three entry points:
 | Entry point | What it provides |
 |---|---|
 | `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, the writer (funding lock, carrier and self-paying sweep through a BRC-100 wallet), WhatsOnChain as a node view (who spent an output, a proof, a raw transaction), and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
-| `@lightwebinc/bcommon/host` | For Node: what an overlay host module runs beside the engine when it answers questions itself. The terms route (`LookupFront`: BRC-104 server side, BRC-105 priced questions, the terms document and price list), its hardening (handshake budgets checked before any signature work, per-session response budgets, replay refusal, bounded sessions), the payee ledger as a host writes and reads it, the Go `payee` package's lines byte for byte, and payment acceptance over arcade and the node |
-| `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order |
+| `@lightwebinc/bcommon/host` | For Node: what an overlay host module runs beside the engine when it answers questions itself. The terms route (`LookupFront`: BRC-104 server side, BRC-105 priced questions, the terms document and price list), its hardening (handshake budgets checked before any signature work, per-session response budgets, replay refusal, bounded sessions), the payee ledger as a host writes and reads it, the Go `payee` package's lines byte for byte, and payment acceptance over arcade and the node, and a module's block headers over a header source's native routes (`HeaderTracker`, `readCapped`) |
+| `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order; `TestNetwork` and `serveNetwork` (arcade and the node's asset API in memory and over HTTP, for payment-acceptance tests), and `bundleRefusals` (what a host module's bundle step refuses in esbuild's metafile) |
 
 ## Install
 
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.20.1
+go get github.com/lightwebinc/bcommon@v0.21.0
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -86,10 +87,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.20.1 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.20.1.tgz
+git clone --depth 1 --branch v0.21.0 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.21.0.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.20.1.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.21.0.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage

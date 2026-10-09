@@ -72,6 +72,7 @@ beside the standard library and, where noted, go-sdk.
 | 2 | `chainview` | `nodeapi` | yes |
 | 2 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
+| 3 | `unicast` | `publish` | no |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
@@ -101,6 +102,7 @@ Every edge inside the module:
   funding  ──▶ guard
   knownkeys ─▶ guard
   publish  ──▶ nodeapi
+  unicast  ──▶ publish
   store    ──▶ cbor, commit
   record   ──▶ cbor
   lookup   ──▶ hostset
@@ -114,7 +116,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`, `acceptance`,
-`testchain`, `sanitize`, `payee`, `payeecmd`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
+`testchain`, `sanitize`, `payee`, `payeecmd`, `unicast`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -300,6 +302,14 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   what it was sent, and its verdict is held to a spend view (a node, or
   WhatsOnChain) because arcade has accepted a transaction whose input was
   already spent.
+- **`unicast`** owns publishing with no plane: a `Set` submits each object
+  to every host on its own through the publish leg's facade, retries each
+  host on its own, counts it against a quorum (per object or the set's),
+  keeps per-host tallies, and, given a `Confirm`, counts an answer that
+  admitted nothing only when a lookup at that host answers the object.
+  `Set.Facade` fans one facade's submits out to every host for code that
+  publishes through one (`producer.Trees`); `Kept` is a facade that sends
+  nothing, for funding trees that are never published on their own.
 - **`producer`** owns the orchestration around those builders that every
   producer runs the same way. `Payer` takes a fee input from the coin pool,
   signed by the key its coin is locked to and large enough to pay (never

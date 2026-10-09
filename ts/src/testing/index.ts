@@ -2,7 +2,10 @@
  * Test helpers for an application's overlay modules: a host whose metrics and
  * log can be read back, the rows and storage a restore reads, BEEF built the
  * way the engine builds it, a minter over a fixed test key, and a simulator
- * that calls a lookup service's callbacks in the order the engine makes them.
+ * that calls a lookup service's callbacks in the order the engine makes them;
+ * a payment network (arcade and the node) in memory and over HTTP
+ * (network.ts); and the checks a host module's bundle step applies to
+ * esbuild's metafile (bundle.ts).
  *
  * This is the package's `./testing` entry point, for tests running on Node.
  * The runtime entry point never imports it.
@@ -260,3 +263,6 @@ export function engineOrder(ls: LookupService, topic: string): EngineOrder {
     },
   }
 }
+
+export { type ArcadeMode, TestNetwork, serveNetwork } from './network.js'
+export { type BundleRules, type CheckedMetafile, bundleRefusals } from './bundle.js'

@@ -12,7 +12,9 @@
  *   package's lines;
  * - payment acceptance over arcade and the node, or WhatsOnChain for a host
  *   with no node (accept.ts), on the
- *   runtime entry point's acceptance decision.
+ *   runtime entry point's acceptance decision;
+ * - the module's block headers over a header source's native routes
+ *   (headers.ts: HeaderTracker), with the bounded body read it uses.
  */
 export {
   ArcadeHttp,
@@ -83,3 +85,4 @@ export {
   type ReceivedPayment,
 } from './ledger.js'
 export { BoundedSessions, DefaultMaxSessions, DefaultSessionTTL } from './sessions.js'
+export { HeaderTracker, isNativeSource, MaxHeaderAnswer, readCapped } from './headers.js'
