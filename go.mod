@@ -1,6 +1,6 @@
 module github.com/lightwebinc/bcommon
 
-go 1.27.1
+go 1.27.2
 
 require github.com/bsv-blockchain/go-sdk v1.7.1
 
