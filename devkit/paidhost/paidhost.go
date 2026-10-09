@@ -25,13 +25,13 @@ import (
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/spv"
-	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 	"github.com/bsv-blockchain/go-sdk/wallet"
 
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 
 	"github.com/lightwebinc/bcommon/bwallet"
+	"github.com/lightwebinc/bcommon/guard"
 )
 
 // Service is the application's lookup service, as the route answers it.
@@ -392,8 +392,8 @@ func (p *Paid) pay(ctx context.Context, raw string, asker *ec.PublicKey, price u
 	if err != nil {
 		return 0, "ERR_MALFORMED_PAYMENT"
 	}
-	tx, err := transaction.NewTransactionFromBEEF(beef)
-	if err != nil || len(tx.Outputs) == 0 || tx.Outputs[0].Satoshis < price {
+	_, tx, _, err := guard.ParseBEEF(beef, guard.DefaultBound)
+	if err != nil || tx == nil || len(tx.Outputs) == 0 || tx.Outputs[0].Satoshis < price {
 		return 0, "ERR_INVALID_PAYMENT"
 	}
 	forSelf := true
