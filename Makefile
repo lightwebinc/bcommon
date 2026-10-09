@@ -3,14 +3,14 @@
 # surfaces only in an application that pins this module by tag. Verify what
 # a tag ships, not what the workspace happens to have on disk.
 
-.PHONY: verify build test fmt-check vet deps-check licences licences-update vectors vectors-update ts ts-test ts-licences ts-licences-update
+.PHONY: verify devkit build test fmt-check vet deps-check licences licences-update vectors vectors-update ts ts-test ts-licences ts-licences-update
 
 SDK := github.com/bsv-blockchain/go-sdk
 SDK_VERSION := v1.7.1
 VECTORS := tools/vectors
 CBOR_ORACLE := github.com/fxamacker/cbor/v2
 
-verify: fmt-check vet deps-check licences vectors build test
+verify: fmt-check vet deps-check licences vectors devkit build test
 
 build:
 	GOWORK=off go build ./...
@@ -71,6 +71,21 @@ vectors:
 	fi
 	cd $(VECTORS) && GOWORK=off go vet ./...
 	cd $(VECTORS) && GOWORK=off go run . -check
+
+# devkit is a nested module of development and test tooling for
+# applications (a local chain's command, a vector runner, a priced test
+# host). It is not the library: an application imports it only from tests
+# and dev commands. Its direct dependencies are go-sdk and this module at a
+# tag, and go.mod and go.sum are tidy.
+devkit:
+	@direct=$$(cd devkit && GOWORK=off go list -m -f '{{if not (or .Main .Indirect)}}{{.Path}}{{end}}' all | sed '/^$$/d' | sort | tr '\n' ' '); \
+	if [ "$$direct" != "$(SDK) github.com/lightwebinc/bcommon " ]; then \
+		echo "devkit: expected direct dependencies $(SDK) and github.com/lightwebinc/bcommon, found: $$direct"; \
+		exit 1; \
+	fi
+	cd devkit && GOWORK=off go mod tidy -diff
+	cd devkit && GOWORK=off go vet ./...
+	cd devkit && GOWORK=off go test -race ./...
 
 vectors-update:
 	cd $(VECTORS) && GOWORK=off go run .

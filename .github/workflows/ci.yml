@@ -56,6 +56,9 @@ jobs:
       # compares byte for byte.
       - name: vectors match their independent generator
         run: make vectors
+      # devkit is a nested module too: go test in the root never builds it.
+      - name: devkit
+        run: make devkit
 
   # The job above builds with the go.mod line, 1.27.2, exactly. go vet
   # refuses a standard-library symbol newer than the go line, but not a

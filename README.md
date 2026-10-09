@@ -74,6 +74,18 @@ same vectors as the Go packages. It has three entry points:
 | `@lightwebinc/bcommon/host` | For Node: what an overlay host module runs beside the engine when it answers questions itself. The terms route (`LookupFront`: BRC-104 server side, BRC-105 priced questions, the terms document and price list), its hardening (handshake budgets checked before any signature work, per-session response budgets, replay refusal, bounded sessions), the payee ledger as a host writes and reads it, the Go `payee` package's lines byte for byte, and payment acceptance over arcade and the node, and a module's block headers over a header source's native routes (`HeaderTracker`, `readCapped`) |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order; `TestNetwork` and `serveNetwork` (arcade and the node's asset API in memory and over HTTP, for payment-acceptance tests), and `bundleRefusals` (what a host module's bundle step refuses in esbuild's metafile) |
 
+## devkit: development and test tooling
+
+`github.com/lightwebinc/bcommon/devkit` is a separate module in this
+repository, tagged `devkit/vX.Y.Z`. It is not the library: an application
+imports it only from its tests and its development commands, and it may own
+what a command owns (flags, signals, the process's streams). It holds
+`devchain` (an application's local stand-in chain command over `testchain`,
+with a journal and, as an option, throwaway certificates), `vectors` (the
+golden-vector writer and checker an application's `cmd/vectors` runs) and
+`paidhost` (a stand-in for a host's priced terms route over BRC-104 and
+BRC-105, parameterized by the application's lookup service).
+
 ## Install
 
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
