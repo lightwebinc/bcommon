@@ -1,7 +1,8 @@
 /**
- * A host module's block headers: a chain tracker over a header source's
- * native `/v1` routes (`/v1/root/<height>`, `/v1/tip`), the shape the
- * reference overlay host's own tracker reads. A module needs its own because
+ * Block headers for a host module or a page: a chain tracker over a header
+ * source's native `/v1` routes (`/v1/root/<height>`, `/v1/tip`), the shape
+ * the reference overlay host's own tracker reads. It needs only fetch, so a
+ * browser can run it too. A module needs its own because
  * the reference host hands a module no tracker, and admission checks a
  * token's parent's proof, which the engine's SPV of the token does not reach.
  *

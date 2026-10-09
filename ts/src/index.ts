@@ -165,3 +165,4 @@ export {
 } from './acceptance.js'
 export { CarrierSequence, feeFor, fundingLock, lockFields, mintCarrier, sweep, unlocker, type Derivation, type Fees, type SigningWallet } from './writer.js'
 export { MaxTxBytes, WocFreeRate, WocHttp, tscMerklePath, type NodeView, type TscProof } from './woc.js'
+export { HeaderTracker, isNativeSource, MaxHeaderAnswer, readCapped } from './headers.js'
