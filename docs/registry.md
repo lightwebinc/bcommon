@@ -169,7 +169,7 @@ assigned here).
 | Topics | `tm_bbox_<name>_<suffix>` | One topic per office; `<suffix>` is 10 random lowercase letters chosen when the office is created |
 | Lookup service | `ls_bbox` | Lookup service for every office on a host |
 | Host route | `<base>/ls_bbox/terms` | The host terms document for priced questions |
-| Baskets | `bbox fund`, `bbox envelope funding`, `bbox kill tombstone` | Wallet baskets |
+| Basket | `bbox fund` | Wallet basket (the only one bbox uses) |
 
 The prefix `bb` is registered to bbox. `0x65` and `0x72` are never assigned
 as tag type bytes under it, because `bb` `0x65` and `bb` `0x72` are the

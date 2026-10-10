@@ -72,8 +72,8 @@ beside the standard library and, where noted, go-sdk.
 | 2 | `chainview` | `nodeapi` | yes |
 | 2 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
-| 3 | `unicast` | `publish` | no |
 | 2 | `heldpay` | `nodeapi` | yes |
+| 3 | `unicast` | `publish` | no |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
