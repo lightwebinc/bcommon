@@ -51,6 +51,7 @@ minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 | `purse` | The client and payee legs of a BRC-105 payment for a priced question, over the embedded wallet: pay one output on a 402, and take a BRC-29 payment into the pool |
 | `payee` | The payee's side of those payments: the payee key, a host's versioned ledger of accepted payments read and written byte for byte, the host's replay and conflict rule, and an idempotent settle run into the pool with its counts |
 | `unicast` | Publishing without the plane: each object submitted to every host on its own, retried per host, counted against a quorum, an answer that admits nothing optionally confirmed by a lookup, per-host tallies, and a facade that fans out for code that publishes through one |
+| `heldpay` | A BRC-105 client's side of a payment the server holds for confirmation: a transport tap that keeps the payment sent and sees a hold (202 `ERR_PAYMENT_HELD`, or the older 402 without BRC-105 headers), and a wait for the payment to mine before the same payment is sent again |
 | `payeecmd` | The payee verbs of an application's command line, `payee key` and `payee settle`, with their flags, help and words, bound to the application's own flag set, streams, exit codes and home |
 | `acceptance` | The value discriminator for an incoming payment: fast on SPV, the receiver's own broadcast and the network's verdict at or below a threshold, held for a proof above it, bounded per payer and in total, and a monitor that flags a payer whose fast payment is lost |
 | `headers` | A chain tracker over WhatsOnChain, chaintracks, block-headers-service, arcade's header server or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
@@ -91,7 +92,7 @@ BRC-105, parameterized by the application's lookup service).
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.22.0
+go get github.com/lightwebinc/bcommon@v0.23.0
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -99,10 +100,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.22.0 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.22.0.tgz
+git clone --depth 1 --branch v0.23.0 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.23.0.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.22.0.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.23.0.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage

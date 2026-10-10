@@ -21,7 +21,8 @@
  * BRC-29 derives for that prefix, suffix and asker, and that verifies
  * against the host's headers, it is held to acceptance (accept.ts): the host
  * broadcasts it, and answers at once when it is small and the network took
- * it, or 402 "held for confirmation" until it mines. One payment buys one
+ * it, or 202 ERR_PAYMENT_HELD "held for confirmation" until it mines (the
+ * same payment, sent again once mined, buys the answer). One payment buys one
  * question, which is one answer page.
  *
  * The overlay host's own /lookup refuses a class the host prices, so this
@@ -685,8 +686,11 @@ export class LookupFront {
       return {
         ok: false,
         reply: json(
-          402,
-          // No BRC-105 headers: a client would answer them with a second payment.
+          // 202, not 402: a BRC-105 client (go-sdk's and the TS SDK's
+          // AuthFetch) takes every 402 for a price to pay, so a 402 without
+          // the BRC-105 headers fails inside the client and never reaches its
+          // caller, and one with them would be paid a second time.
+          202,
           { status: 'error', code: 'ERR_PAYMENT_HELD', txid: accepted.txid, reason: v.reason, description: `the payment is held for confirmation (${v.reason}); send it again once it is mined` },
         ),
       }

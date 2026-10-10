@@ -339,7 +339,7 @@ test('a forged request spends the session budget only when it is taken before ve
   }
 })
 
-/** Asks one priced question, paying as AuthFetch does; a held answer (402, no BRC-105 headers) throws in the SDK and is status 0. */
+/** Asks one priced question, paying as AuthFetch does; an SDK error is status 0. A held payment answers 202. */
 function asker(r: Rig, wallet: PayingWallet = r.wallet): () => Promise<number> {
   const af = new AuthFetch(wallet as unknown as WalletInterface)
   return async () => {
@@ -365,9 +365,9 @@ test('acceptance: a small paid lookup is broadcast by the host, then answered; t
   assert.equal(r.host.count('example_payment_events_total', { kind: 'confirmed' }), 1)
 })
 
-test('acceptance: a payment above the threshold is held 402 until it mines, then the same payment is answered once', async () => {
+test('acceptance: a payment above the threshold is held 202 until it mines, then the same payment is answered once', async () => {
   const r = await rig({ policy: { thresholdSats: 4 } })
-  assert.equal(await asker(r)(), 0)
+  assert.equal(await asker(r)(), 202, 'held: the answer reaches the caller through the SDK')
   const p = last(r)
   assert.equal(p.decision, 'hold')
   assert.equal(p.reason, 'above-threshold')
@@ -380,7 +380,7 @@ test('acceptance: a payment above the threshold is held 402 until it mines, then
       return 0
     }
   }
-  assert.equal(await again(), 0, 'still held before it mines')
+  assert.equal(await again(), 202, 'still held before it mines')
   r.net.mine(p.txid)
   assert.equal(await again(), 200)
   assert.equal(last(r).decision, 'mined')
@@ -397,18 +397,18 @@ test('acceptance: refusals, a silent network, a failed broadcast, an unknown spe
   assert.equal(r.host.count('example_payments_total', { decision: 'refuse', reason: 'network-refused' }), 2)
   assert.ok(r.host.logged.some((l) => l.msg === 'example payment refused'))
   r.net.mode = 'silent'
-  assert.equal(await one(), 0)
+  assert.equal(await one(), 202)
   assert.equal(last(r).reason, 'no-network-verdict')
   r.net.mode = 'down'
-  assert.equal(await one(), 0)
+  assert.equal(await one(), 202)
   assert.equal(last(r).reason, 'broadcast-unconfirmed')
   r.net.mode = 'accept'
   r.net.spendUnknown = true
-  assert.equal(await one(), 0)
+  assert.equal(await one(), 202)
   assert.equal(last(r).reason, 'spend-view-unknown')
   assert.equal(r.gate.exposure.unmined(r.client).total, 0, 'every demotion released its charge')
   const off = await rig({ networked: false })
-  assert.equal(await asker(off)(), 0)
+  assert.equal(await asker(off)(), 202)
   assert.equal(last(off).reason, 'no-broadcast-leg')
 })
 
