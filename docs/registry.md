@@ -213,8 +213,6 @@ assigned here).
 | Record magic | `bog` `0x01` | Group record, version 1 |
 | Record magic | `bom` `0x01` | Membership grant record, version 1 |
 | Record magic | `bop` `0x01` | Policy record, version 1: a role definition or a binding |
-| Record magic | `boo` `0x02` | Organization record, version 2: the policy set and succession |
-| Record magic | `bog` `0x02` | Group record, version 2: succession |
 | Record magic | `bow` `0x01` | Epoch-key wrap record, version 1 |
 | Topics | `tm_borg_<name>_<suffix>` | One topic per hall, shared by many organizations; `<suffix>` is 10 random lowercase letters chosen when the hall is created |
 | Lookup service | `ls_borg` | Lookup service for every hall on a host |
@@ -227,8 +225,7 @@ The prefix `bo` is registered to borg. `0x67`, `0x6d`, `0x6f`, `0x70` and
 `bo` `0x6d`, `bo` `0x6f`, `bo` `0x70` and `bo` `0x77` are the first three
 bytes of the record magics `bog`, `bom`, `boo`, `bop` and `bow`. `0x00` is
 not assigned. A record's version is the fourth byte of its magic and is never
-in a tag, so an organization token of either version carries `bo` `0x01` and
-a group token of either version `bo` `0x03`.
+in a tag.
 
 borg owns the `tm_borg_` topic namespace: no other application names a topic
 that starts with it. A hall's topic carries entropy under the rule above,
