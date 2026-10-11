@@ -66,6 +66,13 @@ an edit.
   what it derives and ends with a version (`"<application> <purpose> v1"`).
   Record each one: two applications hashing the same string over the same
   inputs derive the same identifier.
+- **Permission service labels** are the `service` part of a permission in
+  borg's policy grammar (borg `docs/spec.md` section 5A.2): one lowercase
+  label of at most 16 characters that an application claims, so that two
+  applications cannot mean different things by one permission. An application
+  that is asked for permissions registers its label here with its other
+  names, and its own specification fixes the actions and resources it reads
+  under that label.
 - **Borrowed protocols** are protocols another specification defines and an
   application uses as written, such as a BRC's own derivation. They are not
   the application's and are not registered to it; a note under the
@@ -195,6 +202,7 @@ assigned here).
 | Key id | `group` | A group token's lock and field signature |
 | Key id | `record` | A wrap carrier's record output and field signature, and the outputs of funding trees that fund wraps |
 | Key id | `grant` | A grant carrier's record output and field signature, and the outputs of funding trees that fund grants |
+| Key id | `policy` | A policy carrier's record output and field signature, and the outputs of funding trees that fund policy records |
 | Key id | `chain` | The outputs of funding trees that pay for a chain's first token; never a carrier's |
 | Key id | `fund` | The embedded wallet's funding key |
 | Key id | `signer` | The organization's signer key: a member key every instance of the organization's tooling derives from the organization's identity key, to which an epoch key is wrapped like any member's, so that a second device catches up on a key the first one sampled. No host or reader rule reads it |
@@ -204,17 +212,23 @@ assigned here).
 | Record magic | `boo` `0x01` | Organization record, version 1 |
 | Record magic | `bog` `0x01` | Group record, version 1 |
 | Record magic | `bom` `0x01` | Membership grant record, version 1 |
+| Record magic | `bop` `0x01` | Policy record, version 1: a role definition or a binding |
+| Record magic | `boo` `0x02` | Organization record, version 2: the policy set and succession |
+| Record magic | `bog` `0x02` | Group record, version 2: succession |
 | Record magic | `bow` `0x01` | Epoch-key wrap record, version 1 |
 | Topics | `tm_borg_<name>_<suffix>` | One topic per hall, shared by many organizations; `<suffix>` is 10 random lowercase letters chosen when the hall is created |
 | Lookup service | `ls_borg` | Lookup service for every hall on a host |
 | Host route | `<base>/ls_borg/terms` | The host terms document for priced questions |
-| Baskets | `borg fund`, `borg grant funding`, `borg record funding`, `borg chain funding`, `borg chain`, `borg kill tombstone` | Wallet baskets |
+| Baskets | `borg fund`, `borg grant funding`, `borg policy funding`, `borg record funding`, `borg chain funding`, `borg chain`, `borg kill tombstone` | Wallet baskets |
 | Certificate type | `poEEbYGwpJbTzKTeSRBJzV31s8PNknNycAbyjDV3ALc=` | A membership grant: base64 of SHA-256 of `"borg membership grant v1"` |
 
-The prefix `bo` is registered to borg. `0x67`, `0x6d`, `0x6f` and `0x77` are
-never assigned as tag type bytes under it, because `bo` `0x67`, `bo` `0x6d`,
-`bo` `0x6f` and `bo` `0x77` are the first three bytes of the record magics
-`bog`, `bom`, `boo` and `bow`. `0x00` is not assigned.
+The prefix `bo` is registered to borg. `0x67`, `0x6d`, `0x6f`, `0x70` and
+`0x77` are never assigned as tag type bytes under it, because `bo` `0x67`,
+`bo` `0x6d`, `bo` `0x6f`, `bo` `0x70` and `bo` `0x77` are the first three
+bytes of the record magics `bog`, `bom`, `boo`, `bop` and `bow`. `0x00` is
+not assigned. A record's version is the fourth byte of its magic and is never
+in a tag, so an organization token of either version carries `bo` `0x01` and
+a group token of either version `bo` `0x03`.
 
 borg owns the `tm_borg_` topic namespace: no other application names a topic
 that starts with it. A hall's topic carries entropy under the rule above,
@@ -226,6 +240,20 @@ Borrowed, not registered: borg releases epoch keys under BRC-369's
 `SHA-256(epoch id || epoch)`, as BRC-369 section 5.2 defines it. Every
 BRC-369 implementation shares that protocol; the key id separates each
 group's each epoch.
+
+### bcommon
+
+The shared library's own entries, used by every application that links it
+rather than by one of them.
+
+| Kind | Value | Use |
+|---|---|---|
+| Protocol | `[1, "authz decision"]` | The signature on an authorization decision receipt (`authz`): a service signs what it decided, over which organization token `seq`, and against which grant and bindings. Security level 1, counterparty anyone, `forSelf = true` on the signer's side, so a verifier derives the same public key from the service's identity key alone |
+| Key id | `receipt` | That signature's key id |
+
+A decision receipt is the record of an evaluation, never an authority: it
+proves what a service decided and from what, and holding one grants nothing
+(borg `docs/spec.md` section 16.19).
 
 ### bsecret
 
