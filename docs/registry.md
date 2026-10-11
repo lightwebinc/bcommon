@@ -245,8 +245,10 @@ rather than by one of them.
 
 | Kind | Value | Use |
 |---|---|---|
-| Protocol | `[1, "authz decision"]` | The signature on an authorization decision receipt (`authz`): a service signs what it decided, over which organization token `seq`, and against which grant and bindings. Security level 1, counterparty anyone, `forSelf = true` on the signer's side, so a verifier derives the same public key from the service's identity key alone |
+| Protocol | `[1, "authz decision"]` | The signature on an authorization decision receipt (`authz`): a service signs what it decided, over which organization token `seq`, and against which grants and policy records. Security level 1, counterparty anyone, `forSelf = true` on the signer's side, so a verifier derives the same public key from the service's identity key alone |
 | Key id | `receipt` | That signature's key id |
+| Record magic | `azr` `0x01` | A decision receipt, version 1 |
+| Tag prefix | `az` | Held by the library for the records it defines itself; no application assigns under it |
 
 A decision receipt is the record of an evaluation, never an authority: it
 proves what a service decided and from what, and holding one grants nothing
