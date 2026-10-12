@@ -10,7 +10,8 @@
     "noImplicitOverride": true,
     "declaration": true,
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }
