@@ -219,6 +219,7 @@ assigned here).
 | Host route | `<base>/ls_borg/terms` | The host terms document for priced questions |
 | Baskets | `borg fund`, `borg grant funding`, `borg policy funding`, `borg record funding`, `borg chain funding`, `borg chain`, `borg kill tombstone` | Wallet baskets |
 | Certificate type | `poEEbYGwpJbTzKTeSRBJzV31s8PNknNycAbyjDV3ALc=` | A membership grant: base64 of SHA-256 of `"borg membership grant v1"` |
+| Permission service label | `borg` | Reserved for the administration of an organization (borg `docs/spec.md` section 5A.2): defining and retiring roles, binding and unbinding them, admitting and revoking grants, changing groups. This version defines no action under it, so a permission under `borg/` is well formed and grants nothing; a later version that lets a delegated signer make a change will name the `borg/` permission it must hold |
 
 The prefix `bo` is registered to borg. `0x67`, `0x6d`, `0x6f`, `0x70` and
 `0x77` are never assigned as tag type bytes under it, because `bo` `0x67`,
