@@ -4,7 +4,7 @@ go 1.27.2
 
 require (
 	github.com/bsv-blockchain/go-sdk v1.7.1
-	github.com/fxamacker/cbor/v2 v2.9.4
+	github.com/fxamacker/cbor/v2 v2.9.6
 )
 
 require (
