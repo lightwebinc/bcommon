@@ -271,6 +271,7 @@ committed on chain; assigned here).
 | Key id | `secret` | A secret carrier's record output and field signature, and the outputs of funding trees that fund secrets |
 | Key id | `chain` | The outputs of funding trees that pay for a vault's first token; never a carrier's |
 | Key id | `fund` | The embedded wallet's funding key |
+| Key id | `enroll` | The signature on a machine's join request (`enroll request`), counterparty anyone, so that anyone verifies it from the public key the request names |
 | Protocol | `[2, "bsecret self"]` | The self wrap: a content key encrypted to the owner's own wallet, counterparty self |
 | Key ids | the standard padded base64 of a content id | One self wrap; derived per secret version, so a wrap is bound to what it carries |
 | Tag | `se` `0x01` | Vault token, first field |
@@ -285,6 +286,7 @@ committed on chain; assigned here).
 | Domain string | `bsecret vault id v1` | Hashed into a vault identifier |
 | Domain string | `bsecret secret id v1` | Hashed into a secret identifier |
 | Domain string | `bsecret epoch wrap v1` | Hashed into the key that wraps a content key under a group epoch |
+| Domain string | `bsecret enrollment request v1` | Prefixed, with a newline, to the bytes a machine's join request is signed over |
 
 The prefix `se` is registered to bsecret. `0x70`, `0x73` and `0x76` are
 never assigned as tag type bytes under it, because `se` `0x70`, `se` `0x73`
