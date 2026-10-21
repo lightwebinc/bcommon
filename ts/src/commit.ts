@@ -2,8 +2,8 @@
  * RFC 6962 Merkle roots and audit paths over leaves of any length: the twin
  * of the Go package commit's byte-leaf functions (HashLeaf, RootOfBytes,
  * RootOfLeafHashes, RootOfSubtrees, ProveBytes, ProveLeafHashes,
- * ProveSubtrees, VerifyBytes, PathLen, VerifyAt, Builder, SegmentRoot and
- * SegmentWriter). A leaf hashes as SHA-256(0x00 || leaf), an interior node
+ * ProveSubtrees, VerifyBytes, PathLen, RootAt, VerifyAt, Builder, SegmentRoot
+ * and SegmentWriter). A leaf hashes as SHA-256(0x00 || leaf), an interior node
  * as SHA-256(0x01 || left || right), and the empty tree's root is SHA-256 of
  * no bytes.
  *
@@ -13,8 +13,8 @@
  */
 import { Hash } from '@bsv/sdk'
 
-/** CommitError's codes: `index` is an index outside the tree, `size` a size or segment size out of range. */
-export type CommitErrorCode = 'index' | 'size'
+/** CommitError's codes: `index` is an index outside the tree, `size` a size or segment size out of range, `path` a compact path whose length does not match its index and size. */
+export type CommitErrorCode = 'index' | 'size' | 'path'
 
 export class CommitError extends Error {
   constructor(readonly code: CommitErrorCode, detail: string) {
@@ -153,16 +153,19 @@ export function pathLength(index: number, size: number): number {
 }
 
 /**
- * The compact check of RFC 9162 section 2.1.3.2: leafHash at index in a tree
- * of size leaves, its siblings leaf to root without sides, against root.
+ * The root a compact audit path reproduces (Go's RootAt): leafHash at index
+ * in a tree of size leaves, its siblings leaf to root without sides, each
+ * side following from index and size by RFC 9162 section 2.1.3.2. Throws
+ * CommitError `index` for an index outside the tree and `path` for a path
+ * longer or shorter than pathLength.
  */
-export function verifyAt(leafHash: Uint8Array, index: number, size: number, siblings: readonly Uint8Array[], root: Uint8Array): boolean {
-  if (!Number.isSafeInteger(index) || !Number.isSafeInteger(size) || index < 0 || index >= size) return false
+export function rootAt(leafHash: Uint8Array, index: number, size: number, siblings: readonly Uint8Array[]): Uint8Array {
+  checkIndex(index, size)
   let fn = index
   let sn = size - 1
   let r = leafHash
   for (const p of siblings) {
-    if (sn === 0) return false
+    if (sn === 0) throw new CommitError('path', `${siblings.length} siblings for index ${index} of ${size}`)
     if (odd(fn) || fn === sn) {
       r = hashNode(p, r)
       while (!odd(fn) && fn !== 0) {
@@ -175,7 +178,21 @@ export function verifyAt(leafHash: Uint8Array, index: number, size: number, sibl
     fn = half(fn)
     sn = half(sn)
   }
-  return sn === 0 && equal(r, root)
+  if (sn !== 0) throw new CommitError('path', `${siblings.length} siblings for index ${index} of ${size}`)
+  return r
+}
+
+/**
+ * The compact check of RFC 9162 section 2.1.3.2: rootAt reproduces root. A
+ * path of the wrong length and an index outside the tree fail.
+ */
+export function verifyAt(leafHash: Uint8Array, index: number, size: number, siblings: readonly Uint8Array[], root: Uint8Array): boolean {
+  try {
+    return equal(rootAt(leafHash, index, size, siblings), root)
+  } catch (e) {
+    if (e instanceof CommitError) return false
+    throw e
+  }
 }
 
 /** A root over leaves added one at a time, holding one hash per set bit of the count. */

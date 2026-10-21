@@ -153,7 +153,8 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   power of two of leaves, and `SegmentRoots` does the same for per-block
   `SegmentRoot`s set in any order from several goroutines; `PathLen` and
   `VerifyAt` check a compact path, its hashes alone, whose sides follow from the index and the leaf count
-  (RFC 9162 section 2.1.3.2). Indices there are 64-bit, so a tree of more
+  (RFC 9162 section 2.1.3.2), and `RootAt` answers the root it reproduces, for a
+  verifier that commits the root into something larger rather than compare it. Indices there are 64-bit, so a tree of more
   than 2^31 leaves is described on 32-bit platforms too.
 - **`chirp`** owns CHIRP (BRC-167) version 1 and chunking profile 1: the
   root and branch node encodings (the decoder refuses everything the BRC

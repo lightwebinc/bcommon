@@ -24,7 +24,7 @@ import {
   verifyClosure,
   type Child,
 } from './chirp.js'
-import { CommitError, RootBuilder, SegmentWriter, hashLeaf, pathLength, proveBytes, rootOfBytes, segmentRoot, verifyAt, verifyBytes } from './commit.js'
+import { CommitError, RootBuilder, SegmentWriter, hashLeaf, pathLength, proveBytes, rootAt, rootOfBytes, segmentRoot, verifyAt, verifyBytes } from './commit.js'
 import { fromHex, toHex } from './testing/index.js'
 
 function vector<T>(name: string): T {
@@ -88,6 +88,9 @@ test('byte-leaf roots, paths and compact paths match bytetree-v1.json', () => {
       const sib = s.siblingsHex.map(fromHex)
       assert.equal(pathLength(s.index, o.segments), s.pathLen)
       assert.ok(verifyAt(hashLeaf(seg), s.index, o.segments, sib, root))
+      assert.equal(toHex(rootAt(hashLeaf(seg), s.index, o.segments, sib)), o.rootHex)
+      assert.throws(() => rootAt(hashLeaf(seg), s.index, o.segments, [...sib, root]), (e) => code(e) === 'path')
+      if (sib.length > 0) assert.throws(() => rootAt(hashLeaf(seg), s.index, o.segments, sib.slice(0, -1)), (e) => code(e) === 'path')
       if (sib.length > 0) {
         const bad = sib.map((x) => x.slice())
         bad[0]![0]! ^= 1
@@ -98,6 +101,7 @@ test('byte-leaf roots, paths and compact paths match bytetree-v1.json', () => {
     }
   }
   assert.throws(() => pathLength(3, 3), (e) => code(e) === 'index')
+  assert.throws(() => rootAt(new Uint8Array(32), 0, 0, []), (e) => code(e) === 'index')
   assert.equal(pathLength(2 ** 33, 2 ** 33 + 1), 1)
 })
 

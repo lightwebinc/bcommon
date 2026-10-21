@@ -139,6 +139,17 @@ func TestByteTreeVector(t *testing.T) {
 			if !VerifyAt(HashLeaf(seg), uint64(s.Index), uint64(o.Segments), sib, root) {
 				t.Errorf("size %d i=%d: VerifyAt fails", o.Size, s.Index)
 			}
+			if r, err := RootAt(HashLeaf(seg), uint64(s.Index), uint64(o.Segments), sib); err != nil || r != root {
+				t.Errorf("size %d i=%d: RootAt %x, %v", o.Size, s.Index, r, err)
+			}
+			if _, err := RootAt(HashLeaf(seg), uint64(s.Index), uint64(o.Segments), append(append([][32]byte(nil), sib...), root)); err != ErrPathLength {
+				t.Errorf("size %d i=%d: a long path: %v", o.Size, s.Index, err)
+			}
+			if len(sib) > 0 {
+				if _, err := RootAt(HashLeaf(seg), uint64(s.Index), uint64(o.Segments), sib[:len(sib)-1]); err != ErrPathLength {
+					t.Errorf("size %d i=%d: a short path: %v", o.Size, s.Index, err)
+				}
+			}
 			if len(sib) > 0 {
 				bad := append([][32]byte(nil), sib...)
 				bad[0][0] ^= 1
@@ -176,6 +187,9 @@ func TestVerifyAtAgrees(t *testing.T) {
 			if !VerifyAt(lh, uint64(i), uint64(n), p.Siblings(), root) {
 				t.Fatalf("n=%d i=%d: fails", n, i)
 			}
+			if r, err := RootAt(lh, uint64(i), uint64(n), p.Siblings()); err != nil || r != root {
+				t.Fatalf("n=%d i=%d: RootAt %x, %v", n, i, r, err)
+			}
 			for _, j := range []int{i - 1, i + 1} {
 				if j >= 0 && j < n && VerifyAt(lh, uint64(j), uint64(n), p.Siblings(), root) {
 					t.Fatalf("n=%d i=%d: verifies at %d", n, i, j)
@@ -188,6 +202,9 @@ func TestVerifyAtAgrees(t *testing.T) {
 	}
 	if VerifyAt([32]byte{}, 0, 0, nil, [32]byte{}) {
 		t.Fatal("empty tree verified")
+	}
+	if _, err := RootAt([32]byte{}, 0, 0, nil); err != ErrIndex {
+		t.Fatalf("RootAt in an empty tree: %v", err)
 	}
 	// A tree past 2^32 leaves is described on every platform.
 	if l, err := PathLen(1<<33, 1<<33+1); err != nil || l != 1 {

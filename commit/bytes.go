@@ -159,20 +159,26 @@ func PathLen(index, size uint64) (int, error) {
 	return n, nil
 }
 
-// VerifyAt checks a compact audit path: leafHash (HashLeaf of the leaf) at
-// index in a tree of size leaves, with siblings leaf to root and no sides,
-// against root. Every side follows from index and size, by the inclusion
-// check of RFC 9162 section 2.1.3.2. A path longer or shorter than PathLen
-// fails.
-func VerifyAt(leafHash [32]byte, index, size uint64, siblings [][32]byte, root [32]byte) bool {
+// ErrPathLength reports a compact audit path whose length is not the one
+// PathLen gives its index and size.
+var ErrPathLength = errors.New("commit: path length does not match the index and size")
+
+// RootAt is the root a compact audit path reproduces: leafHash (HashLeaf of
+// the leaf) at index in a tree of size leaves, with siblings leaf to root
+// and no sides, each side following from index and size by RFC 9162
+// section 2.1.3.2. It is what a verifier needs when the tree's root is not
+// compared directly but committed into something larger, such as a hash of
+// several roots. An index at or above size is ErrIndex, and a path longer or
+// shorter than PathLen is ErrPathLength.
+func RootAt(leafHash [32]byte, index, size uint64, siblings [][32]byte) ([32]byte, error) {
 	if index >= size {
-		return false
+		return [32]byte{}, ErrIndex
 	}
 	fn, sn := index, size-1
 	r := leafHash
 	for _, p := range siblings {
 		if sn == 0 {
-			return false
+			return [32]byte{}, ErrPathLength
 		}
 		if fn&1 == 1 || fn == sn {
 			r = NodeHash(p, r)
@@ -186,7 +192,18 @@ func VerifyAt(leafHash [32]byte, index, size uint64, siblings [][32]byte, root [
 		fn >>= 1
 		sn >>= 1
 	}
-	return sn == 0 && r == root
+	if sn != 0 {
+		return [32]byte{}, ErrPathLength
+	}
+	return r, nil
+}
+
+// VerifyAt checks a compact audit path against root: RootAt reproduces it.
+// A path longer or shorter than PathLen, and an index at or above size,
+// fail.
+func VerifyAt(leafHash [32]byte, index, size uint64, siblings [][32]byte, root [32]byte) bool {
+	r, err := RootAt(leafHash, index, size, siblings)
+	return err == nil && r == root
 }
 
 // Builder computes an RFC 6962 root over leaves added one at a time, holding

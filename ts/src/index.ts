@@ -30,6 +30,7 @@ export {
   proveBytes,
   proveLeafHashes,
   proveSubtrees,
+  rootAt,
   rootOfBytes,
   rootOfLeafHashes,
   rootOfSubtrees,
