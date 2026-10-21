@@ -14,6 +14,7 @@ import (
 	"github.com/lightwebinc/bcommon/bwallet"
 	"github.com/lightwebinc/bcommon/funding"
 	"github.com/lightwebinc/bcommon/mint"
+	"github.com/lightwebinc/bcommon/nodeapi"
 	"github.com/lightwebinc/bcommon/publish"
 )
 
@@ -98,6 +99,11 @@ type Trees struct {
 	// puts the coin back in the pool. Prepare is not called for a DryRun,
 	// nor for a tree Fund pays for: see Spend.
 	Prepare func(tree funding.Tree, coin bwallet.Output) error
+	// Displaced, when set, is called with the current tree when a spend
+	// finds that it never mines and replaces it (see Spend), and by, the
+	// transaction that spent its fee input. The tree's outputs do not
+	// exist, so an application takes it out of the trees a sweep spends.
+	Displaced func(tree funding.Tree, by string)
 
 	// ahead delivers the result of the mint in flight, nil when none is;
 	// held is every tree that is settled and not yet used, in the order
@@ -112,6 +118,9 @@ type Trees struct {
 	held     []*preparedTree
 	aheadFor string
 	mintPool weak.Pointer[bwallet.Pool]
+	// checked is the current tree whose standing lost has asked about, or
+	// that this Trees adopted itself.
+	checked string
 }
 
 // ErrPublish is what errors.Is matches a *PublishError by: a funding tree
@@ -164,13 +173,20 @@ type aheadResult struct {
 	by     string
 	notes  []string
 	err    error
+	// unsettled is set when the tree reached the settlement leg and the
+	// wait for its proof ended without one or a refusal: it may still mine,
+	// and its change is not taken.
+	unsettled bool
 }
 
 // Spend returns the tree the next need carriers spend from, and the index
 // of the first output they spend.
 //
 // The current tree is used while it has need outputs left and is locked to
-// Identity. Otherwise a new tree is minted, never smaller than need, since
+// Identity, unless it never mines: a current tree with no proof that this
+// Trees did not adopt itself is checked once a run, and one whose fee input
+// the node shows spent by another transaction, with no proof, is replaced
+// and reported through Displaced. Otherwise a new tree is minted, never smaller than need, since
 // need is known before anything is minted: a producer that spent a tree
 // halfway through one publish and then stopped would leave carriers on the
 // plane that nothing commits to. The outputs a replaced tree has left are
@@ -276,8 +292,10 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 		if err != nil {
 			return nil, 0, fmt.Errorf("funding tree: %w", err)
 		}
-		t.mintAhead(ctx, cur.Txid, cur.Remaining()-need)
-		return tx, cur.Next, nil
+		if !t.lost(ctx, *cur, tx) {
+			t.mintAhead(ctx, cur.Txid, cur.Remaining()-need)
+			return tx, cur.Next, nil
+		}
 	}
 	if t.ahead != nil {
 		if err := t.collect(ctx, true); err != nil && ctx.Err() != nil {
@@ -439,6 +457,9 @@ func (t *Trees) adoptAndPublish(ctx context.Context, tree *transaction.Transacti
 	if err := t.State.Adopt(rec); err != nil {
 		return err
 	}
+	// Settled here, so the check on a current tree adopted unproven has
+	// been made: see lost.
+	t.checked = rec.Txid
 	if err := t.publish(ctx, tree); err != nil {
 		return &PublishError{Tree: rec, Err: err}
 	}
@@ -574,6 +595,7 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 			r.coin = &o
 			r.by = bg.spentBy(ctx, o, tree, err)
 		}
+		r.unsettled = err != nil && r.coin == nil && !errors.Is(err, ErrRefused)
 		done <- r
 	}()
 }
@@ -626,6 +648,43 @@ func (t *Trees) mintFrom(ctx context.Context, count int, o bwallet.Output) (*tra
 	return t.mint(ctx, count, fee, changeTo)
 }
 
+// lost reports whether cur, the current tree, which a spend would use, is
+// a tree that never mines: one adopted with no proof whose fee input the
+// node shows spent by another transaction, and that has no proof. Earlier
+// versions adopted such a tree under Async (a tree that lost a double
+// spend), and an application's state may still hold one as its current
+// tree, so a spend from it builds carriers on outputs that never exist.
+//
+// The node is asked once a run for each current tree with no proof that
+// this Trees did not adopt itself (a tree it adopts was settled by it), and
+// never for a tree with a proof or with no Payer chain to ask. An input the
+// node cannot answer for is not evidence, so the tree is used. A lost tree
+// is reported through Note and Displaced, and the spend mints a new tree,
+// as it does for a tree locked to another identity.
+func (t *Trees) lost(ctx context.Context, cur funding.Tree, tx *transaction.Transaction) bool {
+	if cur.BumpHex != "" || t.checked == cur.Txid || tx == nil || tx.MerklePath != nil {
+		return false
+	}
+	c := t.Payer.chain()
+	if c == nil {
+		return false
+	}
+	t.checked = cur.Txid
+	err := nodeapi.SpentElsewhereIn(ctx, c, tx)
+	var se *nodeapi.SpentError
+	if !errors.As(err, &se) {
+		return false
+	}
+	if mp, _, perr := c.Proof(ctx, cur.Txid); perr == nil && mp != nil {
+		return false
+	}
+	t.Payer.note("funding tree %s, the current tree, has no proof and its input %s is spent by %s: it never mines, so it is not spent from and a new tree is minted", cur.Txid, se.Outpoint, se.By)
+	if t.Displaced != nil {
+		t.Displaced(cur, se.By)
+	}
+	return true
+}
+
 // recordingSettler records whether a transaction reached the leg, so a fee
 // coin is put back only when it did not.
 type recordingSettler struct {
@@ -664,6 +723,9 @@ func (t *Trees) collect(ctx context.Context, wait bool) error {
 	}
 	t.ahead = nil
 	if r.change {
+		if r.unsettled && r.tx != nil {
+			unsettle(t.mintPool, r.tx.TxID().String())
+		}
 		t.minted()
 	}
 	for _, l := range r.notes {

@@ -676,9 +676,17 @@ has no default. `SettleOptions` carries what a specification does not:
 
 `Take` returns `*producer.NoCoinError` when the pool has no coin it may
 spend (`Held` counts the transactions whose change is waiting for a proof,
-`Minting` the trees minted ahead that still hold a coin; see below) and
-`*producer.NoKeyError` for a coin none of the keys holds, so the
+`Minting` the trees minted ahead that still hold a coin, `Unsettled` the
+trees minted ahead that reached the leg and were not proven in time; see
+below) and `*producer.NoKeyError` for a coin none of the keys holds, so the
 application can say what its users should do.
+
+`Reserved(in)` answers the pool coin a take reserved for the fee input `in`,
+exactly as the pool held it, until it is given back or settled: what an
+application records beside the transaction the input pays for. A take may
+answer a coin that was not in the pool when it was called (the change of a
+tree minted ahead, collected while the take waited), so a snapshot of the
+pool made before the take does not hold it.
 
 #### A fee while a tree is minted ahead
 
@@ -706,6 +714,11 @@ What the collected mint leaves decides the second take:
 - a mint that failed before the settlement leg returns its coin, and the
   take is paid from it; one that failed after it leaves nothing, and the
   take answers `*NoCoinError`;
+- without `Async`, a tree that reached the leg and did not mine within the
+  `Timeout` of the `Trees`' `Payer` may still mine, but its change is not in
+  the pool: the take answers `*NoCoinError` with `Unsettled` counting it, and
+  so does every later take over the pool in the process, until `Recover`
+  settles the tree from its `Prepare` record;
 - when the wait ends first, the mint is still in flight and the
   `*NoCoinError` counts it in `Minting`. A later take waits again.
 
@@ -765,6 +778,17 @@ is left alone; `Recover` answers `CoinSpent` for it on the next start.
 | `Facade`, `Topic` | none | the object leg a new tree is published on |
 | `Ahead` | 0, off | outputs left on the current tree at or below which the next tree is minted and settled in the background; see below |
 | `Prepare` | nil, off | called with each pool-paid tree's record and fee coin before the tree reaches the settlement leg, so a run that stops before `Adopt` can be recovered; see below |
+| `Displaced` | nil | called with a current tree that never mines, and the transaction that spent its fee input, when a spend replaces it; see below |
+
+A current tree with no proof that this `Trees` did not adopt itself, such
+as one an earlier version adopted under `Async` after it lost a double
+spend, is checked once a run before a spend uses it. When the node shows
+its fee input spent by another transaction and has no proof for it, the
+tree never mines and its outputs do not exist: the spend reports it through
+`Note` and `Displaced` and mints a new tree, as it does for a tree locked to
+another identity. The application takes the displaced tree out of the trees
+a sweep spends. An input the node cannot answer for is not evidence, and
+the tree is used.
 
 With `Ahead` above zero, and not `DryRun`, a spend that leaves the current
 tree with `Ahead` outputs or fewer starts minting the next one, of `Count`

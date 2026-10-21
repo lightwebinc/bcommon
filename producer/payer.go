@@ -117,10 +117,19 @@ func (p *Payer) note(format string, args ...any) {
 // when Take stopped waiting for them: coin that returns as change once one
 // settles, so the same take can succeed later in the run. It is zero unless
 // the wait ended first, on the Payer's Timeout or the context; see Take.
+//
+// Unsettled counts the funding trees minted ahead from a coin of this pool,
+// in this process, that reached the settlement leg and whose wait for a
+// proof ended without one, which happens without Async when a tree does not
+// mine within the Timeout of its Trees' Payer. Such a tree may still mine,
+// but its change is not in the pool, and nothing in this run puts it there:
+// Trees.Recover does, from the tree's Prepare record, once the tree has
+// mined. Without this count that case reads exactly as an empty wallet.
 type NoCoinError struct {
-	Err     error
-	Held    int
-	Minting int
+	Err       error
+	Held      int
+	Minting   int
+	Unsettled int
 }
 
 func (e *NoCoinError) Error() string {
@@ -130,6 +139,9 @@ func (e *NoCoinError) Error() string {
 	}
 	if e.Minting > 0 {
 		msg += fmt.Sprintf("; %d funding tree(s) minted ahead hold a coin and have not settled, and the change returns once one does", e.Minting)
+	}
+	if e.Unsettled > 0 {
+		msg += fmt.Sprintf("; %d funding tree(s) minted ahead reached the settlement leg and were not proven in time, so their change is not in the pool until Recover settles them once they mine", e.Unsettled)
 	}
 	return msg
 }
@@ -205,6 +217,27 @@ func (p *Payer) TakeAtLeast(ctx context.Context, sats uint64) (mint.Input, error
 	return in, err
 }
 
+// Reserved is the pool coin a Take or TakeAtLeast of this Payer reserved
+// for the fee input in, exactly as the pool held it: what an application
+// records beside the transaction the input pays for. A take may answer a
+// coin that was not in the pool when it was called (a funding tree's change
+// collected while it waited), so a snapshot of the pool made before the take
+// does not hold it. ok is false for an input this Payer did not take, and
+// for one whose coin is no longer reserved: given back (GiveBack), or
+// released or dropped by a settlement (see Settle and Trees.Spend).
+func (p *Payer) Reserved(in mint.Input) (bwallet.Output, bool) {
+	if in.Tx == nil {
+		return bwallet.Output{}, false
+	}
+	txid := in.Tx.TxID().String()
+	for _, o := range p.spent {
+		if o.Vout == in.Vout && strings.EqualFold(o.TxID, txid) {
+			return o, true
+		}
+	}
+	return bwallet.Output{}, false
+}
+
 // take is TakeAtLeast, also answering the coin, which Trees needs to give
 // back or release on its own.
 func (p *Payer) take(ctx context.Context, sats uint64) (mint.Input, bwallet.Output, error) {
@@ -218,7 +251,7 @@ func (p *Payer) take(ctx context.Context, sats uint64) (mint.Input, bwallet.Outp
 		o, minting, err = p.takeAfterMints(ctx, sats, allow, err)
 	}
 	if err != nil {
-		return mint.Input{}, bwallet.Output{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids()), Minting: minting}
+		return mint.Input{}, bwallet.Output{}, &NoCoinError{Err: err, Held: len(p.Pool.UnprovenTxids()), Minting: minting, Unsettled: unsettledOn(p.Pool)}
 	}
 	p.spent = append(p.spent, o)
 	in, err := p.input(ctx, o)

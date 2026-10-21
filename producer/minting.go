@@ -18,9 +18,55 @@ import (
 // Both sides are held weakly. A Trees dropped with its mint uncollected,
 // and its pool, are reclaimed as they were before this list existed, and
 // their entries go the next time a mint is listed.
+//
+// unsettled is, by pool, every funding tree minted ahead from a coin of the
+// pool that reached the settlement leg and was collected without its proof
+// (NoCoinError.Unsettled), by txid, until Recover settles it.
 var mints struct {
 	sync.Mutex
-	on map[weak.Pointer[bwallet.Pool]][]weak.Pointer[Trees]
+	on        map[weak.Pointer[bwallet.Pool]][]weak.Pointer[Trees]
+	unsettled map[weak.Pointer[bwallet.Pool]]map[string]bool
+}
+
+// unsettle records that the tree txid, minted ahead from a coin of pool,
+// reached the settlement leg and was collected without its proof.
+func unsettle(pool weak.Pointer[bwallet.Pool], txid string) {
+	mints.Lock()
+	defer mints.Unlock()
+	if mints.unsettled == nil {
+		mints.unsettled = map[weak.Pointer[bwallet.Pool]]map[string]bool{}
+	}
+	for k := range mints.unsettled {
+		if k.Value() == nil {
+			delete(mints.unsettled, k)
+		}
+	}
+	if pool.Value() == nil {
+		return
+	}
+	if mints.unsettled[pool] == nil {
+		mints.unsettled[pool] = map[string]bool{}
+	}
+	mints.unsettled[pool][txid] = true
+}
+
+// forgetUnsettled forgets the tree txid of pool: Recover has settled it.
+func forgetUnsettled(pool *bwallet.Pool, txid string) {
+	mints.Lock()
+	defer mints.Unlock()
+	k := weak.Make(pool)
+	delete(mints.unsettled[k], txid)
+	if len(mints.unsettled[k]) == 0 {
+		delete(mints.unsettled, k)
+	}
+}
+
+// unsettledOn is how many trees minted ahead from a coin of pool are
+// recorded by unsettle and not yet settled.
+func unsettledOn(pool *bwallet.Pool) int {
+	mints.Lock()
+	defer mints.Unlock()
+	return len(mints.unsettled[weak.Make(pool)])
 }
 
 // minting lists t as holding a coin of pool until its mint is collected.
