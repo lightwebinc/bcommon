@@ -8,27 +8,33 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // Handle is a resolved handle: what the domain says the identity key is.
 //
-// CertificateChecked is false in every Handle this build returns. The field
-// exists so that a caller cannot mistake "the domain said so" for "the
-// certifier signed it"; see VerifyHandleCertificate.
+// CertificateChecked is false in every Handle ResolveHandle returns, so
+// that a caller cannot mistake "the domain said so" for "the certifier
+// signed it"; CheckHandleCertificate sets it.
 type Handle struct {
 	Acct
 	IdentityKey [33]byte
-	// Certificate is the BRC-52 handle certificate exactly as served, and
-	// unverified.
+	// Certificate is the BRC-52 handle certificate exactly as served,
+	// unverified until CheckHandleCertificate checks it.
 	Certificate json.RawMessage
 	Messagebox  string
 	// TTL is the caching bound in seconds (section 5.4): binding upward,
 	// advisory downward.
 	TTL     int
 	Revoked bool
-	// CertificateChecked reports whether Certificate has been verified
-	// against the domain's certifier key. Never true in this build.
-	CertificateChecked bool
+	// CertificateChecked reports whether CheckHandleCertificate verified
+	// Certificate against the domain's certifier key, its revocation
+	// outpoint included, at CertificateCheckedAt (BRC-169 section 4.2 rule
+	// 3). RevocationOutpoint is the certificate's revocation outpoint,
+	// txid.vout, once its content has been checked.
+	CertificateChecked   bool
+	CertificateCheckedAt time.Time
+	RevocationOutpoint   string
 }
 
 // RevokedError is ErrRevoked with the forwarding record, if the domain served
@@ -189,23 +195,4 @@ func parseIdentityKey(s string) ([33]byte, error) {
 	}
 	copy(key[:], b)
 	return key, nil
-}
-
-// VerifyHandleCertificate is the seam for BRC-169 section 4.1. It would check
-// that h.Certificate is a BRC-52 certificate whose subject equals
-// h.IdentityKey, whose certifier is m.Trust.PublicKey, whose type is the
-// handle certificate type of section 4.5, whose fields bind the handle and
-// domain, and whose revocation outpoint is unspent (section 4.2) at the
-// freshness the pending action needs; on success it would set
-// h.CertificateChecked.
-//
-// It is the seam the BRC-52 verifier fills, exported so that a caller can
-// gate an action on it and gain the check without changing its own code.
-// Until the verifier is in place it always refuses: it returns
-// ErrCertificateUnverified unconditionally and never sets
-// CertificateChecked. Meanwhile an identity key from ResolveHandle is
-// attested by the domain's resolution endpoint alone, which is exactly the
-// trust a key pin is there to bound.
-func VerifyHandleCertificate(h *Handle, m *Manifest) error {
-	return ErrCertificateUnverified
 }

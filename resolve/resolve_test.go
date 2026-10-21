@@ -264,11 +264,12 @@ func TestResolveHappyPath(t *testing.T) {
 	if h.CertificateChecked {
 		t.Fatal("CertificateChecked is true and nothing checked it")
 	}
-	if err := VerifyHandleCertificate(h, m); !errors.Is(err, ErrCertificateUnverified) {
-		t.Fatalf("VerifyHandleCertificate = %v, want ErrCertificateUnverified", err)
+	// The stand-in certificate is not a certificate.
+	if err := VerifyHandleCertificate(h, m); !errors.Is(err, ErrCertificate) {
+		t.Fatalf("VerifyHandleCertificate = %v, want ErrCertificate", err)
 	}
 	if h.CertificateChecked {
-		t.Fatal("the seam set CertificateChecked")
+		t.Fatal("a refused certificate set CertificateChecked")
 	}
 }
 

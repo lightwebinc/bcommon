@@ -525,6 +525,7 @@ var layers = map[string]struct {
 	"payeecmd":   {module: []string{"payee"}, tests: []string{"purse"}, sdk: true},
 	"unicast":    {module: []string{"publish"}, sdk: true},
 	"heldpay":    {module: []string{"nodeapi"}, tests: []string{"testchain"}, sdk: true},
+	"resolve":    {sdk: true},
 }
 
 // testOnly are the packages that exist for tests and local trials. No

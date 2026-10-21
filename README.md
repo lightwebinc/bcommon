@@ -57,7 +57,7 @@ minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 | `headers` | A chain tracker over WhatsOnChain, chaintracks, block-headers-service, arcade's header server or an [overlay-bridge](https://github.com/lightwebinc/overlay-bridge), checking proof of work |
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
-| `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy |
+| `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy, and the BRC-52 handle certificate checked against the domain's certifier key and a revocation source |
 | `knownkeys` | The grammar and store of a pinned-key file: pin, rotate, retire, forget |
 | `verify` | The refusal vocabulary, SPV verdicts on one transaction, and the carrier check a reader runs |
 | `termsafe` | Text someone else wrote, filtered before it reaches a terminal, and the same rules checked before a producer publishes text |

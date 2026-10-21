@@ -10,6 +10,12 @@
 // it fetches exactly the documents the specifications name, refuses anything
 // that does not match what was asked, and never probes.
 //
+// The one step that proves more is the handle certificate: where the domain
+// declares a certifier key (metanet.trust), CheckHandleCertificate checks
+// the BRC-52 certificate a resolution answer carries against it and against
+// a revocation source the caller names, so the binding of handle to key is
+// signed by the certifier and not only served by the domain.
+//
 // HTTP here is the one place a reader reaches beyond the host and header
 // service it was configured with, so the client policy is part of the security
 // posture rather than a convenience: system roots only, HTTPS only, no
@@ -51,9 +57,12 @@ var (
 	// ErrRevoked means the handle was registered and has been released or
 	// revoked. The error may carry a forwarding record; see RevokedError.
 	ErrRevoked = errors.New("handle revoked")
-	// ErrCertificateUnverified is what VerifyHandleCertificate returns until
-	// BRC-52 verification is implemented.
-	ErrCertificateUnverified = errors.New("handle certificate not verified (verification is not implemented in this build)")
+	// ErrCertificateUnverified is a handle certificate whose content passed
+	// checks 1 to 4 of BRC-169 section 4.1 and whose revocation status was
+	// not established: no revocation source was given, or none could
+	// answer (CheckHandleCertificate). Such a certificate is not valid for
+	// a value-moving action (section 4.2 rule 6).
+	ErrCertificateUnverified = errors.New("handle certificate not verified: its revocation status was not checked")
 )
 
 // maxBody bounds every response before it is parsed. A manifest is a few

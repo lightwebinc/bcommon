@@ -49,7 +49,7 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `commit` | none | no |
 | 0 | `chirp` | none | yes |
 | 0 | `hostset` | none | no |
-| 0 | `resolve` | none | no |
+| 0 | `resolve` | none | yes |
 | 0 | `guard` | none | yes |
 | 0 | `mint` | none | yes |
 | 0 | `headers` | none | yes |
@@ -442,6 +442,10 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   under a strict client policy: HTTPS only, system roots only, no proxy,
   redirects only within the origin, bounded bodies. It does not go looking
   for a service the domain's manifest does not declare.
+  `CheckHandleCertificate` verifies the BRC-52 handle certificate a
+  resolution answer carries (BRC-169 section 4.1: signature, certifier,
+  handle and domain, subject, and the revocation outpoint against spend
+  sources the caller gives), through go-sdk's certificate signature check.
 - **`knownkeys`** owns the grammar and store of a pin file: pin, rotate,
   retire, forget. A malformed line is an error, never a skipped pin, and a
   file other users can write is refused.
