@@ -279,6 +279,7 @@ committed on chain; assigned here).
 | Record magic | `sev` `0x01` | Vault record, version 1 |
 | Record magic | `ses` `0x01` | Secret record, version 1 |
 | Record magic | `sep` `0x01` | Payload (the plaintext a secret's ciphertext holds), version 1 |
+| Record magic, reserved | `sev` `0x02`, `ses` `0x02`, `sep` `0x02` | A second record version's vault, secret and payload; written by nothing today, refused by every version-1 reader |
 | Topics | `tm_bsecret_<name>_<suffix>` | One topic per crypt, shared by many vaults; `<suffix>` is 10 random lowercase letters chosen when the crypt is created |
 | Lookup service | `ls_bsecret` | Lookup service for every crypt on a host |
 | Host route | `<base>/ls_bsecret/terms` | The host terms document for priced questions |
@@ -287,6 +288,7 @@ committed on chain; assigned here).
 | Domain string | `bsecret secret id v1` | Hashed into a secret identifier |
 | Domain string | `bsecret epoch wrap v1` | Hashed into the key that wraps a content key under a group epoch |
 | Domain string | `bsecret enrollment request v1` | Prefixed, with a newline, to the bytes a machine's join request is signed over |
+| Domain strings, reserved | `bsecret vault id v2`, `bsecret secret id v2`, `bsecret epoch wrap v2` | A second record version's identifiers and epoch wrap; nothing derives under them today |
 
 The prefix `se` is registered to bsecret. `0x70`, `0x73` and `0x76` are
 never assigned as tag type bytes under it, because `se` `0x70`, `se` `0x73`
