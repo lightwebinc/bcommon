@@ -59,6 +59,7 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `sanitize` | none | no |
 | 0 | `keyed` | none | yes |
 | 0 | `testchain` | none | yes |
+| 0 | `module` | none | yes |
 | 1 | `store` | `cbor`, `commit` | no |
 | 1 | `record` | `cbor` | no |
 | 1 | `knownkeys` | `guard` | no |
@@ -439,6 +440,10 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`lookup`** owns the BRC-24 output-list client over `hostset`. It does
   not use go-sdk's resolver, which runs discovery against public trackers
   when unconfigured.
+- **`module`** owns the contract an overlay module satisfies in Go: topic
+  managers, lookup services, the payloads a host hands them, the host they
+  are built against and the restore seam, in go-sdk's types. It imports no
+  engine; an engine's host adapts these shapes to its own calls.
 - **`resolve`** owns BRC-169 handle resolution and BRC-180 overlay discovery
   under a strict client policy: HTTPS only, system roots only, no proxy,
   redirects only within the origin, bounded bodies. It does not go looking
@@ -575,9 +580,9 @@ use a derivation and tag reserved for tests (`[1, "vector sample"]`, prefix
 ## Go and TypeScript twins
 
 An overlay host that admits an application's outputs runs a topic manager
-and a lookup service, which are usually TypeScript. The package under `ts/`,
-`@lightwebinc/bcommon`, holds the parts of the Go library such a module needs
-to read what a producer wrote:
+and a lookup service, in TypeScript or in Go (against `module`). The package
+under `ts/`, `@lightwebinc/bcommon`, holds the parts of the Go library such a
+module needs to read what a producer wrote:
 
 | Go | TypeScript |
 |---|---|
@@ -601,6 +606,7 @@ to read what a producer wrote:
 | `carrier.FundingLock`, `carrier.Mint`, `carrier.SweepAt` without a fee input, `mint.Fees.For`, `pushdrop.Derivation.Lock` and `Unlocker` | `fundingLock`, `mintCarrier`, `sweep`, `feeFor`, `lockFields` and `unlocker` (the writer, `writer.ts`) |
 | `nodeapi.WoC.Spender`, `Proof`, `TxRaw` | `WocHttp.spender`, `proof`, `raw` (main entry; also re-exported by the host entry) |
 | `chirp.EncodeRoot`, `EncodeBranch`, `DecodeRoot`, `DecodeBranch`, `Kind`, `BuildTree`, `Build`, `Verify`, `Identifier`, `ParseIdentifier`, `URL`, `ParseURL`, `ValidMediaType`, `Reason` | `encodeRoot`, `encodeBranch`, `decodeRoot`, `decodeBranch`, `nodeKind`, `buildChirpTree`, `buildChirp`, `verifyClosure` (async over the fetch), `chirpIdentifier`, `parseChirpIdentifier`, `chirpURL`, `parseChirpURL`, `validMediaType`, `ChirpError.code` |
+| `module.TopicManager`, `InputIdentifier`, `LookupService`, `SpendListener`, `RetentionListener`, `Restorer`, `OutputAdmittedByTopic`, `OutputSpent`, `Output`, `Host`, `Metrics`, `RestoreStorage`, `Module`, `Factory` | `TopicManager`, `LookupService`, `OutputAdmittedByTopic`, `OutputSpent`, `Output`, `ModuleHost`, `RestoreStorage`, `Module` and the module's default export (`engine-types.ts`); the member table is in the Go package's documentation, and its test holds the two to each other |
 
 The TypeScript `decodeCarrier` applies the same checks in the same order as
 the Go `Validate`, and reports a refusal as one of a small fixed set of
