@@ -28,9 +28,9 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          # The go.mod go line. Raise both together when a patch release
-          # fixes a standard-library advisory.
-          go-version: "1.27.2"
+          # The builder toolchain, not the go.mod go line (the floor stays
+          # put). Raise it when a patch release fixes a stdlib advisory.
+          go-version: "1.27.3"
 
       - name: govulncheck
         # The workable govulncheck pin INVERTS across toolchains: v1.1.4
