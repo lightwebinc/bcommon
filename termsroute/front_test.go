@@ -643,3 +643,48 @@ func TestAcceptConfig(t *testing.T) {
 		}
 	}
 }
+
+// TestAcceptConfigChain: <P>_CHAIN picks WhatsOnChain as the node view, as
+// the TypeScript package's parseAcceptConfig does, never beside an asset
+// URL; the gate it makes is networked with an arcade, and reads proofs from
+// it.
+func TestAcceptConfigChain(t *testing.T) {
+	get := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	c, err := ParseAcceptConfig("X", get(map[string]string{"X_CHAIN": "woc:test", "X_WOC_KEY": " key ", "X_ARCADE_URL": "http://a.example"}))
+	if err != nil || c.Chain != "test" || c.WocKey != "key" || c.AssetURL != "" {
+		t.Fatalf("%+v %v", c, err)
+	}
+	for _, m := range []map[string]string{{"X_CHAIN": "woc:regtest"}, {"X_CHAIN": "main"}, {"X_CHAIN": "woc:main", "X_ASSET_URL": "http://n.example"}} {
+		if _, err := ParseAcceptConfig("X", get(m)); err == nil {
+			t.Errorf("%v accepted", m)
+		}
+	}
+	host := newFakeHost()
+	g := GateFor("example", host, testchain.New(10), c, "")
+	if !g.Networked() || g.o.Node == nil || g.o.Asset != nil || g.o.Arcade == nil || g.o.Arcade.Spends == nil {
+		t.Fatalf("not networked over WhatsOnChain: %+v", g.o)
+	}
+	if n, ok := g.o.Node.(*nodeapi.WoC); !ok || n.Network != "test" || n.Key != "key" {
+		t.Fatalf("%+v", g.o.Node)
+	}
+	none, _ := ParseAcceptConfig("X", get(map[string]string{"X_CHAIN": "woc:main"}))
+	if GateFor("example", newFakeHost(), testchain.New(10), none, "").Networked() {
+		t.Fatal("networked without an arcade")
+	}
+	// A node view in Asset's place: a proof it serves makes a payment mined.
+	chain := testchain.New(700)
+	node := httptest.NewServer(chain)
+	t.Cleanup(node.Close)
+	view := &nodeapi.Asset{Base: node.URL}
+	gate := NewGate(GateOptions{App: "example", Host: newFakeHost(), Headers: chain, Policy: acceptance.DefaultPolicy(), Node: view, Arcade: &publish.Arcade{Base: node.URL + "/arcade"}})
+	if !gate.Networked() {
+		t.Fatal("a node view in Asset's place is not networked")
+	}
+	if _, err := chain.Generate(1, "1BitcoinEaterAddressDontSendf59kuE"); err != nil {
+		t.Fatal(err)
+	}
+	ids := chain.Txids()
+	if tx := chain.Tx(ids[len(ids)-1]); tx == nil || !gate.mined(context.Background(), tx) {
+		t.Fatal("the node view's proof is not read")
+	}
+}

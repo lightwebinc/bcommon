@@ -35,6 +35,10 @@ type GateOptions struct {
 	// asset service (spend view, proofs). Without both no payment is fast.
 	Arcade *publish.Arcade
 	Asset  *nodeapi.Asset
+	// Node, when Asset is nil, is another spend view and proof source in
+	// its place, such as WhatsOnChain (nodeapi.WoC) for a host with no
+	// node.
+	Node NodeView
 	// MaxAge is how long a fast payment may stay unmined before it is
 	// reported; a day when zero. MaxWatched is the most fast payments
 	// watched at once, 100000 when zero; past it a payment is held.
@@ -44,6 +48,18 @@ type GateOptions struct {
 	StateDir string
 	Now      func() time.Time
 }
+
+// NodeView is a node's view a gate reads: who spent an output, and a mined
+// transaction's proof. *nodeapi.Asset and *nodeapi.WoC are both one.
+type NodeView interface {
+	acceptance.SpendView
+	acceptance.ProofSource
+}
+
+var (
+	_ NodeView = (*nodeapi.Asset)(nil)
+	_ NodeView = (*nodeapi.WoC)(nil)
+)
 
 // UnsettleableFile records each fast payment the watch found lost.
 const UnsettleableFile = "unsettleable.jsonl"
@@ -104,7 +120,8 @@ type Gate struct {
 	sweeping bool
 }
 
-// NewGate makes a gate. Every payment is held when Arcade or Asset is nil.
+// NewGate makes a gate. Every payment is held when Arcade is nil, or both
+// Asset and Node are.
 func NewGate(o GateOptions) *Gate {
 	if o.Now == nil {
 		o.Now = time.Now
@@ -124,6 +141,9 @@ func NewGate(o GateOptions) *Gate {
 	if o.Asset != nil {
 		v.Spends = o.Asset
 		v.Proofs = o.Asset
+	} else if o.Node != nil {
+		v.Spends = o.Node
+		v.Proofs = o.Node
 	}
 	g.verifier = v
 	g.monitor = &acceptance.Monitor{Verifier: v, MaxAge: o.MaxAge, Hook: g.record}
@@ -161,7 +181,15 @@ func (g *Gate) reflag() {
 }
 
 // Networked is whether the host can take a payment on the fast path at all.
-func (g *Gate) Networked() bool { return g.o.Arcade != nil && g.o.Asset != nil }
+func (g *Gate) Networked() bool { return g.o.Arcade != nil && g.node() != nil }
+
+// node is the node view the gate reads: Asset, else Node.
+func (g *Gate) node() NodeView {
+	if g.o.Asset != nil {
+		return g.o.Asset
+	}
+	return g.o.Node
+}
 
 // Count counts one decision.
 func (g *Gate) Count(decision, reason string) {
@@ -224,11 +252,12 @@ func (g *Gate) decide(ctx context.Context, tx *transaction.Transaction, payer st
 // mined is whether the node serves a proof of tx that verifies against the
 // host's headers.
 func (g *Gate) mined(ctx context.Context, tx *transaction.Transaction) bool {
-	if g.o.Asset == nil || g.o.Headers == nil {
+	n := g.node()
+	if n == nil || g.o.Headers == nil {
 		return false
 	}
 	txid := tx.TxID()
-	mp, _, err := g.o.Asset.Proof(ctx, txid.String())
+	mp, _, err := n.Proof(ctx, txid.String())
 	if err != nil || mp == nil {
 		return false
 	}
@@ -295,7 +324,12 @@ func (g *Gate) record(ev acceptance.Event) {
 type AcceptConfig struct {
 	ArcadeURL string
 	AssetURL  string
-	Policy    acceptance.Policy
+	// Chain is WhatsOnChain's network ("main" or "test") as the node view,
+	// for a host with no node (<P>_CHAIN=woc:main or woc:test); WocKey its
+	// API key (<P>_WOC_KEY), if any.
+	Chain  string
+	WocKey string
+	Policy acceptance.Policy
 }
 
 var durationRE = regexp.MustCompile(`^([0-9]+)(ms|s|m|h)$`)
@@ -315,9 +349,11 @@ func ParseDuration(name, raw string) (time.Duration, error) {
 	return time.Duration(n) * unit, nil
 }
 
-// ParseAcceptConfig reads <P>_ARCADE_URL, <P>_ASSET_URL and
+// ParseAcceptConfig reads <P>_ARCADE_URL, <P>_ASSET_URL (or <P>_CHAIN,
+// woc:main or woc:test, with <P>_WOC_KEY, for a host with no node) and
 // <P>_ACCEPT_THRESHOLD_SATS, _ACCEPT_PAYER_LIMIT, _ACCEPT_TOTAL_LIMIT,
-// _ACCEPT_WINDOW and _ACCEPT_WATCH through getenv. Defaults are bcommon's
+// _ACCEPT_WINDOW and _ACCEPT_WATCH through getenv, as the TypeScript
+// package's parseAcceptConfig reads them. Defaults are bcommon's
 // DefaultPolicy and no watch.
 func ParseAcceptConfig(prefix string, getenv func(string) string) (AcceptConfig, error) {
 	policy := acceptance.DefaultPolicy()
@@ -372,6 +408,16 @@ func ParseAcceptConfig(prefix string, getenv func(string) string) (AcceptConfig,
 	if c.AssetURL, err = url("ASSET_URL"); err != nil {
 		return AcceptConfig{}, err
 	}
+	if chain := strings.TrimSpace(getenv(prefix + "_CHAIN")); chain != "" {
+		if chain != "woc:main" && chain != "woc:test" {
+			return AcceptConfig{}, fmt.Errorf("%s_CHAIN: %q is woc:main or woc:test", prefix, chain)
+		}
+		if c.AssetURL != "" {
+			return AcceptConfig{}, fmt.Errorf("%s_CHAIN and %s_ASSET_URL are both set; keep one", prefix, prefix)
+		}
+		c.Chain = strings.TrimPrefix(chain, "woc:")
+		c.WocKey = strings.TrimSpace(getenv(prefix + "_WOC_KEY"))
+	}
 	return c, nil
 }
 
@@ -386,6 +432,13 @@ func GateFor(app string, host bmodule.Host, headers chaintracker.ChainTracker, c
 		o.Asset = &nodeapi.Asset{Base: c.AssetURL, Client: client}
 		if o.Arcade != nil {
 			o.Arcade.Asset = o.Asset
+		}
+	} else if c.Chain != "" {
+		if woc, err := nodeapi.NewWoC(c.Chain, c.WocKey); err == nil {
+			o.Node = woc
+			if o.Arcade != nil {
+				o.Arcade.Spends = woc
+			}
 		}
 	}
 	return NewGate(o)
