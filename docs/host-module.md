@@ -3,7 +3,9 @@
 What every application's overlay host module runs from
 `@lightwebinc/bcommon/host` (see [architecture](architecture.md)): the
 terms route, its budgets, payment acceptance, and the state directory that
-holds the payee ledger. Each application's `docs/host.md` links here and
+holds the payee ledger. A host module written in Go runs the same from the
+Go package `termsroute`, which answers with the same status codes, bodies,
+metric names and ledger lines, so everything below holds for either. Each application's `docs/host.md` links here and
 keeps only what is its own: its environment variable prefix (written
 `<APP>_` below, for example `BBOX_`), its journal of outpoint rows, its
 service name (`ls_<app>`), its defaults, and its metrics prefix

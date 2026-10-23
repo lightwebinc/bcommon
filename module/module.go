@@ -278,3 +278,18 @@ type Module struct {
 // Factory builds a module for one host. It is the TypeScript module's
 // default export.
 type Factory func(h Host) (Module, error)
+
+// HydratedOutput is one output of an answer a lookup service hydrated
+// itself: its BEEF (Atomic BEEF), its index, and the context the class
+// gives it (nil when none). A service that must put a context on an output
+// (the TypeScript engine carries a formula's context to the output; go-sdk's
+// OutputListItem has no such member) answers a LookupAnswer of type
+// output-list with Outputs filled as usual and Result set to a
+// []HydratedOutput; a host that serves the answer over HTTP renders Result
+// when it is one, and Outputs otherwise. An engine passes an output-list
+// answer through untouched, so the convention costs it nothing.
+type HydratedOutput struct {
+	Beef        []byte
+	OutputIndex uint32
+	Context     []byte
+}

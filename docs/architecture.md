@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: thirty-two Go packages under one module,
+bcommon is a library, not a service: thirty-three Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -81,6 +81,7 @@ beside the standard library and, where noted, go-sdk.
 | 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
 | 5 | `payee` | `guard`, `purse`, `termsafe` | yes |
 | 6 | `payeecmd` | `payee` | no |
+| 6 | `termsroute` | `acceptance`, `guard`, `module`, `nodeapi`, `payee`, `publish` | yes |
 
 Every edge inside the module:
 
@@ -464,6 +465,19 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   BEEF and a raw transaction, each bounding every declared count and length
   by the bytes present, and the one canonical encoding of a compressed
   public key.
+
+- **`termsroute`** is a host's terms route in Go, the twin of the TypeScript
+  package's host entry point (`ts/src/host`): `Front` (BRC-104 server side
+  over go-sdk's `auth.Peer`, BRC-105 priced questions, the terms document and
+  price list), its hardening (`HandshakeBudget` checked before any signature
+  work, a `KeyedBudget` of signed responses per session, `SeenRequests`
+  replay refusal, bounded `Sessions` as the Peer's session manager), the
+  payee `Ledger` as a host writes and reads it (the `payee` package's lines
+  byte for byte, with the host's decision in either layout), and payment
+  acceptance (`Gate` over `acceptance`, with `ParseAcceptConfig` reading the
+  same `<APP>_` variables the TypeScript host reads). Status codes, bodies
+  and metric names are the TypeScript route's, so a client sees one route
+  whichever language the host is written in.
 
 ### Terminal
 
