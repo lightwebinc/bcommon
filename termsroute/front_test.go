@@ -91,7 +91,7 @@ var classes = []PricedClass{{"list", true}, {"history", false}, {"history-after"
 type answerer struct{ restored bool }
 
 func (a *answerer) Restored() bool { return a.restored }
-func (a *answerer) Classify(q Question) (string, error) {
+func (a *answerer) Classify(_ context.Context, q Question) (string, error) {
 	if q.Service != "ls_example" {
 		return "", errors.New("not ls_example")
 	}
@@ -109,7 +109,7 @@ func (a *answerer) Classify(q Question) (string, error) {
 	return "", errors.New("no such question")
 }
 func (a *answerer) Answer(ctx context.Context, q Question) (any, error) {
-	cls, _ := a.Classify(q)
+	cls, _ := a.Classify(ctx, q)
 	caller, _ := Caller(ctx)
 	return map[string]any{"type": "output-list", "outputs": []any{}, "asked": cls, "caller": caller}, nil
 }

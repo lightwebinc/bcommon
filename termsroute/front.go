@@ -56,13 +56,14 @@ type Question struct {
 }
 
 // Answerer is the lookup service behind the route. Classify names a
-// question's class or errs (answered 400 with the error's text); Answer is
-// the JSON a 200 carries (an error is answered 400 with its text), with the
-// asker's identity in ctx (Caller) when the request was authenticated;
-// Restored is false until the service can answer (503).
+// question's class or errs (answered 400 with the error's text, before any
+// price: a question about a crypt the asker is not served costs nothing);
+// Answer is the JSON a 200 carries (an error is answered 400 with its
+// text). Both get the asker's identity in ctx (Caller) when the request
+// was authenticated. Restored is false until the service can answer (503).
 type Answerer interface {
 	Restored() bool
-	Classify(q Question) (string, error)
+	Classify(ctx context.Context, q Question) (string, error)
 	Answer(ctx context.Context, q Question) (any, error)
 }
 
@@ -684,7 +685,7 @@ func (f *Front) route(ctx context.Context, r *http.Request, body []byte, identit
 	if err := json.Unmarshal(body, &q); err != nil || !bytes.HasPrefix(bytes.TrimSpace(body), []byte("{")) {
 		return jsonReply(http.StatusBadRequest, map[string]string{"error": "the question is not a JSON object"}, nil)
 	}
-	cls, err := f.o.LS.Classify(q)
+	cls, err := f.o.LS.Classify(ctx, q)
 	if err != nil {
 		return jsonReply(http.StatusBadRequest, map[string]string{"error": err.Error()}, nil)
 	}
