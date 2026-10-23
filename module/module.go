@@ -293,3 +293,24 @@ type HydratedOutput struct {
 	OutputIndex uint32
 	Context     []byte
 }
+
+type submissionKey struct{}
+
+// WithSubmission carries a submission's bytes, exactly as they arrived at
+// the host, in ctx for the topic managers the host then calls; Submission
+// reads them. A host that verifies and parses the bytes before a manager
+// runs still hands them whole, because some managers decide on the wire
+// form (which transactions a BEEF carries, in what order, with which
+// proofs), which a parsed BEEF, merged with what the host already held,
+// no longer shows. The TypeScript engine hands a manager the bytes
+// themselves; this is the Go host's way of doing the same.
+func WithSubmission(ctx context.Context, raw []byte) context.Context {
+	return context.WithValue(ctx, submissionKey{}, raw)
+}
+
+// Submission is the submission's bytes as they arrived, when the host put
+// them in ctx (WithSubmission).
+func Submission(ctx context.Context) ([]byte, bool) {
+	raw, ok := ctx.Value(submissionKey{}).([]byte)
+	return raw, ok && raw != nil
+}
