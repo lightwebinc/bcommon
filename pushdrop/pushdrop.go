@@ -102,9 +102,18 @@ func Anyone() wallet.Counterparty {
 // ExpectedLockingKey is the reader's side of the derivation: from the anyone
 // root, identity's key under d. It equals what identity's own wallet produces
 // with counterparty Anyone and forSelf=true, which is the key Lock locks to.
+//
+// A derivation that passes Validate and a canonical identity key take a
+// faster path with the same result (anyoneChild, derive.go); anything else
+// goes to go-sdk's key deriver, which keeps the last word on errors.
 func (d Derivation) ExpectedLockingKey(identity *ec.PublicKey) (*ec.PublicKey, error) {
 	if identity == nil {
 		return nil, errors.New("pushdrop: nil identity key")
+	}
+	if d.Validate() == nil {
+		if k, ok := anyoneChild(identity, d.invoice()); ok {
+			return k, nil
+		}
 	}
 	return wallet.NewKeyDeriver(nil).DerivePublicKey(d.Protocol, d.KeyID,
 		wallet.Counterparty{Type: wallet.CounterpartyTypeOther, Counterparty: identity}, false)

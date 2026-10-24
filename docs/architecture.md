@@ -201,6 +201,11 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   PushDrop lock and its unlocker, and the decoding a reader runs. A reader
   holding only the identity key recomputes the locking key with
   `ExpectedLockingKey` and checks the embedded field signature.
+  `ExpectedLockingKey` gives go-sdk's key without go-sdk's first step: the
+  anyone root key is the scalar 1, so the shared secret is the identity key
+  itself, and the SDK's general multiplication by 1 (about two thirds of a
+  derivation) is skipped; the rest is the SDK's own arithmetic, and anything
+  but a canonical key goes to the SDK.
   `CheckCanonical` takes a lock only as the one script the template writes
   for its key and fields, every push minimal and the key in its canonical
   encoding, and `DecodeTagged` applies it. A host that must decide on raw
