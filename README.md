@@ -58,6 +58,7 @@ minor or patch may change is in [docs/versioning.md](docs/versioning.md).
 | `hostset` | Host sources and quorum fan-out across the addresses behind one overlay host |
 | `lookup` | A BRC-24 lookup client for output-list answers |
 | `module` | The engine-neutral contract an overlay module satisfies in Go, the twin of the TypeScript package's engine types: topic managers, lookup services and their payloads, the host a module is built against, and the restore seam, in go-sdk's types, with no engine imported |
+| `replay` | The walk behind a module's ordered replay (`module.Replayer`, Go only): a chain application's lookup service asks a peer, with its own questions, for what its host lacks, and answers the objects to submit in chain order, each token in the BEEF of the token and its parent with minimal paths, its parent first; bounded per call, resumable by a cursor |
 | `termsroute` | A host's terms route in Go, the twin of `@lightwebinc/bcommon/host`: BRC-104 server side, BRC-105 priced questions, the terms document and price list, handshake and response budgets, replay refusal, bounded sessions, the payee ledger and payment acceptance, with the TypeScript route's status codes, bodies and metric names |
 | `resolve` | BRC-169 handle resolution and BRC-180 overlay discovery, under a strict HTTPS client policy, and the BRC-52 handle certificate checked against the domain's certifier key and a revocation source |
 | `knownkeys` | The grammar and store of a pinned-key file: pin, rotate, retire, forget |

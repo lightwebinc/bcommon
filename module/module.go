@@ -92,6 +92,18 @@
 // coinsToRetain, coinsRemoved) cross the wire as JSON, and go-sdk's types
 // carry exactly the TypeScript field names as their JSON tags; the package's
 // test holds them to it, and holds this table to the TypeScript source.
+//
+// # Go only
+//
+// Some members have no TypeScript twin, because the TypeScript host is
+// frozen and never needed them: WithSubmission and Submission (the
+// submission's bytes a wire-form manager decides on), HydratedOutput (an
+// output's context on a self-hydrated answer), and Replayer with Ask,
+// ReplayRequest, ReplayObject and ReplayAnswer (ordered replay, by which a
+// chain application's lookup service repairs its host's gaps from a peer
+// through the application's own questions; see replay.go and package
+// github.com/lightwebinc/bcommon/replay). None is in the table above, and
+// the test does not ask for one.
 package module
 
 import (
