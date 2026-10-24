@@ -14,6 +14,18 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      # Applications vendor ts/ as a package tarball, and their skew test holds
+      # its version to the Go pin, so a tag whose ts/package.json still names
+      # the previous version cannot be pinned by any application. No release
+      # is published for such a tag; cut the next patch with the version set.
+      - name: ts/package.json carries the tag's version
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          pkg="$(sed -n '3s/^  "version": "\([^"]*\)",$/\1/p' ts/package.json)"
+          lock="$(sed -n '3s/^  "version": "\([^"]*\)",$/\1/p' ts/package-lock.json)"
+          root="$(sed -n '9s/^      "version": "\([^"]*\)",$/\1/p' ts/package-lock.json)"
+          echo "tag $want; package.json $pkg; package-lock.json $lock and $root"
+          test "$pkg" = "$want" && test "$lock" = "$want" && test "$root" = "$want"
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           generate_release_notes: true
