@@ -652,6 +652,10 @@ func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transact
 		return nil, 0, fmt.Errorf("%s: waiting for a proof: %w", what, err)
 	}
 	p.note("%s %s: mined at height %d", what, tx.TxID(), height)
-	tx.MerklePath = minimalProof(mp, tx)
+	// The proof a caller keeps (a funding tree's record, a hold output's)
+	// is the one attached: a node's proof may flag the sibling leaf as a
+	// transaction id, and a host refuses a path that is not minimal.
+	mp = minimalProof(mp, tx)
+	tx.MerklePath = mp
 	return mp, height, nil
 }
