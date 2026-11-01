@@ -43,12 +43,12 @@ takes the higher of two requirements. A raised pin here would silently change
 the go-sdk that every application pinning bcommon builds with, including the
 derivation, script and transaction encodings its records depend on.
 
-v1.7.1 replaced v1.5.2 in v0.12.0. It sends the BRC-103 handshake's
-requested certificate set in the wire shape (`certifiers` and `types`),
-which TypeScript peers on `@bsv/sdk` 2.8 and later require; v1.5.2 sent
-Go's field names and those peers refused the handshake. v1.7.1 still reads
-the old names, so a peer on v1.5.2 keeps working with it in both
-directions. Every vector matched byte for byte across the change.
+v1.7.1 is also the floor for the BRC-103 handshake: it sends the requested
+certificate set in the wire shape (`certifiers` and `types`), which
+TypeScript peers on `@bsv/sdk` 2.8 and later require, where releases below
+it sent Go's field names and those peers refused the handshake. v1.7.1
+still reads the old names, so a peer on an older go-sdk keeps working with
+it in both directions.
 
 v1.7.1 still accepts a compressed public key whose x is at or above the
 field prime. `guard.ParsePubKey` stays in front of every key from the wire

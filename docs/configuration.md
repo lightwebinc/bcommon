@@ -21,6 +21,10 @@ Two rules run through all of it:
   proxies.) A deployment that needs a proxy supplies its own
   `*http.Client`, where the choice is visible.
 
+The settings an application's overlay host module reads from its
+environment (`<APP>_...`: the terms route, its budgets and payment
+acceptance) are in [host-module.md](host-module.md).
+
 ## Frozen once used
 
 These values are hashed into keys, written into transactions or recomputed

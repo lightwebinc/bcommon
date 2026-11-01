@@ -119,8 +119,8 @@ holds) is answered 400 `ERR_PAYMENT_REFUSED`. Anything else that is not
 fast (above the threshold, a limit reached, a conflict reported, no verdict
 within 10 s, a spend view that cannot say) is answered 202
 `ERR_PAYMENT_HELD` with the txid and the reason, so a client does not pay
-again (hosts before bcommon v0.23.0 answered 402 without BRC-105 headers;
-the Go package `heldpay` reads both). The held payment is recorded in
+again (older hosts answered 402 without BRC-105 headers; the Go package
+`heldpay` reads both). The held payment is recorded in
 `payments.jsonl` with `"decision":"hold"`, keeps its coins, and the same
 payment sent again is answered once the node serves its proof and that
 proof verifies against the host's headers. A host with no arcade or no node
@@ -141,6 +141,24 @@ against the limits.
 
 The ledger line carries `decision` (`fast`, `hold` or `mined`) and
 `reason`; the application's `payee settle` reads it.
+
+### The acceptance settings
+
+The host reads them with its prefix (TypeScript `parseAcceptConfig`, Go
+`termsroute.ParseAcceptConfig`); a duration is `<n>ms`, `<n>s`, `<n>m` or
+`<n>h`.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `<APP>_ARCADE_URL` | none | the arcade the host broadcasts through and asks for the network's verdict; without it nothing is fast |
+| `<APP>_ASSET_URL` | none | the node's asset API: the spend view and the proofs |
+| `<APP>_CHAIN` | none | `woc:main` or `woc:test`: WhatsOnChain as the node view, for a host with no node; not with `<APP>_ASSET_URL` |
+| `<APP>_WOC_KEY` | none | the WhatsOnChain API key, with `<APP>_CHAIN` |
+| `<APP>_ACCEPT_THRESHOLD_SATS` | 25000000 | the largest payment the fast path takes |
+| `<APP>_ACCEPT_PAYER_LIMIT` | the threshold | satoshis one payer may have fast and unmined within the window |
+| `<APP>_ACCEPT_TOTAL_LIMIT` | ten times the threshold | the same across every payer |
+| `<APP>_ACCEPT_WINDOW` | `1h` | how long a fast payment counts against those limits unless it mines first |
+| `<APP>_ACCEPT_WATCH` | `0` | how long the fast path keeps watching for a conflict before it answers |
 
 ## The state directory
 

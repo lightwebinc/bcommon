@@ -1,6 +1,6 @@
 # Architecture
 
-bcommon is a library, not a service: thirty-three Go packages under one module,
+bcommon is a library, not a service: thirty-nine Go packages under one module,
 one TypeScript package, and no process of its own. Each package owns one part of what an
 overlay application does when it publishes a committed record and when a
 reader checks one, and none of them names an application. This page covers
@@ -68,13 +68,15 @@ beside the standard library and, where noted, go-sdk.
 | 1 | `nodeapi` | `guard` | yes |
 | 1 | `feepolicy` | `mint` | no |
 | 1 | `lookup` | `hostset` | no |
-| 2 | `carrier` | `guard`, `pushdrop` | yes |
+| 2 | `carrier` | `guard`, `mint`, `pushdrop` | yes |
 | 2 | `chaintoken` | `guard`, `pushdrop` | yes |
 | 2 | `chainview` | `nodeapi` | yes |
 | 2 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
 | 2 | `heldpay` | `nodeapi` | yes |
 | 3 | `unicast` | `publish` | no |
+| 3 | `authz` | `cbor`, `chaintoken`, `guard`, `pushdrop`, `record` | yes |
+| 3 | `replay` | `chaintoken`, `guard`, `module` | yes |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
 | 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
@@ -93,10 +95,12 @@ Every edge inside the module:
   producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
   verify   ──▶ carrier ──▶ pushdrop ──▶ guard
   chaintoken ▶ pushdrop, guard
+  authz    ──▶ cbor, chaintoken, guard, pushdrop, record
+  replay   ──▶ chaintoken, guard, module
   acceptance ▶ chainview, nodeapi, publish
   chainview ─▶ nodeapi
   verify   ──▶ guard
-  carrier  ──▶ guard
+  carrier  ──▶ guard, mint
   bwallet  ──▶ pushdrop
   bwallet  ──▶ nodeapi ──▶ guard
   bwallet  ──▶ guard
@@ -193,6 +197,13 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   by. `Claims` is the first look a classifier takes: a map head, key 0 and
   the magic, and nothing else. The application supplies the bound, the last
   defined key and the magic, and reads its own fields.
+- **`authz`** owns the record of one authorization decision: a `Receipt`
+  naming the subject, the organization token `seq` the decision rested on,
+  the grants and policy records it was decided against, and the answer,
+  signed by the service that gave it (`Sign`, `Signed.Verify`) under the
+  library's own `[1, "authz decision"]` protocol, key id `receipt`, record
+  magic `azr` `0x01`. The decision itself is the application's; a receipt is
+  evidence of it, never authority.
 
 ### Keys and outputs
 
@@ -449,7 +460,20 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`module`** owns the contract an overlay module satisfies in Go: topic
   managers, lookup services, the payloads a host hands them, the host they
   are built against and the restore seam, in go-sdk's types. It imports no
-  engine; an engine's host adapts these shapes to its own calls.
+  engine; an engine's host adapts these shapes to its own calls. Go only:
+  `WithSubmission` and `Submission` (the submission's bytes, for a manager
+  that decides on the wire form), `HydratedOutput`, and the optional
+  `Replayer` a chain application's lookup service satisfies to repair its
+  host's gaps by ordered replay (`ReplayRequest`, `ReplayObject`,
+  `ReplayAnswer`, `Ask`). A host that mounts a module is fed by the
+  [overlay bridge](https://github.com/lightwebinc/overlay-bridge), which
+  submits each delivered object to the host's submit route per topic; the
+  module sees only this contract.
+- **`replay`** owns the walk behind a `module.Replayer`: it asks a peer's
+  lookup service, with the application's own questions, for what this host
+  lacks, and answers the objects to submit in chain order, each token in the
+  BEEF of the token and its parent (`chaintoken.TokenBEEF`) with minimal
+  paths, its parent first, bounded per call and resumable by a cursor.
 - **`resolve`** owns BRC-169 handle resolution and BRC-180 overlay discovery
   under a strict client policy: HTTPS only, system roots only, no proxy,
   redirects only within the origin, bounded bodies. It does not go looking
@@ -480,9 +504,14 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   payee `Ledger` as a host writes and reads it (the `payee` package's lines
   byte for byte, with the host's decision in either layout), and payment
   acceptance (`Gate` over `acceptance`, with `ParseAcceptConfig` reading the
-  same `<APP>_` variables the TypeScript host reads). Status codes, bodies
-  and metric names are the TypeScript route's, so a client sees one route
-  whichever language the host is written in.
+  same `<APP>_` variables the TypeScript host reads, WhatsOnChain as the
+  node view for a host with no node). The application's service is an
+  `Answerer` (`Restored`, `Classify`, `Answer`); `Classify` and `Answer`
+  see the asker's identity through `Caller` when the request was
+  authenticated, so a service can refuse a question to an asker before any
+  price is quoted. Status codes, bodies and metric names are the
+  TypeScript route's, so a client sees one route whichever language the
+  host is written in.
 
 ### Terminal
 
@@ -620,7 +649,7 @@ module needs to read what a producer wrote:
 | `chaintoken.ReadWire`, `Wire.Token`, `Wire.Carrier`, `Wire.Alone`, `MinimalPath`, `MergedPath`, `TokenBEEF`, `Stored`, `Mined` | `readWire`, `tokenShape`, `carrierShape`, `aloneShape`, `minimalPath`, `mergedPath`, `tokenBEEF`, `storedToken`, `mined` |
 | `chaintoken.ReadOutput`, `Output.LockedTo`, `Output.Signed`, `Output.SignedBy`, `Spends`, `VerifyField`, `CheckDER` | `readTokenOutput`, `tokenLockedTo`, `tokenSigned`, `tokenSignedBy`, `tokenSpends`, `verifyField`, `strictSignature` |
 | `sanitize.Filter`, `sanitize.UnicodeVersion` | `filterText` (a string) and `filterBytes` (UTF-8 bytes), `UnicodeVersion` |
-| `commit.HashLeaf`, `NodeHash`, `RootOfBytes`, `RootOfLeafHashes`, `RootOfSubtrees`, `ProveBytes`, `ProveLeafHashes`, `ProveSubtrees`, `VerifyBytes`, `PathLen`, `VerifyAt`, `Builder`, `SegmentRoot`, `SegmentWriter` | `hashLeaf`, `hashNode`, `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `proveLeafHashes`, `proveSubtrees`, `verifyBytes`, `pathLength`, `verifyAt`, `RootBuilder`, `segmentRoot`, `SegmentWriter` |
+| `commit.HashLeaf`, `NodeHash`, `RootOfBytes`, `RootOfLeafHashes`, `RootOfSubtrees`, `ProveBytes`, `ProveLeafHashes`, `ProveSubtrees`, `VerifyBytes`, `PathLen`, `VerifyAt`, `RootAt`, `Builder`, `SegmentRoot`, `SegmentWriter` | `hashLeaf`, `hashNode`, `rootOfBytes`, `rootOfLeafHashes`, `rootOfSubtrees`, `proveBytes`, `proveLeafHashes`, `proveSubtrees`, `verifyBytes`, `pathLength`, `verifyAt`, `rootAt`, `RootBuilder`, `segmentRoot`, `SegmentWriter` |
 | `acceptance.DefaultPolicy`, `Policy.Threshold`, `Policy.Decide`, `Exposure`, the fast path's reading of an `ArcadeStatus` | `defaultAcceptancePolicy`, `paymentThreshold`, `decidePayment`, `PaymentExposure`, `arcadeVerdict` |
 | `carrier.FundingLock`, `carrier.Mint`, `carrier.SweepAt` without a fee input, `mint.Fees.For`, `pushdrop.Derivation.Lock` and `Unlocker` | `fundingLock`, `mintCarrier`, `sweep`, `feeFor`, `lockFields` and `unlocker` (the writer, `writer.ts`) |
 | `nodeapi.WoC.Spender`, `Proof`, `TxRaw` | `WocHttp.spender`, `proof`, `raw` (main entry; also re-exported by the host entry) |

@@ -4,7 +4,7 @@ The TypeScript twins of the [bcommon](https://github.com/lightwebinc/bcommon)
 Go library that an overlay topic manager or lookup service needs to read what
 a producer wrote, tested against the same vectors as the Go packages.
 
-> **Maintenance.** The `host` entry point is in maintenance: bug fixes only. A Go implementation is planned. The runtime entry point (renderer filter, CHIRP verify, decoders) and BRC-100 wallet interop stay in TypeScript.
+> **Maintenance.** The `host` entry point is in maintenance: bug fixes only. Its Go twin is the Go module's `termsroute` package. The runtime entry point (renderer filter, CHIRP verify, decoders) and BRC-100 wallet interop stay in TypeScript.
 
 | Entry point | What it provides |
 |---|---|

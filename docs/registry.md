@@ -118,8 +118,7 @@ A publishing gateway: funding trees and carriers for forwarded objects.
 | Record magic | `gwr` `0x01` | Batch record, version 1 |
 | Basket | `bgateway fund` | Wallet basket |
 
-The prefix `gw` is registered to bgateway. The design's earlier `bg` prefix
-is not used, because it collided with another planned application's.
+The prefix `gw` is registered to bgateway; `bg` is not assigned.
 
 ### bflow
 
@@ -295,10 +294,8 @@ never assigned as tag type bytes under it, because `se` `0x70`, `se` `0x73`
 and `se` `0x76` are the first three bytes of the record magics `sep`, `ses`
 and `sev`. `0x00` is not assigned.
 
-The prefix is `se` and not `bs`, because more than one planned application's
-name begins `bs` and the prefix would name none of them. `bs` stays
-unassigned: no application takes it. A later storage application should take
-`st`, and must not take `se`.
+`bs` is not assigned: more than one application's name begins `bs`, so the
+prefix would name none of them.
 
 bsecret owns the `tm_bsecret_` topic namespace: no other application names a
 topic that starts with it. A crypt's topic carries entropy under the rule
@@ -437,7 +434,7 @@ whose roots carry no extension.
 
 ## Not registered
 
-bcommon itself registers nothing: every package that derives, tags or names
-takes the value from its caller. Its test vectors use `[1, "vector sample"]`
-and the prefix `vx` (`vx` `0x01`, `vx` `0x02`); both are reserved for tests
-and no application may use them.
+Every bcommon package that derives, tags or names takes the value from its
+caller; the library's own entries are those under [bcommon](#bcommon). Its
+test vectors use `[1, "vector sample"]` and the prefix `vx` (`vx` `0x01`,
+`vx` `0x02`); both are reserved for tests and no application may use them.
