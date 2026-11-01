@@ -22,6 +22,7 @@ import (
 
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
+	"github.com/lightwebinc/bcommon/chaintoken"
 	"github.com/lightwebinc/bcommon/guard"
 )
 
@@ -106,6 +107,14 @@ func Rebuild(rawHex, bumpHex, beefHex string) (*transaction.Transaction, error) 
 		}
 		if tx.MerklePath, err = guard.ParseBUMP(bump, guard.DefaultBound); err != nil {
 			return nil, err
+		}
+		// A record made from a node's proof may flag a sibling leaf as a
+		// transaction id too; the hosts take only the minimal path, so a
+		// transaction rebuilt from its record always carries that.
+		if id := tx.TxID(); id != nil && !chaintoken.MinimalPath(tx.MerklePath, *id) {
+			if m, err := chaintoken.Minimal(tx.MerklePath, *id); err == nil {
+				tx.MerklePath = m
+			}
 		}
 	}
 	return tx, nil

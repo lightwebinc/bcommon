@@ -44,6 +44,11 @@ type Payer struct {
 	// maturity rule; a payment imported on mainnet or testnet is spendable
 	// on arrival.
 	Tip uint32
+	// TipFunc, when set, answers the tip in place of Tip, for an
+	// application that learns the height on one goroutine while its Trees
+	// take coins on others: the function reads whatever the application
+	// keeps it in, an atomic say, and Tip is not read.
+	TipFunc func() uint32
 	// Keys is every key the producer signs with, by identity key hex: a coin
 	// locked to one of their fund keys is spent under that key, and change
 	// paid to any of them is taken back into Pool. A producer that has
@@ -106,6 +111,15 @@ func (p *Payer) note(format string, args ...any) {
 	if p.Note != nil {
 		p.Note(format, args...)
 	}
+}
+
+// tip is the height coinbase maturity is judged at: TipFunc's answer when
+// it is set, else Tip.
+func (p *Payer) tip() uint32 {
+	if p.TipFunc != nil {
+		return p.TipFunc()
+	}
+	return p.Tip
 }
 
 // NoCoinError is Take finding no coin it may spend. Err is the pool's
@@ -245,7 +259,10 @@ func (p *Payer) take(ctx context.Context, sats uint64) (mint.Input, bwallet.Outp
 	if p.Allow != nil {
 		allow = p.Allow()
 	}
-	o, err := p.Pool.TakeAtLeast(p.Tip, sats, allow)
+	// The caller said what the coin must pay: the smallest coin that pays
+	// it (bwallet.Pool.TakeFitting), so that fees are paid from small
+	// coins and the large ones stay for the transactions that need them.
+	o, err := p.Pool.TakeFitting(p.tip(), sats, allow)
 	minting := 0
 	if errors.Is(err, bwallet.ErrNoSpendable) {
 		o, minting, err = p.takeAfterMints(ctx, sats, allow, err)

@@ -131,15 +131,18 @@ func mintsOn(pool *bwallet.Pool) []*Trees {
 }
 
 // takeAfterMints is the second half of a take the pool could not cover,
-// which failed with err: while a funding tree minted ahead holds a coin of
-// the pool, the mint is waited for and collected, and the take is tried
-// again. The wait is bounded by ctx and the Payer's Timeout, over every
-// mint together. It returns the coin, or the pool's last answer with the
-// number of mints still in flight.
+// which failed with err: while funding trees minted ahead hold coins of
+// the pool, their results are waited for, one at a time, and the take is
+// tried again after each. The wait is bounded by ctx and the Payer's
+// Timeout, over every mint together. It returns the coin, or the pool's
+// last answer with the number of Trees whose mints are still in flight.
 //
-// The list is read under its lock and each mint collected outside it, on
-// this goroutine, which owns the Trees: collect takes no coin and waits
-// for nothing but the mint's result, so a take inside it cannot recur.
+// The list is read under its lock and each Trees waited on outside it
+// (Trees.awaitResult), which applies a result on this goroutine when it is
+// the first to see one and otherwise wakes when the Trees' own goroutine
+// has: a result is never taken from the goroutine that owns the Trees.
+// Applying a result takes no coin and waits for nothing but the result, so
+// a take inside it cannot recur.
 func (p *Payer) takeAfterMints(ctx context.Context, sats uint64, allow []string, err error) (bwallet.Output, int, error) {
 	flights := mintsOn(p.Pool)
 	if len(flights) == 0 {
@@ -152,20 +155,19 @@ func (p *Payer) takeAfterMints(ctx context.Context, sats uint64, allow []string,
 	wctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	p.note("no coin is spendable and %d funding tree(s) minted ahead hold one: waiting for the change", len(flights))
-	for _, t := range flights {
-		if t.ahead == nil {
-			continue
+	for len(flights) > 0 && wctx.Err() == nil {
+		for _, t := range flights {
+			if t.awaitResult(wctx) != nil {
+				// The wait ended first: the mint is still in flight.
+				continue
+			}
+			o, terr := p.Pool.TakeFitting(p.tip(), sats, allow)
+			if !errors.Is(terr, bwallet.ErrNoSpendable) {
+				return o, 0, terr
+			}
+			err = terr
 		}
-		_ = t.collect(wctx, true)
-		if t.ahead != nil {
-			// The wait ended first: the mint is still in flight.
-			continue
-		}
-		o, terr := p.Pool.TakeAtLeast(p.Tip, sats, allow)
-		if !errors.Is(terr, bwallet.ErrNoSpendable) {
-			return o, 0, terr
-		}
-		err = terr
+		flights = mintsOn(p.Pool)
 	}
 	return bwallet.Output{}, len(mintsOn(p.Pool)), err
 }

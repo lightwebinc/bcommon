@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"slices"
+	"sync"
 	"weak"
 
 	"github.com/bsv-blockchain/go-sdk/script"
@@ -78,14 +79,19 @@ type Trees struct {
 	// spend they see.
 	Facade *publish.Facade
 	Topic  string
-	// Ahead, when above zero, mints the next tree before the current one
-	// runs out: once a spend leaves Ahead outputs or fewer on the current
-	// tree, the next tree is minted and settled in the background, and Spend
-	// switches to it when the current tree cannot cover a spend, with no
-	// wait for a block. Zero mints a tree only when one is needed. See
-	// Spend for the rules, and Wait and Prepared for the tree minted ahead.
-	// A pool-paid mint holds its coin until it is collected, and a take the
-	// pool cannot cover meanwhile waits for it: see Payer.Take.
+	// Ahead, when above zero, is how many outputs are kept ready ahead of
+	// the spends: once a spend leaves Ahead outputs or fewer across the
+	// current tree, the trees held for a switch and the trees being minted,
+	// more trees of Count are minted and settled in the background, up to
+	// eight a spend, until more than Ahead are ready. Spend switches to a
+	// held tree when the current tree cannot cover a spend, with no wait
+	// for a block. An Ahead of at most Count keeps one tree ahead, as the
+	// name says; a larger one keeps a pool of trees, as many as a block
+	// interval's spends need. Zero mints a tree only when one is needed.
+	// See Spend for the rules, and Wait, Prepared and Held for the trees
+	// minted ahead. A pool-paid mint holds its coin until it is collected,
+	// and a take the pool cannot cover meanwhile waits for it: see
+	// Payer.Take.
 	Ahead uint32
 	// Prepare, when set, is called with each tree the pool pays for, once it
 	// is signed and before it reaches the settlement leg: on the goroutine
@@ -105,22 +111,79 @@ type Trees struct {
 	// exist, so an application takes it out of the trees a sweep spends.
 	Displaced func(tree funding.Tree, by string)
 
-	// ahead delivers the result of the mint in flight, nil when none is;
+	// sem is the Trees' lock, held by Spend, Wait, Recover, Hold, Prepared
+	// and Held, and by a take over the same pool while it applies a mint's
+	// result; a wait for a mint lets it go. A channel rather than a mutex,
+	// so that a waiter gives up with its context. once makes it and the
+	// channels below on first use, since an application builds a Trees by
+	// literal.
+	once sync.Once
+	sem  chan struct{}
+	// results is where every mint in flight reports; inFlight counts the
+	// mints not yet applied, aheadOut the outputs they will hold, and
+	// poolMints those that took a pool coin. changed is closed and
+	// replaced each time a result is applied, so that whoever waits for one
+	// wakes, whichever goroutine applied it.
+	results   chan aheadResult
+	inFlight  int
+	aheadOut  uint32
+	poolMints int
+	changed   chan struct{}
 	// held is every tree that is settled and not yet used, in the order
-	// Spend switches to them: the tree minted ahead, and each tree Recover
-	// found on the chain while the current tree had outputs left; aheadFor
-	// is the current tree the last mint ahead was started for, so a failure
-	// is not retried on every spend from the same tree.
-	//
-	// mintPool is the pool the mint in flight took its coin from, set while
-	// that mint is listed for a Payer's take to wait for (see minting).
-	ahead    chan aheadResult
+	// Spend switches to them: the trees minted ahead, each tree Recover
+	// found on the chain while the current tree had outputs left, and each
+	// tree Hold was given; aheadFor is the current tree a mint ahead last
+	// failed for, so a failure is not retried on every spend from the same
+	// tree.
 	held     []*preparedTree
 	aheadFor string
+	// mintPool is the pool the mints in flight took their coins from, set
+	// while they are listed for a Payer's take to wait for (see minting).
 	mintPool weak.Pointer[bwallet.Pool]
 	// checked is the current tree whose standing lost has asked about, or
 	// that this Trees adopted itself.
 	checked string
+}
+
+// maxMintsAhead is how many trees one spend starts minting ahead at most:
+// each takes a coin and is signed on the spending goroutine before its
+// settlement goes to the background, so a large Ahead is reached over a
+// few spends rather than in one.
+const maxMintsAhead = 8
+
+// resultsRoom is how many results the mints in flight can hold before one
+// of them waits to be applied.
+const resultsRoom = 1024
+
+func (t *Trees) init() {
+	t.once.Do(func() {
+		t.sem = make(chan struct{}, 1)
+		t.results = make(chan aheadResult, resultsRoom)
+		t.changed = make(chan struct{})
+	})
+}
+
+// lock takes the Trees' lock, or gives up when ctx ends first.
+func (t *Trees) lock(ctx context.Context) error {
+	t.init()
+	select {
+	case t.sem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// relock takes the lock, whatever any context says: after a wait, when
+// the caller holds a result to apply or returns to a caller that unlocks,
+// and for the calls that take no context.
+func (t *Trees) relock() {
+	t.init()
+	t.sem <- struct{}{}
+}
+
+func (t *Trees) unlock() {
+	<-t.sem
 }
 
 // ErrPublish is what errors.Is matches a *PublishError by: a funding tree
@@ -229,17 +292,20 @@ type aheadResult struct {
 // adopted.
 //
 // With Ahead set, and not DryRun, a spend that leaves Ahead outputs or
-// fewer on the tree it answers starts minting the next one, of Count
-// outputs, once per tree. A pool-paid tree takes its fee coin and is signed
-// here, on the caller's goroutine, so the reservation never races another
-// Take; only a proven coin is taken, of at least the tree's value and the
-// fee floor, never change Allow would let through,
-// because the tree is settled on its own. The settlement (Payer.Settle), or
-// Fund when it is set, then runs in the background under ctx, so ctx should
-// be the producer's run, not one that ends with this call. Its notes are
-// held and reported through Note by the Spend or Wait that collects it,
-// which also takes the tree's change into the pool. At most one mint is in
-// flight, and none is started while a tree minted ahead waits unused.
+// fewer ready, across the tree it answers, the trees held for a switch and
+// the trees being minted, starts minting more trees of Count outputs, up
+// to eight in one spend, until more than Ahead are ready. A pool-paid tree
+// takes its fee coin and is signed here, on the caller's goroutine, so the
+// reservation never races another Take; only a proven coin is taken, of at
+// least the tree's value and the fee floor, never change Allow would let
+// through, because the tree is settled on its own. The settlement
+// (Payer.Settle), or Fund when it is set, then runs in the background
+// under ctx, so ctx should be the producer's run, not one that ends with
+// this call. Its notes are held and reported through Note by the Spend,
+// Wait or take that collects it, which also takes the tree's change into
+// the pool. Any number of mints are in flight at once, as many as the
+// pool has coins for; a mint that finds no coin is skipped with a note,
+// and none is started again from the same current tree.
 //
 // Between the moment a pool-paid mint ahead takes its coin and the moment
 // it is collected, the coin is out of the pool and its change is not yet in
@@ -247,26 +313,34 @@ type aheadResult struct {
 // no coin for itself never waits: it is skipped with a note, and the tree
 // is minted when it is needed. A take through a Payer over the same pool
 // (Payer.Take, Payer.TakeAtLeast, and the mint a Spend makes on demand)
-// that the pool cannot cover does wait: it collects the mint, as Wait
-// does, and takes again, bounded by its context and its Payer's Timeout.
-// Payer.Take has the rules.
+// that the pool cannot cover does wait: it waits for a mint's result to
+// be applied, applying it itself when it is the first to see it, and takes
+// again, bounded by its context and its Payer's Timeout. Payer.Take has
+// the rules.
+//
+// Spend, Wait, Recover, Hold, Prepared and Held may be called from any
+// goroutine: the Trees is locked while they run, and a wait for a mint
+// lets the lock go, so that a take over the same pool, or another spend,
+// applies a result meanwhile. A spend that has to wait for a tree holds
+// off the other spends, which have nothing to spend from either.
 //
 // When the current tree cannot cover need, Spend waits for a mint still in
-// flight, then switches to the tree minted ahead if it is locked to Identity
+// flight, then switches to the first tree held that is locked to Identity
 // and has need outputs: it is adopted and published exactly as a new tree
 // is, and nothing is minted. A mint ahead that failed is reported through
 // Note, the fee coin it had not spent goes back to the pool, and the tree is
-// minted here as it is with Ahead zero. A tree minted ahead that is too small
+// minted here as it is with Ahead zero. A held tree that is too small
 // waits for a later switch; one locked to an earlier identity is dropped.
 //
-// The tree minted ahead is adopted and published only when it is used, never
+// A tree minted ahead is adopted and published only when it is used, never
 // when it is minted: adopting it earlier would make it current and strand
 // the outputs left on the tree carriers still spend, and publishing it
 // before it is adopted would break the rule above. It lives in memory until
 // then, so a crash before the switch leaves it on the chain but in neither
 // the state nor the plane; its change is already in the pool, and only its
 // funding outputs are stranded. An application that wants a sweep to take
-// those too records Prepared in its own history.
+// those too records Held in its own history, and gives them back to the
+// next run's Trees with Hold, so that they are used before more are minted.
 //
 // A run can also stop between the moment a tree's fee coin leaves the pool
 // and the moment the tree is adopted: while the tree waits for its block,
@@ -286,7 +360,16 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 	if t.Payer == nil || t.State == nil {
 		return nil, 0, errors.New("producer: Trees needs a Payer and a State")
 	}
-	_ = t.collect(ctx, false)
+	if err := t.lock(ctx); err != nil {
+		return nil, 0, err
+	}
+	defer t.unlock()
+	return t.spend(ctx, need)
+}
+
+// spend is Spend, called locked.
+func (t *Trees) spend(ctx context.Context, need uint32) (*transaction.Transaction, uint32, error) {
+	t.drain()
 	if cur := t.State.Current(); cur != nil && cur.Remaining() >= need && cur.IdentityKeyHex == t.Identity {
 		tx, err := t.Payer.Kept.Tx(cur.Txid)
 		if err != nil {
@@ -297,8 +380,8 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 			return tx, cur.Next, nil
 		}
 	}
-	if t.ahead != nil {
-		if err := t.collect(ctx, true); err != nil && ctx.Err() != nil {
+	if t.inFlight > 0 && len(t.held) == 0 {
+		if err := t.collect(ctx); err != nil && ctx.Err() != nil {
 			return nil, 0, err
 		}
 	}
@@ -416,6 +499,8 @@ func (t *Trees) Spend(ctx context.Context, need uint32) (*transaction.Transactio
 // kept as its BEEF too, because every carrier that spends it has to carry
 // the tree's ancestry until the proof arrives.
 func (t *Trees) record(tree *transaction.Transaction, mp *transaction.MerklePath, height uint32, count int, id, funder string) (funding.Tree, error) {
+	// The record keeps the minimal path, whatever proof the node served.
+	mp = minimalProof(mp, tree)
 	treeBeef, err := funding.KeepBEEF(tree, mp)
 	if err != nil {
 		return funding.Tree{}, fmt.Errorf("funding tree BEEF: %w", err)
@@ -510,49 +595,76 @@ func (t *Trees) publish(ctx context.Context, tree *transaction.Transaction) erro
 	return nil
 }
 
-// mintAhead starts minting the next tree when left, the outputs a spend
-// leaves on the tree curTxid, is at or below Ahead, and no mint is in
-// flight, waiting unused, or already tried for that tree.
+// mintAhead starts minting more trees when left, the outputs a spend
+// leaves on the tree curTxid, together with the outputs of the trees held
+// and the trees being minted, is at or below Ahead: up to maxMintsAhead
+// of them, until more than Ahead are ready, and none when a mint ahead
+// already failed from that tree. Called locked.
 func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
-	if t.Ahead == 0 || t.DryRun || left > t.Ahead || t.ahead != nil || len(t.held) > 0 || t.aheadFor == curTxid {
+	if t.Ahead == 0 || t.DryRun || t.aheadFor == curTxid {
 		return
 	}
-	t.aheadFor = curTxid
-	count, id, funder := t.Count, t.Identity, t.Funder
+	ready := left + t.heldOutputs() + t.aheadOut
+	if ready > t.Ahead {
+		return
+	}
 	t.Payer.note("funding tree %s has %d output(s) left, so the next is minted ahead", curTxid, left)
+	for n := 0; ready <= t.Ahead && n < maxMintsAhead; n++ {
+		if !t.startMint(ctx) {
+			t.aheadFor = curTxid
+			return
+		}
+		ready += uint32(max(t.Count, 0)) //nolint:gosec // a small configured count
+	}
+}
+
+// heldOutputs is how many outputs the held trees have between them.
+func (t *Trees) heldOutputs() uint32 {
+	var n uint32
+	for _, pt := range t.held {
+		n += pt.rec.Remaining()
+	}
+	return n
+}
+
+// startMint takes a coin, mints a tree of Count outputs and hands its
+// settlement to the background, or has Fund do all of it there. It reports
+// whether a mint started, with a note when none did. Called locked.
+func (t *Trees) startMint(ctx context.Context) bool {
+	count, id, funder := t.Count, t.Identity, t.Funder
 	fail := func(err error) {
 		t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", err)
 	}
 	if count > mint.MaxFundingOutputs {
 		fail(fmt.Errorf("producer: Count %d: %w", count, mint.ErrTreeTooLarge))
-		return
+		return false
 	}
-	done := make(chan aheadResult, 1)
 	if t.Fund != nil {
 		fund := t.Fund
-		t.ahead = done
+		t.inFlight++
+		t.aheadOut += uint32(count) //nolint:gosec // a small configured count
 		go func() {
 			tree, mp, height, err := fund(ctx, count)
-			done <- aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, err: err}
+			t.results <- aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, err: err}
 		}()
-		return
+		return true
 	}
 	// The reservation and the signing happen here, on the goroutine that
-	// owns the Payer. Only a proven coin is taken: the tree is settled on its
-	// own and carries no kept transaction.
+	// holds the lock. Only a proven coin is taken: the tree is settled on
+	// its own and carries no kept transaction.
 	var o bwallet.Output
 	var tree *transaction.Transaction
 	var short error
 	for need, try := t.treeNeed(count), 0; ; try++ {
 		var err error
-		o, err = t.Payer.Pool.TakeAtLeast(t.Payer.Tip, need, nil)
+		o, err = t.Payer.Pool.TakeFitting(t.Payer.tip(), need, nil)
 		if err != nil {
 			if short != nil {
 				fail(short)
-				return
+				return false
 			}
 			fail(&NoCoinError{Err: err, Held: len(t.Payer.Pool.UnprovenTxids())})
-			return
+			return false
 		}
 		tree, err = t.mintFrom(ctx, count, o)
 		if err != nil {
@@ -562,7 +674,7 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 				continue
 			}
 			fail(err)
-			return
+			return false
 		}
 		break
 	}
@@ -570,11 +682,11 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 	if err := t.prepare(tree, count, id, funder, o); err != nil {
 		_ = t.Payer.Pool.Return(o)
 		fail(err)
-		return
+		return false
 	}
 	// The background half settles through a copy of the Payer whose notes
-	// are held for the collecting goroutine, and whose leg records whether
-	// the tree reached it.
+	// are held for the goroutine that applies the result, and whose leg
+	// records whether the tree reached it.
 	var held []string
 	bg := *t.Payer
 	bg.spent = nil
@@ -584,10 +696,14 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 		leg = &recordingSettler{Settler: bg.Settler}
 		bg.Settler = leg
 	}
-	t.ahead = done
-	// From here until the mint is collected the coin is out of the pool and
+	t.inFlight++
+	t.aheadOut += uint32(count) //nolint:gosec // a small configured count
+	// From here until the mint is applied the coin is out of the pool and
 	// its change not yet in it: a take the pool cannot cover waits for it.
-	t.minting(t.Payer.Pool)
+	if t.poolMints == 0 {
+		t.minting(t.Payer.Pool)
+	}
+	t.poolMints++
 	go func() {
 		mp, height, err := bg.Settle(ctx, "funding tree", tree)
 		r := aheadResult{tx: tree, mp: mp, height: height, count: count, id: id, funder: funder, change: true, notes: held, err: err}
@@ -596,8 +712,9 @@ func (t *Trees) mintAhead(ctx context.Context, curTxid string, left uint32) {
 			r.by = bg.spentBy(ctx, o, tree, err)
 		}
 		r.unsettled = err != nil && r.coin == nil && !errors.Is(err, ErrRefused)
-		done <- r
+		t.results <- r
 	}()
+	return true
 }
 
 // moreNeeded reads a mint refused for want of coin: when the coin taken
@@ -698,42 +815,47 @@ func (s *recordingSettler) Submit(ctx context.Context, tx *transaction.Transacti
 	return err
 }
 
-// collect takes the result of the mint in flight, waiting for it when wait
-// is set: its held notes are reported, its change is taken into the pool, a
-// coin it never spent is put back, or dropped when another transaction
-// spent it, and a tree it minted becomes the tree minted ahead. It returns the mint's error, already reported, or ctx's
-// while waiting; the mint is still in flight after the latter.
-func (t *Trees) collect(ctx context.Context, wait bool) error {
-	if t.ahead == nil {
-		return nil
-	}
-	var r aheadResult
-	if wait {
+// drain applies every result already in, and returns the errors of the
+// mints that failed, already reported. Called locked.
+func (t *Trees) drain() []error {
+	var errs []error
+	for t.inFlight > 0 {
 		select {
-		case r = <-t.ahead:
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	} else {
-		select {
-		case r = <-t.ahead:
+		case r := <-t.results:
+			if err := t.apply(r); err != nil {
+				errs = append(errs, err)
+			}
 		default:
-			return nil
+			return errs
 		}
 	}
-	t.ahead = nil
+	return errs
+}
+
+// apply takes in the result of one mint: its held notes are reported, its
+// change is taken into the pool, a coin it never spent is put back, or
+// dropped when another transaction spent it, and a tree it minted is held
+// for a switch. It returns the mint's error, already reported, and wakes
+// whoever waits for a result. Called locked, on whichever goroutine saw
+// the result first.
+func (t *Trees) apply(r aheadResult) error {
+	t.inFlight--
+	t.aheadOut -= min(uint32(max(r.count, 0)), t.aheadOut) //nolint:gosec // a small configured count
 	if r.change {
 		if r.unsettled && r.tx != nil {
 			unsettle(t.mintPool, r.tx.TxID().String())
 		}
-		t.minted()
+		t.poolMints--
+		if t.poolMints == 0 {
+			t.minted()
+		}
 	}
 	for _, l := range r.notes {
 		t.Payer.note("%s", l)
 	}
 	switch {
 	case r.coin != nil && r.by != "":
-		t.Payer.drop(*r.coin, "funding tree", r.tx.TxID().String(), r.by)
+		t.dropCoin(*r.coin, r.tx.TxID().String(), r.by)
 	case r.coin != nil:
 		_ = t.Payer.Pool.Return(*r.coin)
 	}
@@ -748,36 +870,143 @@ func (t *Trees) collect(ctx context.Context, wait bool) error {
 		if rec, r.err = t.record(r.tx, r.mp, r.height, r.count, r.id, r.funder); r.err == nil {
 			t.hold(r.tx, rec)
 			t.Payer.note("funding tree %s is minted ahead and waits for the switch", rec.Txid)
-			return nil
 		}
 	}
-	t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", r.err)
+	if r.err != nil {
+		t.Payer.note("the next funding tree was not minted ahead (%v); it is minted when it is needed", r.err)
+		// Not tried again from the same current tree.
+		if cur := t.State.Current(); cur != nil {
+			t.aheadFor = cur.Txid
+		}
+	}
+	close(t.changed)
+	t.changed = make(chan struct{})
 	return r.err
 }
 
-// Wait waits for the mint ahead in flight, if there is one, and collects it
-// as Spend does: its notes are reported, its change is taken into the pool,
-// and the tree becomes the one Prepared answers. It returns the mint's
-// error, which Note has already reported and which Spend recovers from by
-// minting when a tree is needed, or ctx's error, which leaves the mint in
-// flight. With nothing in flight it returns nil at once.
-//
-// An application need not call it before it takes a fee: a take the pool
-// cannot cover while the mint holds a coin collects the mint itself (see
-// Payer.Take). Wait remains how a run that is ending collects the mint, so
-// that the change reaches the pool and Prepared answers the tree.
-func (t *Trees) Wait(ctx context.Context) error {
-	return t.collect(ctx, true)
+// dropCoin takes a mint's fee coin, which the transaction by spent, out of
+// the pool: handed out again it would only fail the next build. The coin
+// was taken from the pool directly, so no Payer reservation names it.
+func (t *Trees) dropCoin(coin bwallet.Output, txid, by string) {
+	if _, err := t.Payer.Pool.Remove(coin); err != nil {
+		t.Payer.note("funding tree %s: its fee coin %s is spent by %s and could not be taken out of the pool: %v", txid, coin.Outpoint(), by, err)
+		return
+	}
+	t.Payer.note("funding tree %s: its fee coin %s is spent by %s, so it is out of the pool and is not returned", txid, coin.Outpoint(), by)
 }
 
-// Prepared returns the record the tree minted ahead will be adopted as, or
-// nil when there is none: none was started, it is still in flight (see
-// Wait), it failed, or Spend has switched to it. The tree is in no state
+// collect waits until a tree is held or no mint is in flight, applying
+// the results that come in meanwhile. The lock is let go while it waits,
+// so that a take over the same pool, or another spend, applies a result
+// in that time, and taken back before it returns. It returns ctx's error
+// when that ends the wait, with the mints still in flight. Called locked.
+func (t *Trees) collect(ctx context.Context) error {
+	for {
+		_ = t.drain()
+		if len(t.held) > 0 || t.inFlight == 0 {
+			return nil
+		}
+		ch := t.changed
+		t.unlock()
+		select {
+		case r := <-t.results:
+			t.relock()
+			_ = t.apply(r)
+		case <-ch:
+			t.relock()
+		case <-ctx.Done():
+			t.relock()
+			return ctx.Err()
+		}
+	}
+}
+
+// awaitResult waits until the result of a mint in flight has been applied,
+// by this goroutine or another, or until none is in flight or ctx ends.
+// It returns the error of a mint it applied itself, or ctx's. Called
+// unlocked.
+func (t *Trees) awaitResult(ctx context.Context) error {
+	if err := t.lock(ctx); err != nil {
+		return err
+	}
+	_ = t.drain()
+	if t.inFlight == 0 {
+		t.unlock()
+		return nil
+	}
+	ch := t.changed
+	t.unlock()
+	select {
+	case r := <-t.results:
+		t.relock()
+		err := t.apply(r)
+		t.unlock()
+		return err
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+// Wait waits for every mint ahead in flight and applies each as Spend
+// does: its notes are reported, its change is taken into the pool, and
+// the tree is held for the switch (Held, Prepared). It returns the error
+// of each mint that failed, which Note has already reported and which
+// Spend recovers from by minting when a tree is needed, or ctx's error,
+// which leaves the rest in flight. With nothing in flight it returns nil
+// at once.
+//
+// An application need not call it before it takes a fee: a take the pool
+// cannot cover while a mint holds a coin waits for the mint itself (see
+// Payer.Take). Wait remains how a run that is ending collects the mints,
+// so that the change reaches the pool and Held answers the trees.
+func (t *Trees) Wait(ctx context.Context) error {
+	var errs []error
+	for {
+		if err := t.lock(ctx); err != nil {
+			return err
+		}
+		errs = append(errs, t.drain()...)
+		if t.inFlight == 0 {
+			t.unlock()
+			return joinErrs(errs)
+		}
+		ch := t.changed
+		t.unlock()
+		select {
+		case r := <-t.results:
+			t.relock()
+			if err := t.apply(r); err != nil {
+				errs = append(errs, err)
+			}
+			t.unlock()
+		case <-ch:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+func joinErrs(errs []error) error {
+	switch len(errs) {
+	case 0:
+		return nil
+	case 1:
+		return errs[0]
+	}
+	return errors.Join(errs...)
+}
+
+// Prepared returns the record of the first tree held for a switch, or nil
+// when none is: none was started, they are still in flight (see Wait),
+// they failed, or Spend has switched to the last. The tree is in no state
 // until the switch; an application that wants a sweep to take its outputs
-// after a crash keeps this record in its own history. When more than one
-// tree is held, which Recover can bring about, it is the first of them,
-// and Held answers them all.
+// after a crash keeps this record in its own history. Held answers them
+// all.
 func (t *Trees) Prepared() *funding.Tree {
+	t.relock()
+	defer t.unlock()
 	if len(t.held) == 0 {
 		return nil
 	}
@@ -786,18 +1015,46 @@ func (t *Trees) Prepared() *funding.Tree {
 }
 
 // Held returns the record of every tree that is settled and waits for a
-// switch, in the order they were held: the tree minted ahead, and each
-// tree Recover answered TreeHeld for. It is empty when there is none. When
-// the current tree cannot cover a spend, Spend switches to the first of
-// them that is locked to Identity and large enough, and adopts and
-// publishes it then; one too small for that spend keeps its place. No tree
-// is minted ahead while one is held.
+// switch, in the order they were held: the trees minted ahead, each tree
+// Recover answered TreeHeld for, and each tree Hold was given. It is
+// empty when there is none. When the current tree cannot cover a spend,
+// Spend switches to the first of them that is locked to Identity and
+// large enough, and adopts and publishes it then; one too small for that
+// spend keeps its place. Their outputs count as ready for Ahead.
 func (t *Trees) Held() []funding.Tree {
+	t.relock()
+	defer t.unlock()
 	out := make([]funding.Tree, 0, len(t.held))
 	for _, pt := range t.held {
 		out = append(out, pt.rec)
 	}
 	return out
+}
+
+// Hold gives the Trees a tree an earlier run minted ahead and did not use,
+// from the record the application kept of it (Held), so that Spend
+// switches to it before more are minted. The tree is rebuilt from its
+// record, so an unmined one needs the BEEF it is kept as; the record's
+// proof is kept as the minimal path. A tree locked to another identity is
+// not held, and one already held is held once.
+func (t *Trees) Hold(tree funding.Tree) error {
+	tx, err := funding.Rebuild(tree.RawHex, tree.BumpHex, tree.BeefHex)
+	if err == nil && tx.TxID().String() != tree.Txid {
+		err = fmt.Errorf("the record's bytes are transaction %s", tx.TxID())
+	}
+	if err != nil {
+		return fmt.Errorf("hold funding tree %s: %w", tree.Txid, err)
+	}
+	if tree.IdentityKeyHex != t.Identity {
+		return nil
+	}
+	if tx.MerklePath != nil {
+		tree.BumpHex = funding.BumpHex(tx.MerklePath)
+	}
+	t.relock()
+	defer t.unlock()
+	t.hold(tx, tree)
+	return nil
 }
 
 // hold puts a settled tree behind the trees already held, once.

@@ -225,6 +225,10 @@ func (k *Kept) Tx(txid string) (*transaction.Transaction, error) {
 	if tx == nil {
 		return nil, fmt.Errorf("producer: the loader returned no transaction for %s", txid)
 	}
+	// A loader may serve a record made from a node's proof, which can flag
+	// a sibling leaf as a transaction id too: the copy handed out carries
+	// the minimal path, as the hosts take it.
+	tx.MerklePath = minimalProof(tx.MerklePath, tx)
 	if k.txs == nil {
 		k.txs = map[string]*transaction.Transaction{}
 	}

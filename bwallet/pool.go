@@ -218,6 +218,59 @@ func (p *Pool) TakeAtLeast(tip uint32, minSats uint64, allow []string) (Output, 
 	return Output{}, ErrNoSpendable
 }
 
+// TakeFitting is TakeAtLeast choosing the smallest coin that is large
+// enough rather than the oldest: among the proven spendable coins of at
+// least minSats the smallest, the oldest of those on a tie, then the same
+// among the allowed unproven ones. It is for a caller that knows what the
+// coin must pay, a fee or a transaction's outputs: a small coin pays a
+// small fee and comes back as change little smaller, while the large coins
+// stay for what needs them, instead of walking off one by one to pay fees
+// and sitting out as unproven change until they mine.
+func (p *Pool) TakeFitting(tip uint32, minSats uint64, allow []string) (Output, error) {
+	minSats = max(minSats, 1)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	small := false
+	pick := func(ok func(Output) bool) (Output, bool, error) {
+		at := -1
+		for i, o := range p.outputs {
+			if !ok(o) {
+				continue
+			}
+			if o.Satoshis < minSats {
+				small = true
+				continue
+			}
+			if at < 0 || o.Satoshis < p.outputs[at].Satoshis {
+				at = i
+			}
+		}
+		if at < 0 {
+			return Output{}, false, nil
+		}
+		o := p.outputs[at]
+		p.outputs = append(p.outputs[:at:at], p.outputs[at+1:]...)
+		if err := p.saveLocked(); err != nil {
+			p.outputs = append(p.outputs, o)
+			p.sortLocked()
+			return Output{}, true, err
+		}
+		return o, true, nil
+	}
+	if o, found, err := pick(func(o Output) bool { return o.Spendable(tip) }); found {
+		return o, err
+	}
+	if len(allow) > 0 {
+		if o, found, err := pick(func(o Output) bool { return o.Unproven && slices.Contains(allow, o.TxID) }); found {
+			return o, err
+		}
+	}
+	if small {
+		return Output{}, fmt.Errorf("%w of at least %d sat", ErrNoSpendable, minSats)
+	}
+	return Output{}, ErrNoSpendable
+}
+
 // Prove records that txid mined: every output of it the pool holds gets
 // its proof and height and becomes spendable. It reports how many changed.
 func (p *Pool) Prove(txid, bump string, height uint32) (int, error) {

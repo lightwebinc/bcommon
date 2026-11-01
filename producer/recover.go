@@ -186,6 +186,10 @@ type Recovery struct {
 // A tree Fund paid for has no record, and Recover has nothing to say about
 // it: see Spend.
 func (t *Trees) Recover(ctx context.Context, tree funding.Tree, coin bwallet.Output) (Recovery, error) {
+	if err := t.lock(ctx); err != nil {
+		return Recovery{}, err
+	}
+	defer t.unlock()
 	r, err := t.recoverRecord(ctx, tree, coin)
 	if r.Outcome != 0 && t.Payer != nil {
 		// The tree is settled: a take no longer counts it in
