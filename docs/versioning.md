@@ -65,6 +65,9 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
+| v0.32.5 | Patch: the TypeScript package's version is 0.32.5, matching the tag. v0.32.3 and v0.32.4 carry the Go fixes below but left the package at 0.32.2, so no release was published for them; pin this tag. |
+| v0.32.4 | Go `producer`: `Await` returns the minimal proof. |
+| v0.32.3 | Go `producer`: a proof is attached as a minimal path, and a minimal proof keeps its pointer. |
 | v0.32.2 | Documentation and dependencies only: the README names every package (`authz` added) and the install examples pin this version; `docs/host-module.md` carries the acceptance settings table; the TypeScript package changes only its version. |
 | v0.32.1 | Patch: the TypeScript package's version is 0.32.1, matching the tag (v0.32.0 shipped it as 0.31.0, so no application could pin v0.32.0 past its skew test). Nothing else changes. The Release workflow now refuses to publish a tag whose `ts/package.json` and `ts/package-lock.json` name another version. |
 | v0.32.0 | Minor, additive only: every v0.31.0 identifier, behavior and vector is unchanged, and so is the go-sdk pin. Go: `pushdrop` derives the expected locking key without go-sdk's scalar multiplication of the anyone key by one (same bytes, about 178 down to 50 microseconds per derivation). Do not pin: its TypeScript package still says 0.31.0; pin v0.32.1. |
