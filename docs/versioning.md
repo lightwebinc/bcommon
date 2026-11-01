@@ -65,6 +65,8 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
+| v0.33.1 | Patch: the TypeScript package's version is 0.33.1, matching the tag. v0.33.0 carries the Go changes below but left the package at 0.32.5, so no release was published for it; pin this tag. |
+| v0.33.0 | Go `producer`: `Trees` is a goroutine-safe pool. `Ahead` counts outputs kept ready across the current tree, held trees and mints in flight, with up to eight mints per spend; `Hold` gives an earlier run's tree back; `Payer.TipFunc` supplies the tip; a take that finds no coin waits for a mint's result instead of taking its collect. `bwallet.Pool.TakeFitting` takes the smallest coin that pays (`Payer.TakeAtLeast` uses it; `Take` stays oldest first). `funding.Rebuild`, `Kept.Tx` and the tree record keep the minimal proof. Do not pin: its TypeScript package still says 0.32.5; pin v0.33.1. |
 | v0.32.5 | Patch: the TypeScript package's version is 0.32.5, matching the tag. v0.32.3 and v0.32.4 carry the Go fixes below but left the package at 0.32.2, so no release was published for them; pin this tag. |
 | v0.32.4 | Go `producer`: `Await` returns the minimal proof. |
 | v0.32.3 | Go `producer`: a proof is attached as a minimal path, and a minimal proof keeps its pointer. |
