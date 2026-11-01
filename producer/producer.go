@@ -240,6 +240,6 @@ func (k *Kept) Prove(txid string, mp *transaction.MerklePath) {
 		return
 	}
 	if tx, ok := k.txs[txid]; ok {
-		tx.MerklePath = mp
+		tx.MerklePath = minimalProof(mp, tx)
 	}
 }

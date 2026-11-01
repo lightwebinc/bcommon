@@ -301,7 +301,7 @@ func (t *Trees) recoverRecord(ctx context.Context, tree funding.Tree, coin bwall
 		if !t.Payer.Async {
 			t.Payer.note("funding tree %s: mined at height %d", tree.Txid, height)
 		}
-		tx.MerklePath = mp
+		tx.MerklePath = minimalProof(mp, tx)
 	case t.Payer.Async:
 		// Asked once, above: the proof is collected later.
 	default:

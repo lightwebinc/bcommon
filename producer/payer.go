@@ -470,7 +470,7 @@ func (p *Payer) fetchParent(ctx context.Context, o bwallet.Output) (*transaction
 	if err != nil {
 		return nil, fmt.Errorf("fee input %s: its parent's proof, which a spender kept or published before it mines must carry: %w", o.Outpoint(), err)
 	}
-	tx.MerklePath = mp
+	tx.MerklePath = minimalProof(mp, tx)
 	return tx, nil
 }
 
@@ -652,6 +652,6 @@ func (p *Payer) Await(ctx context.Context, what string, tx *transaction.Transact
 		return nil, 0, fmt.Errorf("%s: waiting for a proof: %w", what, err)
 	}
 	p.note("%s %s: mined at height %d", what, tx.TxID(), height)
-	tx.MerklePath = mp
+	tx.MerklePath = minimalProof(mp, tx)
 	return mp, height, nil
 }

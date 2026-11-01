@@ -152,7 +152,7 @@ func (c *Collector) collect(ctx context.Context, it Pending) {
 			}
 			return
 		}
-		tx.MerklePath = mp
+		tx.MerklePath = minimalProof(mp, tx)
 		// A transaction being built may already hold this one, as an input
 		// or a fee input's parent; give that same object the proof, so its
 		// BEEF stops at the proof rather than carrying the ancestry.
