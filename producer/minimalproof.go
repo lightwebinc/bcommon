@@ -16,7 +16,11 @@ func minimalProof(mp *transaction.MerklePath, tx *transaction.Transaction) *tran
 	if mp == nil || tx == nil {
 		return mp
 	}
-	min, err := chaintoken.Minimal(mp, *tx.TxID())
+	id := *tx.TxID()
+	if chaintoken.MinimalPath(mp, id) {
+		return mp // as it came: callers keep the pointer they were handed
+	}
+	min, err := chaintoken.Minimal(mp, id)
 	if err != nil {
 		return mp
 	}

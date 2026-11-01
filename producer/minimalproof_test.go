@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
+	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
 	"github.com/lightwebinc/bcommon/chaintoken"
@@ -13,7 +14,7 @@ import (
 // the minimal path before it is attached; a minimal one is left alone.
 func TestMinimalProofCutsASiblingFlaggedAsTxid(t *testing.T) {
 	tx := transaction.NewTransaction()
-	tx.AddOutput(&transaction.TransactionOutput{Satoshis: 1})
+	tx.AddOutput(&transaction.TransactionOutput{Satoshis: 1, LockingScript: &script.Script{}})
 	id := tx.TxID()
 	sib := chainhash.DoubleHashH([]byte("sibling"))
 	yes := true
