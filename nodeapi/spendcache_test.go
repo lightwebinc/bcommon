@@ -162,3 +162,23 @@ func TestSpendCachePassesThroughPerOutputSource(t *testing.T) {
 		t.Fatalf("%d calls", n)
 	}
 }
+
+func TestCacheSpendsWrapsOnlyAWholeTransactionSource(t *testing.T) {
+	var reads atomic.Int32
+	s := &Sources{Spends: utxoServer(t, 2, &reads)}
+	s.CacheSpends(time.Minute)
+	if _, ok := s.Spends.(*SpendCache); !ok {
+		t.Fatalf("an asset source stays %T", s.Spends)
+	}
+	per := &oneByOne{}
+	s = &Sources{Spends: per}
+	s.CacheSpends(time.Minute)
+	if s.Spends != SpendSource(per) {
+		t.Fatalf("a per-output source became %T", s.Spends)
+	}
+	s = &Sources{}
+	s.CacheSpends(time.Minute)
+	if s.Spends != nil {
+		t.Fatalf("no source became %T", s.Spends)
+	}
+}

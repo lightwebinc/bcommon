@@ -299,9 +299,10 @@ func (s *Sources) Spender(ctx context.Context, txid string, vout uint32) (string
 }
 
 // CacheSpends answers Spender from one read of a transaction's outputs for
-// ttl (see SpendCache). Call it while setting the Sources up.
+// ttl (see SpendCache), when the spend source can answer for a whole
+// transaction. Call it while setting the Sources up.
 func (s *Sources) CacheSpends(ttl time.Duration) {
-	if s.Spends != nil {
+	if _, ok := s.Spends.(wholeTxSource); ok {
 		s.Spends = &SpendCache{Source: s.Spends, TTL: ttl}
 	}
 }
