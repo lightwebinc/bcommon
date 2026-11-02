@@ -65,6 +65,7 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
+| v0.33.3 | Go `publish`: an arcade verdict is first asked for after 25 ms, doubling up to `Poll`, so one transaction no longer waits a whole `Poll`. Go `producer`: a tree's funding outputs stay out of the pool, whatever script they pay; only its change is a coin. |
 | v0.33.2 | Go `chirp`: a `ParallelChunker` takes its buffers on demand from a pool the chunkers of a process share, so a small object costs one reused buffer rather than `workers + 2` of 4 MiB each. `nodeapi`: `SpendCache` and `Sources.CacheSpends` answer for every output of a transaction from one read of the node's UTXO view. |
 | v0.33.1 | Patch: the TypeScript package's version is 0.33.1, matching the tag. v0.33.0 carries the Go changes below but left the package at 0.32.5, so no release was published for it; pin this tag. |
 | v0.33.0 | Go `producer`: `Trees` is a goroutine-safe pool. `Ahead` counts outputs kept ready across the current tree, held trees and mints in flight, with up to eight mints per spend; `Hold` gives an earlier run's tree back; `Payer.TipFunc` supplies the tip; a take that finds no coin waits for a mint's result instead of taking its collect. `bwallet.Pool.TakeFitting` takes the smallest coin that pays (`Payer.TakeAtLeast` uses it; `Take` stays oldest first). `funding.Rebuild`, `Kept.Tx` and the tree record keep the minimal proof. Do not pin: its TypeScript package still says 0.32.5; pin v0.33.1. |

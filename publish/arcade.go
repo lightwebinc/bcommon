@@ -39,7 +39,8 @@ type Arcade struct {
 	// Verdict bounds how long Submit waits for the network to accept or
 	// refuse a transaction arcade has taken. Zero means DefaultVerdict.
 	Verdict time.Duration
-	// Poll is the interval between status checks while waiting. Zero means
+	// Poll is the longest interval between status checks while waiting; the
+	// first comes after firstPoll and each wait doubles up to it. Zero means
 	// one second.
 	Poll time.Duration
 	// Note, when set, receives a line a caller may want to show: a verdict
@@ -60,6 +61,11 @@ type Arcade struct {
 // DefaultVerdict is long enough for a network to see a transaction in the
 // ordinary case and short enough that a publisher never waits long for it.
 const DefaultVerdict = 15 * time.Second
+
+// firstPoll is how soon a verdict is first asked for: a network keeping up
+// answers in tens of milliseconds, and one wait of a full Poll per
+// transaction is a second's floor under anything sending them in turn.
+const firstPoll = 25 * time.Millisecond
 
 var _ Settler = (*Arcade)(nil)
 
@@ -240,10 +246,12 @@ func (a *Arcade) awaitVerdict(ctx context.Context, tx *transaction.Transaction) 
 	}
 	deadline := time.Now().Add(bound)
 	last := "RECEIVED"
+	wait := min(firstPoll, poll)
 	for time.Now().Before(deadline) {
-		if err := sleepCtx(ctx, poll); err != nil {
+		if err := sleepCtx(ctx, wait); err != nil {
 			return err
 		}
+		wait = min(2*wait, poll)
 		st, err := a.Status(ctx, txid)
 		if err != nil {
 			// A status read that failed is not a verdict. Keep asking until

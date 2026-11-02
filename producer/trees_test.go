@@ -32,6 +32,29 @@ func treesFor(t *testing.T) (*producer.Trees, *testChain, *memTrees, *notes) {
 	}, l, st, n
 }
 
+// A tree whose funding outputs pay the change script gives the pool its change
+// only: a funding output in the pool could pay a fee under a carrier that
+// spends it too.
+func TestTreeFundingOutputsAreNotCoins(t *testing.T) {
+	tr, l, _, n := treesFor(t)
+	l.mineOnSubmit = true
+	tr.Lock = func(context.Context) (*script.Script, error) { return tr.Change() }
+	tree, _, err := tr.Spend(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("%v\n%s", err, n)
+	}
+	id := tree.TxID().String()
+	var coins []uint32
+	for _, o := range tr.Payer.Pool.Outputs() {
+		if o.TxID == id {
+			coins = append(coins, o.Vout)
+		}
+	}
+	if len(coins) != 1 || coins[0] != 4 {
+		t.Fatalf("the pool holds outputs %v of the tree, want its change alone, output 4", coins)
+	}
+}
+
 // A spend the current tree can cover takes its next output and mints
 // nothing.
 func TestSpendUsesTheCurrentTreeWhileItFits(t *testing.T) {

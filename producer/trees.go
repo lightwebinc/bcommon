@@ -486,13 +486,21 @@ func (t *Trees) spend(ctx context.Context, need uint32) (*transaction.Transactio
 		// The coin is spent by a tree on the leg: a GiveBack after a later
 		// failure must not put it back.
 		t.Payer.release(coin)
-		t.Payer.Change(tree, height, mp)
+		t.treeChange(tree, count, height, mp)
 	}
 	rec, err := t.record(tree, mp, height, count, t.Identity, t.Funder)
 	if err != nil {
 		return nil, 0, err
 	}
 	return t.adopt(ctx, tree, rec, need)
+}
+
+// treeChange gives the pool a tree's change. Its count funding outputs are
+// not coins, whatever script they pay: with a Lock and a Change on one key,
+// each would be in the pool as well as in the tree, for a fee to spend under
+// a carrier that spends it too.
+func (t *Trees) treeChange(tree *transaction.Transaction, count int, height uint32, mp *transaction.MerklePath) {
+	t.Payer.change(tree, height, mp, func(vout uint32) bool { return int(vout) >= count })
 }
 
 // record is the funding.Tree a new tree is adopted as. An unmined tree is
@@ -864,7 +872,7 @@ func (t *Trees) apply(r aheadResult) error {
 	}
 	if r.err == nil {
 		if r.change {
-			t.Payer.Change(r.tx, r.height, r.mp)
+			t.treeChange(r.tx, r.count, r.height, r.mp)
 		}
 		var rec funding.Tree
 		if rec, r.err = t.record(r.tx, r.mp, r.height, r.count, r.id, r.funder); r.err == nil {
