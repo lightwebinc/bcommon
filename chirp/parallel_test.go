@@ -321,3 +321,46 @@ func TestParallelOverGiB(t *testing.T) {
 		t.Fatalf("incremental: %v", ierr)
 	}
 }
+
+// TestParallelSmallUsesOneBuffer checks a small object takes one buffer, and
+// that a chunker reused buffers from an earlier one leave no bytes of it in
+// the result.
+func TestParallelSmallUsesOneBuffer(t *testing.T) {
+	big := bytes.Repeat([]byte{0xa5}, ChunkSize+1)
+	small := []byte("a small object")
+	for _, content := range [][]byte{big, small, big, small} {
+		want, err := Build(content, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := NewParallelChunker(8, func(int, Child, []byte) error { return nil })
+		if _, err := c.Write(content); err != nil {
+			t.Fatal(err)
+		}
+		if len(content) <= ChunkSize && c.made != 1 {
+			t.Fatalf("a %d-byte object took %d buffers", len(content), c.made)
+		}
+		got, err := c.Finish(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.RootHash != want.RootHash {
+			t.Fatalf("%d bytes: root %x, want %x", len(content), got.RootHash, want.RootHash)
+		}
+	}
+}
+
+func BenchmarkParallelSmall(b *testing.B) {
+	content := make([]byte, 1024)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(content)))
+	for b.Loop() {
+		c := NewParallelChunker(8, func(int, Child, []byte) error { return nil })
+		if _, err := c.Write(content); err != nil {
+			b.Fatal(err)
+		}
+		if _, err := c.Finish(nil); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

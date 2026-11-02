@@ -36,7 +36,10 @@ var errAborted = errors.New("chirp: chunker aborted")
 // emit by one of workers goroutines, while one more goroutine hashes the
 // content in order. Write only copies into the current blob, so the
 // caller's loop waits for a hash only when every buffer is in use. Memory
-// holds at most workers + 2 blobs.
+// holds at most workers + 2 blobs, and only what the content needs: a buffer
+// is taken when a blob needs one, from a pool the chunkers of a process
+// share, so a small object costs one reused buffer rather than workers + 2
+// fresh ones.
 //
 // Finish returns the closure Chunker returns for the same content, byte for
 // byte.
@@ -55,6 +58,7 @@ type ParallelChunker struct {
 	emit func(i int, ref Child, blob []byte) error
 
 	free    chan []byte
+	made    int // buffers taken from the pool, at most cap(free)
 	work    chan pjob
 	content chan pjob
 	wg      sync.WaitGroup
@@ -75,6 +79,13 @@ type pjob struct {
 	refs *atomic.Int32
 }
 
+// blobPool holds ChunkSize buffers between chunkers. Each is a *[]byte so
+// that a Put does not allocate.
+var blobPool = sync.Pool{New: func() any {
+	b := make([]byte, 0, ChunkSize)
+	return &b
+}}
+
 // NewParallelChunker returns a ParallelChunker with workers blob hashers
 // (DefaultWorkers when 0 or less, at most MaxWorkers) that hands each blob
 // to emit.
@@ -86,15 +97,28 @@ func NewParallelChunker(workers int, emit func(i int, ref Child, blob []byte) er
 		work:    make(chan pjob, workers+2),
 		content: make(chan pjob, workers+2),
 	}
-	for range workers + 2 {
-		c.free <- make([]byte, 0, ChunkSize)
-	}
 	c.wg.Add(workers + 1)
 	for range workers {
 		go c.worker()
 	}
 	go c.hashContent()
 	return c
+}
+
+// buffer is the next blob's buffer: a free one, else a new one from the pool
+// while the bound allows, else the next to come free. Only Write's goroutine
+// calls it.
+func (c *ParallelChunker) buffer() []byte {
+	select {
+	case b := <-c.free:
+		return b
+	default:
+	}
+	if c.made < cap(c.free) {
+		c.made++
+		return (*blobPool.Get().(*[]byte))[:0]
+	}
+	return <-c.free
 }
 
 func (c *ParallelChunker) failed() error {
@@ -171,7 +195,7 @@ func (c *ParallelChunker) Write(p []byte) (int, error) {
 	n := len(p)
 	for len(p) > 0 {
 		if c.cur == nil {
-			c.cur = <-c.free
+			c.cur = c.buffer()
 		}
 		k := min(ChunkSize-len(c.cur), len(p))
 		c.cur = append(c.cur, p[:k]...)
@@ -191,6 +215,15 @@ func (c *ParallelChunker) stop() {
 	close(c.work)
 	close(c.content)
 	c.wg.Wait()
+	// Every job is released: the buffers go back for the next chunker.
+	if c.cur != nil {
+		c.free <- c.cur
+		c.cur = nil
+	}
+	for len(c.free) > 0 {
+		b := <-c.free
+		blobPool.Put(&b)
+	}
 }
 
 // Finish hands over the last blob, waits for every blob, and returns the
