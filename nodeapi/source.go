@@ -298,6 +298,14 @@ func (s *Sources) Spender(ctx context.Context, txid string, vout uint32) (string
 	return s.Spends.Spender(ctx, txid, vout)
 }
 
+// CacheSpends answers Spender from one read of a transaction's outputs for
+// ttl (see SpendCache). Call it while setting the Sources up.
+func (s *Sources) CacheSpends(ttl time.Duration) {
+	if s.Spends != nil {
+		s.Spends = &SpendCache{Source: s.Spends, TTL: ttl}
+	}
+}
+
 // Known is the Knows backend's answer; with none configured, an error.
 func (s *Sources) Known(ctx context.Context, txid string) (bool, error) {
 	if s.Knows == nil {

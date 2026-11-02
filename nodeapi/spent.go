@@ -79,7 +79,33 @@ const (
 	statusSpent   = "SPENT"
 )
 
+// spendAnswer is the node's answer for one output: who spent it, "" for
+// unspent, or why the answer is not evidence.
+type spendAnswer struct {
+	by  string
+	err error
+}
+
 func (a *Asset) spender(ctx context.Context, txid string, vout uint32) (string, error) {
+	answers, err := a.spendAnswers(ctx, txid)
+	if err != nil {
+		return "", err
+	}
+	return answerFor(answers, vout)
+}
+
+// answerFor is the answer for vout out of one read of a transaction.
+func answerFor(answers map[uint32]spendAnswer, vout uint32) (string, error) {
+	ans, ok := answers[vout]
+	if !ok {
+		return "", fmt.Errorf("the answer has no output %d", vout)
+	}
+	return ans.by, ans.err
+}
+
+// spendAnswers reads the node's UTXO view of txid, which names every output
+// of the transaction, whichever one a caller wants.
+func (a *Asset) spendAnswers(ctx context.Context, txid string) (map[uint32]spendAnswer, error) {
 	outs, err := getJSON[[]*struct {
 		TxID     string  `json:"txid"`
 		Vout     *uint32 `json:"vout"`
@@ -89,43 +115,37 @@ func (a *Asset) spender(ctx context.Context, txid string, vout uint32) (string, 
 		} `json:"spendingData"`
 	}](ctx, a, "/api/v1/utxos/"+txid+"/json")
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	var found bool
-	var by string
+	answers := make(map[uint32]spendAnswer, len(*outs))
 	for _, o := range *outs {
 		if o == nil || o.Vout == nil {
-			return "", errors.New("the answer has an entry with no output index")
+			return nil, errors.New("the answer has an entry with no output index")
 		}
-		if *o.Vout != vout {
+		if _, twice := answers[*o.Vout]; twice {
+			answers[*o.Vout] = spendAnswer{err: errors.New("the answer names the output twice")}
 			continue
 		}
-		if found {
-			return "", errors.New("the answer names the output twice")
-		}
-		found = true
-		if o.TxID != "" && !strings.EqualFold(o.TxID, txid) {
-			return "", fmt.Errorf("the answer is for transaction %s", o.TxID)
-		}
+		var ans spendAnswer
 		switch {
+		case o.TxID != "" && !strings.EqualFold(o.TxID, txid):
+			ans.err = fmt.Errorf("the answer is for transaction %s", o.TxID)
 		case strings.EqualFold(o.Status, statusUnspent):
-			by = ""
 		case strings.EqualFold(o.Status, statusSpent):
-			if o.Spending == nil || o.Spending.TxID == "" {
-				return "", errors.New("the node says it is spent and names no spender")
+			switch {
+			case o.Spending == nil || o.Spending.TxID == "":
+				ans.err = errors.New("the node says it is spent and names no spender")
+			case !isTxid(o.Spending.TxID):
+				ans.err = fmt.Errorf("the node names the spender %q, which is not a txid", o.Spending.TxID)
+			default:
+				ans.by = o.Spending.TxID
 			}
-			if !isTxid(o.Spending.TxID) {
-				return "", fmt.Errorf("the node names the spender %q, which is not a txid", o.Spending.TxID)
-			}
-			by = o.Spending.TxID
 		default:
-			return "", fmt.Errorf("the node answers status %q", o.Status)
+			ans.err = fmt.Errorf("the node answers status %q", o.Status)
 		}
+		answers[*o.Vout] = ans
 	}
-	if !found {
-		return "", fmt.Errorf("the answer has no output %d", vout)
-	}
-	return by, nil
+	return answers, nil
 }
 
 // isTxid is 64 hex digits.
