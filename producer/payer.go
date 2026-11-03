@@ -412,10 +412,40 @@ func (p *Payer) dropSpent(ctx context.Context, what string, tx *transaction.Tran
 // and one that a refusal at Settle, SettleAndWait or Await showed spent by
 // another transaction, which is taken out of the pool instead (see Settle).
 func (p *Payer) GiveBack() {
-	for _, o := range p.spent {
-		_ = p.Pool.Return(o)
-	}
+	// One save for every coin: a merge gives back hundreds.
+	_ = p.Pool.ReturnAll(p.spent)
 	p.spent = nil
+}
+
+// TakeSmall takes up to n of the pool's proven coins of fewer than below
+// satoshis, smallest first (bwallet.Pool.TakeSmall, one save), each signed
+// for as Take's coins are, for a caller merging them into one coin. A coin
+// that cannot be signed for goes back to the pool and is left out. The coins
+// are reserved like Take's: Settle releases them, GiveBack returns them.
+func (p *Payer) TakeSmall(ctx context.Context, below uint64, n int) ([]mint.Input, error) {
+	outs, err := p.Pool.TakeSmall(p.tip(), below, n)
+	if err != nil {
+		return nil, err
+	}
+	var ins []mint.Input
+	var bad []bwallet.Output
+	for _, o := range outs {
+		p.spent = append(p.spent, o)
+		in, err := p.input(ctx, o)
+		if err != nil {
+			bad = append(bad, o)
+			p.release(o)
+			continue
+		}
+		ins = append(ins, in)
+	}
+	if len(bad) > 0 {
+		_ = p.Pool.ReturnAll(bad)
+	}
+	if len(ins) == 0 {
+		return nil, bwallet.ErrNoSpendable
+	}
+	return ins, nil
 }
 
 // Parent rebuilds enough of a pool coin's parent transaction to sign
