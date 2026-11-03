@@ -200,3 +200,39 @@ func TestAheadTakesOnlyACoinThatCanPay(t *testing.T) {
 	}
 	holds(t, pool, small.TxID().String()+".0")
 }
+
+// TakeSmall takes the small coins it can sign for, smallest first, signed
+// for as Take's are; a coin it cannot sign for is back in the pool, and a coin
+// at or above the bound is never taken. GiveBack returns every one it took.
+func TestTakeSmallSignsAndGivesBack(t *testing.T) {
+	ctx := context.Background()
+	l := newTestChain(t)
+	pool := poolIn(t)
+	own, stranger := signerOf(t, newKey(t)), signerOf(t, newKey(t))
+	a := fund(t, pool, own, 3000, 0x71)
+	b := fund(t, pool, own, 1000, 0x72)
+	theirs := fund(t, pool, stranger, 500, 0x73)
+	big := fund(t, pool, own, 900000, 0x74)
+	p := payerFor(l, pool, own, &notes{})
+
+	ins, err := p.TakeSmall(ctx, 100000, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, in := range ins {
+		if in.Unlocker == nil {
+			t.Fatal("an input with no unlocker")
+		}
+		got = append(got, in.Tx.TxID().String())
+	}
+	if want := []string{b.TxID().String(), a.TxID().String()}; strings.Join(got, " ") != strings.Join(want, " ") {
+		t.Fatalf("took %v, want the 1000 then the 3000 sat coin", got)
+	}
+	holds(t, pool, theirs.TxID().String()+".0", big.TxID().String()+".0")
+	p.GiveBack()
+	holds(t, pool, a.TxID().String()+".0", b.TxID().String()+".0", theirs.TxID().String()+".0", big.TxID().String()+".0")
+	if _, err := p.TakeSmall(ctx, 400, 10); !errors.Is(err, bwallet.ErrNoSpendable) {
+		t.Fatalf("no coin under 400 sat: %v, want ErrNoSpendable", err)
+	}
+}

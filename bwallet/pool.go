@@ -271,6 +271,73 @@ func (p *Pool) TakeFitting(tip uint32, minSats uint64, allow []string) (Output, 
 	return Output{}, ErrNoSpendable
 }
 
+// TakeSmall removes and returns up to n proven, spendable coins of fewer than
+// below satoshis, smallest first and the oldest of those on a tie, saving the
+// pool once. It is for merging small coins into one: each coin taken alone
+// saves the whole pool, and a pool of many small coins is a large file
+// rewritten on every change, which is the cost the merge removes. A coin of
+// zero satoshis is never taken. When none qualifies the error is
+// ErrNoSpendable.
+func (p *Pool) TakeSmall(tip uint32, below uint64, n int) ([]Output, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	var at []int
+	for i, o := range p.outputs {
+		if o.Spendable(tip) && o.Satoshis > 0 && o.Satoshis < below {
+			at = append(at, i)
+		}
+	}
+	if len(at) == 0 || n <= 0 {
+		return nil, ErrNoSpendable
+	}
+	sort.SliceStable(at, func(i, j int) bool { return p.outputs[at[i]].Satoshis < p.outputs[at[j]].Satoshis })
+	at = at[:min(n, len(at))]
+	take := make(map[int]bool, len(at))
+	taken := make([]Output, 0, len(at))
+	for _, i := range at {
+		take[i] = true
+		taken = append(taken, p.outputs[i])
+	}
+	before := p.outputs
+	var kept []Output
+	for i, o := range p.outputs {
+		if !take[i] {
+			kept = append(kept, o)
+		}
+	}
+	p.outputs = kept
+	if err := p.saveLocked(); err != nil {
+		p.outputs = before
+		return nil, err
+	}
+	return taken, nil
+}
+
+// ReturnAll is Return for many outputs, saving the pool once. Outputs the
+// pool already holds are skipped.
+func (p *Pool) ReturnAll(outs []Output) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	held := make(map[string]bool, len(p.outputs))
+	for _, o := range p.outputs {
+		held[o.Outpoint()] = true
+	}
+	added := false
+	for _, o := range outs {
+		if held[o.Outpoint()] {
+			continue
+		}
+		held[o.Outpoint()] = true
+		p.outputs = append(p.outputs, o)
+		added = true
+	}
+	if !added {
+		return nil
+	}
+	p.sortLocked()
+	return p.saveLocked()
+}
+
 // Prove records that txid mined: every output of it the pool holds gets
 // its proof and height and becomes spendable. It reports how many changed.
 func (p *Pool) Prove(txid, bump string, height uint32) (int, error) {

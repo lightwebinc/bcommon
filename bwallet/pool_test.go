@@ -384,3 +384,60 @@ func TestRemoveIsConcurrencySafe(t *testing.T) {
 		t.Fatalf("after every Remove: %d on disk, %d held, %v", disk.Count(), p.Count(), err)
 	}
 }
+
+// TakeSmall takes the smallest proven, spendable coins below the bound, at
+// most n, and the file holds the rest at once: a merge's reservation is as
+// durable as Take's. Unproven change, immature coinbase, zero and coins at or
+// above the bound stay. ReturnAll puts them back in one save, with no
+// duplicate of a coin already held.
+func TestTakeSmallAndReturnAll(t *testing.T) {
+	p := newPool(t)
+	unproven := out(9, 0, 3, 0, false)
+	unproven.Unproven = true
+	if _, err := p.Add(out(1, 0, 40, 1, false), out(2, 0, 10, 2, false), out(3, 0, 30, 3, false),
+		out(4, 0, 20, 4, false), out(5, 0, 100, 5, false), out(6, 0, 5, 9, true), out(7, 0, 0, 6, false),
+		unproven); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.TakeSmall(10, 100, 0); !errors.Is(err, ErrNoSpendable) {
+		t.Fatalf("n = 0: %v, want ErrNoSpendable", err)
+	}
+	taken, err := p.TakeSmall(10, 100, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []uint64
+	for _, o := range taken {
+		got = append(got, o.Satoshis)
+	}
+	if fmt.Sprint(got) != "[10 20 30]" {
+		t.Fatalf("took %v, want the three smallest below 100: [10 20 30]", got)
+	}
+	disk, err := LoadPool(p.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disk.Count() != 5 || disk.Balance() != 148 {
+		t.Fatalf("the file holds %d outputs, %d sat; want 5 and 148", disk.Count(), disk.Balance())
+	}
+	rest, err := p.TakeSmall(10, 100, 10)
+	if err != nil || len(rest) != 1 || rest[0].Satoshis != 40 {
+		t.Fatalf("second take %v, %v; want only the 40", rest, err)
+	}
+	if _, err := p.TakeSmall(10, 100, 10); !errors.Is(err, ErrNoSpendable) {
+		t.Fatalf("nothing left below 100: %v, want ErrNoSpendable", err)
+	}
+	if err := p.ReturnAll(append(taken, rest...)); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.ReturnAll(taken); err != nil {
+		t.Fatal(err)
+	}
+	disk, err = LoadPool(p.Path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disk.Count() != 8 || disk.Balance() != 208 {
+		t.Fatalf("after ReturnAll the file holds %d outputs, %d sat; want 8 and 208", disk.Count(), disk.Balance())
+	}
+}
