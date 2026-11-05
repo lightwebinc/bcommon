@@ -184,6 +184,26 @@ func TestArcadeSubmitRetriesBackpressureOnly(t *testing.T) {
 // No verdict inside the bound is not a failure: the transaction is in
 // arcade's hands. Waiting on would put a publisher back to waiting for a
 // block, which is what this settler exists to avoid.
+func TestArcadeSubmitWaitsForNoVerdictWhenToldNotTo(t *testing.T) {
+	tx := efTx(t)
+	f := &fakeArcade{post: []func(http.ResponseWriter, string){accepted("RECEIVED")}, statuses: []string{"SENT_TO_NETWORK"}}
+	a, notes := arcadeFor(t, f, tx)
+	a.Verdict = -1
+	start := time.Now()
+	if err := a.Submit(context.Background(), tx); err != nil {
+		t.Fatal(err)
+	}
+	if took := time.Since(start); took > 100*time.Millisecond {
+		t.Fatalf("Submit waited %v for a verdict it was told not to wait for", took)
+	}
+	if f.gets != 0 {
+		t.Fatalf("%d status reads; a caller waiting for no verdict reads none", f.gets)
+	}
+	if len(*notes) != 0 {
+		t.Fatalf("notes %q; nothing to note", *notes)
+	}
+}
+
 func TestArcadeSubmitDoesNotWaitPastTheBound(t *testing.T) {
 	tx := efTx(t)
 	f := &fakeArcade{post: []func(http.ResponseWriter, string){accepted("RECEIVED")}, statuses: []string{"SENT_TO_NETWORK"}}

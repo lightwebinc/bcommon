@@ -37,7 +37,10 @@ type Arcade struct {
 	Key    string
 	Client *http.Client
 	// Verdict bounds how long Submit waits for the network to accept or
-	// refuse a transaction arcade has taken. Zero means DefaultVerdict.
+	// refuse a transaction arcade has taken. Zero means DefaultVerdict;
+	// negative means Submit returns once arcade has taken the transaction
+	// and waits for no verdict: the caller's evidence is the Merkle proof it
+	// watches for, and a refusal shows when it sends the transaction again.
 	Verdict time.Duration
 	// Poll is the longest interval between status checks while waiting; the
 	// first comes after firstPoll and each wait doubles up to it. Zero means
@@ -171,6 +174,9 @@ func (a *Arcade) Submit(ctx context.Context, tx *transaction.Transaction) error 
 	}
 	if st.Accepted() {
 		return a.spentElsewhere(ctx, tx)
+	}
+	if a.Verdict < 0 {
+		return nil
 	}
 	return a.awaitVerdict(ctx, tx)
 }
