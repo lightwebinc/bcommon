@@ -100,7 +100,18 @@ func malformed(format string, args ...any) error {
 //
 // Every refusal wraps ErrBEEF: over the bound, not one well-formed BEEF,
 // bytes after it, no transaction, or no subject transaction carried whole.
-func ReadWire(b []byte, bound int) (*Wire, error) {
+func ReadWire(b []byte, bound int) (*Wire, error) { return readWire(b, bound, false) }
+
+// ReadWireInPlace is ReadWire with every script of the Wire's transactions a
+// slice of b instead of a copy: a piece carrier's 4 MiB output is not copied
+// out of the bytes it arrived in. b must stay alive and unchanged while the
+// Wire, its transactions or anything taken from their scripts is used; a
+// caller that reuses b (a pooled buffer) after the parse calls ReadWire. Each
+// script is capped at its own end, so appending to one reallocates rather
+// than overwriting b. The checks, refusals and values are ReadWire's.
+func ReadWireInPlace(b []byte, bound int) (*Wire, error) { return readWire(b, bound, true) }
+
+func readWire(b []byte, bound int, inPlace bool) (*Wire, error) {
 	if bound == 0 {
 		bound = DefaultMaxBEEF
 	}
@@ -167,7 +178,19 @@ func ReadWire(b []byte, bound int) (*Wire, error) {
 			// transaction nobody else knows, and is refused where its proof
 			// or subject is checked.
 			start := int64(len(b)) - int64(r.Len())
-			n, err := tx.ReadFrom(r)
+			var n int64
+			var err error = errNotInPlace
+			if inPlace {
+				var t *transaction.Transaction
+				var m int
+				if t, m, err = parseTxInPlace(b[start:]); err == nil {
+					tx, n = t, int64(m)
+					_, _ = r.Seek(n, io.SeekCurrent)
+				}
+			}
+			if errors.Is(err, errNotInPlace) {
+				n, err = tx.ReadFrom(r)
+			}
 			if err != nil {
 				return nil, malformed("%v", err)
 			}
