@@ -338,7 +338,11 @@ func Mint(ctx context.Context, w wallet.Interface, originator string, p Params, 
 	if funding == nil || uint64(vout) >= uint64(len(funding.Outputs)) {
 		return nil, errors.New("carrier: funding output out of range")
 	}
-	lock, err := p.Derivation.Lock(ctx, w, originator, [][]byte{payload}, true)
+	// The payload is copied once, into the locking script (LockOne), and
+	// the input signed with hashOutputs streamed over that script
+	// (signCarrier): the transaction is byte for byte what Lock and the
+	// unlocker's tx.Sign build, without three copies of the payload.
+	lock, err := p.Derivation.LockOne(ctx, w, originator, payload)
 	if err != nil {
 		return nil, err
 	}
@@ -347,7 +351,7 @@ func Mint(ctx context.Context, w wallet.Interface, originator string, p Params, 
 	tx.AddInputFromTx(funding, vout, p.Derivation.Unlocker(ctx, w, originator))
 	tx.Inputs[0].SequenceNumber = Sequence
 	tx.AddOutput(&transaction.TransactionOutput{Satoshis: funding.Outputs[vout].Satoshis, LockingScript: lock})
-	if err := tx.Sign(); err != nil {
+	if err := signCarrier(ctx, w, originator, p.Derivation, tx); err != nil {
 		return nil, err
 	}
 	return tx, nil
