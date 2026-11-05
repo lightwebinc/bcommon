@@ -159,10 +159,21 @@ func ReadWire(b []byte, bound int) (*Wire, error) {
 				}
 			}
 			tx := &transaction.Transaction{}
-			if _, err := tx.ReadFrom(r); err != nil {
+			// The txid is the hash of the bytes the transaction was read
+			// from, and the transaction is told it: TxID would otherwise
+			// serialise the transaction again to hash it (a copy of a 4 MiB
+			// carrier for every piece a provider checks). An encoding a
+			// node would not hash to this (a non-minimal length) names a
+			// transaction nobody else knows, and is refused where its proof
+			// or subject is checked.
+			start := int64(len(b)) - int64(r.Len())
+			n, err := tx.ReadFrom(r)
+			if err != nil {
 				return nil, malformed("%v", err)
 			}
-			e.Tx, e.Txid = tx, *tx.TxID()
+			e.Txid = chainhash.DoubleHashH(b[start : start+n])
+			tx.SetTxHash(&e.Txid)
+			e.Tx = tx
 			if v == beefV1 { // V1: a flag and the index follow the transaction
 				f, err := r.ReadByte()
 				if err != nil || f > 1 {
