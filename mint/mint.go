@@ -248,6 +248,57 @@ func FundingTree(lock *script.Script, count int, sats uint64, fee Input, change 
 	}, change, fees)
 }
 
+// Many builds and signs a transaction of several state tokens at once: one
+// output of sats under each lock, in order, then change. The fee inputs are
+// spent in order until the fee is covered: the first is always spent, each
+// further one only when the ones before it are short, so a caller hands in
+// what it is willing to spend and reads tx.Inputs for what was. A set that
+// cannot cover the fee is refused with an *InsufficientError for the whole
+// set. Change below the dust threshold is dropped rather than left as dust.
+func Many(locks []*script.Script, sats uint64, fee []Input, change *script.Script, fees Fees) (*transaction.Transaction, error) {
+	if len(locks) == 0 {
+		return nil, errNoLock
+	}
+	if len(locks) > MaxFundingOutputs {
+		return nil, fmt.Errorf("%w: %d asked", ErrTreeTooLarge, len(locks))
+	}
+	for _, l := range locks {
+		if l == nil {
+			return nil, errNoLock
+		}
+	}
+	if len(fee) == 0 {
+		return nil, errors.New("mint: no fee input")
+	}
+	for _, f := range fee {
+		if f.Tx == nil || outOfRange(f.Vout, f.Tx) || f.Unlocker == nil {
+			return nil, errors.New("mint: fee input out of range or unsigned")
+		}
+	}
+	var last error
+	for n := 1; n <= len(fee); n++ {
+		tx, err := build(func() (*transaction.Transaction, uint64, error) {
+			tx := transaction.NewTransaction()
+			var in uint64
+			for _, f := range fee[:n] {
+				tx.AddInputFromTx(f.Tx, f.Vout, f.Unlocker)
+				in += f.Tx.Outputs[f.Vout].Satoshis
+			}
+			for _, l := range locks {
+				tx.AddOutput(&transaction.TransactionOutput{Satoshis: sats, LockingScript: l})
+			}
+			return tx, in, nil
+		}, change, fees)
+		var short *InsufficientError
+		if errors.As(err, &short) {
+			last = err
+			continue
+		}
+		return tx, err
+	}
+	return nil, last
+}
+
 // build runs the fee loop over a skeleton the caller assembles: inputs and
 // non-change outputs, returning the input total.
 //

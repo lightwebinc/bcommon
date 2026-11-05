@@ -130,6 +130,38 @@ func TestFundingTree(t *testing.T) {
 	verifies(t, tree)
 }
 
+func TestMany(t *testing.T) {
+	holder, payer := parties(t)
+	locks := []*script.Script{holder.lock, payer.lock, holder.lock}
+	// One coin covers three outputs and the fee: the second is left alone.
+	tx, err := mint.Many(locks, 1, []mint.Input{payer.coin(5000), payer.coin(5000)}, payer.lock, mint.LegacyFees)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tx.Inputs) != 1 || len(tx.Outputs) != 4 {
+		t.Fatalf("%d in %d out, want 1 in and 3 + change out", len(tx.Inputs), len(tx.Outputs))
+	}
+	for i, l := range locks {
+		if tx.Outputs[i].Satoshis != 1 || !tx.Outputs[i].LockingScript.Equals(l) {
+			t.Fatalf("output %d is not 1 satoshi under its lock", i)
+		}
+	}
+	verifies(t, tx)
+	// A coin too small for the fee brings in the next; two too small refuse.
+	tx, err = mint.Many(locks, 1, []mint.Input{payer.coin(60), payer.coin(5000)}, payer.lock, mint.LegacyFees)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(tx.Inputs) != 2 {
+		t.Fatalf("%d inputs, want the short coin and the next", len(tx.Inputs))
+	}
+	verifies(t, tx)
+	var short *mint.InsufficientError
+	if _, err := mint.Many(locks, 1, []mint.Input{payer.coin(60), payer.coin(60)}, payer.lock, mint.LegacyFees); !errors.As(err, &short) {
+		t.Fatalf("two short coins: %v", err)
+	}
+}
+
 func TestPayment(t *testing.T) {
 	holder, payer := parties(t)
 	tx, err := mint.Payment(context.Background(), holder.lock, 1000, payer.coin(5000), payer.lock, mint.LegacyFees)
