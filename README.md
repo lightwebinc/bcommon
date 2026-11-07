@@ -101,7 +101,7 @@ Its commands' flags are in [devkit/README.md](devkit/README.md).
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.33.12
+go get github.com/lightwebinc/bcommon@v0.33.13
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -109,10 +109,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.33.12 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.33.12.tgz
+git clone --depth 1 --branch v0.33.13 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.33.13.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.33.12.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.33.13.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage
