@@ -70,7 +70,8 @@ type Chain struct {
 	Hold   bool
 	HoldIf func(tx *transaction.Transaction) bool
 	// Refuse, when set, is asked about each transaction sent; a non-empty
-	// answer refuses it with that reason.
+	// answer refuses it with that reason. It is called without the chain
+	// lock, so it may block.
 	Refuse func(tx *transaction.Transaction) string
 	// Busy, when set, is asked about each transaction sent through the RPC
 	// or arcade; true answers 503, which refuses nothing: a transient
@@ -260,19 +261,31 @@ func (c *Chain) Generate(n int, addr string) ([]string, error) {
 // holds for a transaction SpendElsewhere displaced too: the chain keeps and
 // serves it, as a node may, so it is one the chain already holds.
 func (c *Chain) Send(tx *transaction.Transaction) error {
-	c.mu.Lock()
-	defer c.mu.Unlock()
 	id := tx.TxID().String()
+	c.mu.Lock()
 	if _, ok := c.txs[id]; ok {
+		defer c.mu.Unlock()
 		if c.RefuseKnown {
 			return ErrAlreadyKnown
 		}
 		return nil
 	}
-	if c.Refuse != nil {
-		if why := c.Refuse(tx); why != "" {
+	refuse := c.Refuse
+	c.mu.Unlock()
+	// The hook runs without the chain lock: a test hook that blocks must not
+	// stall every other caller of the chain while it waits.
+	if refuse != nil {
+		if why := refuse(tx); why != "" {
 			return fmt.Errorf("refused: %s", why)
 		}
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.txs[id]; ok {
+		if c.RefuseKnown {
+			return ErrAlreadyKnown
+		}
+		return nil
 	}
 	for _, in := range tx.Inputs {
 		if tx.LockTime != 0 && in.SequenceNumber != transaction.MaxTxInSequenceNum {
