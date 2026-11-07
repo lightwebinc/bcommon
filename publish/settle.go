@@ -108,7 +108,7 @@ func (t *TCPIngress) Submit(ctx context.Context, tx *transaction.Transaction) er
 	return nil
 }
 
-// RPCSettler sends the standard serialisation through sendrawtransaction
+// RPCSettler sends the standard serialization through sendrawtransaction
 // and returns the node's answer. This leg has an acknowledgement, which the
 // TCP ingress does not.
 type RPCSettler struct {

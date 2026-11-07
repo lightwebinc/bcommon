@@ -37,13 +37,13 @@ const (
 )
 
 // sgrMax bounds the parameter bytes of an SGR sequence that is passed
-// through: enough for any colour or weight, too short for anything cute.
+// through: enough for any color or weight, too short for anything cute.
 const sgrMax = 32
 
 // Options is how a value may reach the terminal.
 type Options struct {
-	// ANSI keeps colour and weight (SGR) sequences, and nothing else. Set it
-	// only when the reader asked for colour: the sequences are re-validated
+	// ANSI keeps color and weight (SGR) sequences, and nothing else. Set it
+	// only when the reader asked for color: the sequences are re-validated
 	// rather than copied, and a reset is always written at the end.
 	ANSI bool
 	// ASCII degrades every rune above 0x7E to "?", for a terminal that
@@ -63,7 +63,7 @@ func Text(s string) string { return Sanitize(s, Options{}) }
 //
 // Invalid UTF-8 becomes U+FFFD. Without o.ANSI, a half block drawn on a set
 // background becomes a full block: half-block art inks a cell's second half
-// with the background colour, and dropping the colour would otherwise break
+// with the background color, and dropping the color would otherwise break
 // the picture into stripes, where a full block keeps its shape.
 func Sanitize(s string, o Options) string {
 	if !utf8.ValidString(s) {
@@ -75,7 +75,7 @@ func Sanitize(s string, o Options) string {
 	var params strings.Builder
 	coloured := false
 	// bgSet tracks whether the SGR state being stripped has a background
-	// colour set; see the half-block case below.
+	// color set; see the half-block case below.
 	bgSet := false
 	const (
 		text     = iota
@@ -145,7 +145,7 @@ func Sanitize(s string, o Options) string {
 			lines++
 			if lines >= MaxLines {
 				// The reset the end of the value would have written, written
-				// here instead, so a colour cut off mid-value does not run on
+				// here instead, so a color cut off mid-value does not run on
 				// into the marker or whatever the caller prints next.
 				if coloured {
 					b.WriteString("\x1b[0m")
@@ -175,13 +175,13 @@ func Sanitize(s string, o Options) string {
 			}
 			if !o.ANSI && bgSet && (r == '▀' || r == '▄') {
 				// Half-block art draws two pixels per cell: the glyph's half
-				// in the foreground colour and the other half in the
-				// BACKGROUND colour. Dropping colour keeps the glyph and
+				// in the foreground color and the other half in the
+				// BACKGROUND color. Dropping color keeps the glyph and
 				// loses the background, so every cell with both pixels
 				// inked collapses to one and the picture breaks into
 				// stripes. A half block drawn on a set background is a
 				// full cell of ink, so it is written as one, and the shape
-				// survives as a silhouette when the colour cannot.
+				// survives as a silhouette when the color cannot.
 				r = '█'
 			}
 			if o.ASCII && r > 0x7E {
@@ -198,11 +198,11 @@ func Sanitize(s string, o Options) string {
 	return b.String()
 }
 
-// sgrBackground reports whether a background colour is set after applying
+// sgrBackground reports whether a background color is set after applying
 // one SGR parameter string to the state bg. Only the background is tracked,
 // and only so that the plain rendering can keep half-block art's shape.
 //
-// Extended colours are consumed whole, because their operands are not
+// Extended colors are consumed whole, because their operands are not
 // codes: in 38;5;41 the 41 is a foreground palette index, and reading it as
 // background code 41 would ink cells that are not.
 func sgrBackground(params string, bg bool) bool {
@@ -221,7 +221,7 @@ func sgrBackground(params string, bg bool) bool {
 		case n >= 40 && n <= 47, n >= 100 && n <= 107:
 			bg = true
 		case n == 48 || n == 38:
-			// 5;N is a palette index, 2;R;G;B a direct colour.
+			// 5;N is a palette index, 2;R;G;B a direct color.
 			skip := 0
 			if i+1 < len(ps) {
 				switch ps[i+1] {
@@ -280,7 +280,7 @@ func (e unsafeText) Error() string { return string(e) }
 func (unsafeText) Is(target error) bool { return target == ErrUnsafe }
 
 // Validate reports the first thing in s that Sanitize would have to strip:
-// invalid UTF-8, a control character, an escape sequence other than a colour
+// invalid UTF-8, a control character, an escape sequence other than a color
 // (SGR) sequence, a zero-width or bidirectional character, or another
 // non-printable character. Printable text, spaces, tabs and newlines pass,
 // at any length. field names s in the error, which begins with it: "plan

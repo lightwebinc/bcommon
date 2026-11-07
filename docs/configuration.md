@@ -665,6 +665,7 @@ has no default. `SettleOptions` carries what a specification does not:
 |---|---|---|
 | `Pool` | none | the `*bwallet.Pool` every fee comes from and change returns to |
 | `Tip` | 0 | the chain height coinbase maturity is judged at |
+| `TipFunc` | nil | answers the tip in place of `Tip`, for an application that learns the height on one goroutine while its `Trees` take coins on others |
 | `Keys` | none | every key the producer signs with, by identity key hex; a coin is spent by the key whose fund script locks it, and change to any of them is taken back |
 | `KeyFor` | a lookup in `Keys` | the key of the identity that owns a received payment, for an application that words its own refusal |
 | `Kept` | nil | the producer's `*producer.Kept`; needed once unproven change can be spent |
@@ -795,8 +796,11 @@ a sweep spends. An input the node cannot answer for is not evidence, and
 the tree is used.
 
 With `Ahead` above zero, and not `DryRun`, a spend that leaves the current
-tree with `Ahead` outputs or fewer starts minting the next one, of `Count`
-outputs, once per tree and with at most one mint in flight. A pool-paid tree
+tree with `Ahead` outputs or fewer, counted across the current tree, the
+trees held for a switch and the mints in flight, starts minting more trees
+of `Count` outputs, up to eight in one spend, until more than `Ahead` are
+ready; any number of mints are in flight at once, as many as the pool has
+coins for. A pool-paid tree
 takes a proven coin and is signed on the caller's goroutine, so the
 reservation never races another `Take`; only the settlement, or `Fund` when
 it is set, runs in the background, under the context of the `Spend` that
@@ -1125,7 +1129,7 @@ whole lookup answer, and `purse.Check` passes it for a payment.
 
 `Sanitize(s, Options{ANSI, ASCII})` bounds its output at `MaxLines` (200)
 lines of `MaxCols` (512) columns. `ANSI` keeps color and weight sequences
-and nothing else, and ends coloured output with a reset; `ASCII` prints
+and nothing else, and ends colored output with a reset; `ASCII` prints
 every rune above 0x7E as `?`. `Validate(field, s)` and
 `ValidateBounded(field, s)` refuse what `Sanitize` would strip, the second
 within the same two bounds; every refusal matches `ErrUnsafe`.

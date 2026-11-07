@@ -37,7 +37,7 @@ type Output struct {
 }
 
 // UnmarshalJSON accepts beef and context as either a JSON array of byte
-// values (what the TypeScript host serialises a number[] to) or a base64
+// values (what the TypeScript host serializes a number[] to) or a base64
 // string (what encoding/json and go-sdk produce for []byte). Refusing either
 // form would refuse a conforming host; the fixture test proves the array form
 // is the live one.

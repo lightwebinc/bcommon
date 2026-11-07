@@ -3,7 +3,7 @@
 // application asks a wallet before anything else: whose identity is this.
 //
 // The wire is the only remote substrate here. The SDK's JSON substrate
-// serialises the derivation arguments wrongly (a value receiver meets a
+// serializes the derivation arguments wrongly (a value receiver meets a
 // pointer MarshalJSON) and drops action options, and both failures are
 // silent; the wire is one serializer on both ends.
 package wirewallet

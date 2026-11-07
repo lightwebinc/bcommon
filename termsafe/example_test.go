@@ -11,7 +11,7 @@ import (
 // A value from a record somebody else published is filtered before it is
 // printed. The window-title sequence and the screen clear are dropped, the
 // bidirectional override that would reverse the rest of the line is
-// dropped, and the colour survives only when the reader asked for it.
+// dropped, and the color survives only when the reader asked for it.
 func ExampleSanitize() {
 	hostile := "status \x1b]0;you have been pwned\x07\x1b[2J\x1b[32mgreen\x1b[0m ‮evil"
 

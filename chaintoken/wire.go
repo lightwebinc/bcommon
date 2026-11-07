@@ -172,7 +172,7 @@ func readWire(b []byte, bound int, inPlace bool) (*Wire, error) {
 			tx := &transaction.Transaction{}
 			// The txid is the hash of the bytes the transaction was read
 			// from, and the transaction is told it: TxID would otherwise
-			// serialise the transaction again to hash it (a copy of a 4 MiB
+			// serialize the transaction again to hash it (a copy of a 4 MiB
 			// carrier for every piece a provider checks). An encoding a
 			// node would not hash to this (a non-minimal length) names a
 			// transaction nobody else knows, and is refused where its proof

@@ -864,7 +864,7 @@ words in front.
 
 ```go
 termsafe.Text(hostile)                                  // "status green evil"
-termsafe.Sanitize(hostile, termsafe.Options{ANSI: true}) // colour kept, then reset
+termsafe.Sanitize(hostile, termsafe.Options{ANSI: true}) // color kept, then reset
 err := termsafe.ValidateBounded("plan", "ring\x07 the bell")
 // plan line 1 has a control character (U+0007); errors.Is(err, termsafe.ErrUnsafe)
 ```

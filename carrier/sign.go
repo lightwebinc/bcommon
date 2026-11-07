@@ -19,7 +19,7 @@ import (
 // (pushdrop.Derivation.Unlocker, SIGHASH_ALL|FORKID: the wallet's signature
 // over the BIP143 digest, pushed with its flag), byte for byte, except that
 // hashOutputs is taken over the one output's bytes where they lie. The SDK
-// serialises every output into a fresh buffer and hashes that: a 4 MiB copy
+// serializes every output into a fresh buffer and hashes that: a 4 MiB copy
 // for each piece carrier, where the hash alone is what the signature needs.
 func signCarrier(ctx context.Context, w wallet.Interface, originator string, d pushdrop.Derivation, tx *transaction.Transaction) error {
 	if len(tx.Inputs) != 1 || len(tx.Outputs) != 1 {
@@ -31,7 +31,7 @@ func signCarrier(ctx context.Context, w wallet.Interface, originator string, d p
 	}
 	flag := sighash.All | sighash.ForkID
 
-	// hashOutputs: SHA-256d over the output's serialisation, streamed.
+	// hashOutputs: SHA-256d over the output's serialization, streamed.
 	h := sha256.New()
 	var b8 [8]byte
 	binary.LittleEndian.PutUint64(b8[:], out.Satoshis)

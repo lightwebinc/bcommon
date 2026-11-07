@@ -64,14 +64,13 @@ beside the standard library and, where noted, go-sdk.
 | 1 | `record` | `cbor` | no |
 | 1 | `knownkeys` | `guard` | no |
 | 1 | `pushdrop` | `guard` | yes |
-| 1 | `funding` | `guard` | yes |
 | 1 | `nodeapi` | `guard` | yes |
 | 1 | `feepolicy` | `mint` | no |
 | 1 | `lookup` | `hostset` | no |
 | 2 | `carrier` | `guard`, `mint`, `pushdrop` | yes |
 | 2 | `chaintoken` | `guard`, `pushdrop` | yes |
+| 3 | `funding` | `chaintoken`, `guard` | yes |
 | 2 | `chainview` | `nodeapi` | yes |
-| 2 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
 | 2 | `publish` | `nodeapi` | yes |
 | 2 | `heldpay` | `nodeapi` | yes |
 | 3 | `unicast` | `publish` | no |
@@ -79,11 +78,12 @@ beside the standard library and, where noted, go-sdk.
 | 3 | `replay` | `chaintoken`, `guard`, `module` | yes |
 | 3 | `verify` | `carrier`, `guard` | yes |
 | 3 | `acceptance` | `chainview`, `nodeapi`, `publish` | yes |
-| 3 | `producer` | `bwallet`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
-| 4 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
-| 5 | `payee` | `guard`, `purse`, `termsafe` | yes |
-| 6 | `payeecmd` | `payee` | no |
-| 6 | `termsroute` | `acceptance`, `guard`, `module`, `nodeapi`, `payee`, `publish` | yes |
+| 4 | `bwallet` | `funding`, `guard`, `nodeapi`, `pushdrop` | yes |
+| 5 | `producer` | `bwallet`, `chaintoken`, `funding`, `guard`, `mint`, `nodeapi`, `publish` | yes |
+| 6 | `purse` | `bwallet`, `chainview`, `funding`, `guard`, `mint`, `nodeapi`, `producer`, `publish`, `termsafe` | yes |
+| 7 | `payee` | `guard`, `purse`, `termsafe` | yes |
+| 8 | `payeecmd` | `payee` | no |
+| 8 | `termsroute` | `acceptance`, `guard`, `module`, `nodeapi`, `payee`, `publish` | yes |
 
 Every edge inside the module:
 
@@ -92,7 +92,7 @@ Every edge inside the module:
   payee    ──▶ purse, guard, termsafe
   purse    ──▶ producer, bwallet, chainview, funding, guard, mint, nodeapi,
                publish, termsafe
-  producer ──▶ bwallet, funding, guard, mint, nodeapi, publish
+  producer ──▶ bwallet, chaintoken, funding, guard, mint, nodeapi, publish
   verify   ──▶ carrier ──▶ pushdrop ──▶ guard
   chaintoken ▶ pushdrop, guard
   authz    ──▶ cbor, chaintoken, guard, pushdrop, record
@@ -106,7 +106,7 @@ Every edge inside the module:
   bwallet  ──▶ guard
   bwallet  ──▶ funding
   feepolicy ─▶ mint
-  funding  ──▶ guard
+  funding  ──▶ chaintoken, guard
   knownkeys ─▶ guard
   publish  ──▶ nodeapi
   unicast  ──▶ publish

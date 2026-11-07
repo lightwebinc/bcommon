@@ -166,7 +166,7 @@ func (a *Asset) TxMeta(ctx context.Context, txid string) (*TxMeta, error) {
 	return m, nil
 }
 
-// TxRaw returns a transaction's raw serialisation. A node may answer in the
+// TxRaw returns a transaction's raw serialization. A node may answer in the
 // raw form or in Extended Format (BRC-30), the raw form with each input's
 // previous output added, as a Teranode asset API does; either is walked by
 // guard.RawTransaction and the raw form returned, so a caller always gets

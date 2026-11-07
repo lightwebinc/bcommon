@@ -110,9 +110,9 @@ application's lockfile pins its bytes, and the application supplies the
 
 ```bash
 git clone --depth 1 --branch v0.33.10 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.32.1.tgz
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.33.10.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.32.1.tgz @bsv/sdk@2.7.1
+npm install ./vendor/lightwebinc-bcommon-0.33.10.tgz @bsv/sdk@2.7.1
 ```
 
 ## Usage
