@@ -195,6 +195,41 @@ func TestAFeeWaitsForATreeMintedAhead(t *testing.T) {
 	}
 }
 
+// A fee that waits for a mint the leg then refuses is paid with the coin
+// the mint put back: the refusal is the mint's result, not the end of the
+// wait, so the take is tried again after it.
+func TestAFeeWaitingForARefusedMintIsPaidWithItsCoin(t *testing.T) {
+	h := homeOnChain(t, 1)
+	tr, st := h.trees()
+	spend(t, tr, st, 1) // minted on demand; its change is the one coin
+	coin := h.pool.Outputs()[0]
+	release := make(chan struct{})
+	h.chain.Refuse = func(*transaction.Transaction) string {
+		<-release
+		return "policy"
+	}
+	spend(t, tr, st, 1) // 2 left: minted ahead with the one coin, held at the leg
+	if h.pool.Count() != 0 {
+		t.Fatalf("the test did not reach the case: pool %d\n%s", h.pool.Count(), h.n)
+	}
+	go func() {
+		for !strings.Contains(h.n.String(), waitingNote) {
+			time.Sleep(10 * time.Millisecond)
+		}
+		close(release)
+	}()
+	in, err := h.payer().Take(context.Background())
+	if err != nil {
+		t.Fatalf("a fee waiting for a refused mint: %v\n%s", err, h.n)
+	}
+	if got := in.Tx.TxID().String(); got != coin.TxID {
+		t.Fatalf("the fee came from %s, not the coin the mint put back (%s)\n%s", got, coin.TxID, h.n)
+	}
+	if tr.Prepared() != nil || !strings.Contains(h.n.String(), "the next funding tree was not minted ahead") {
+		t.Fatalf("the refused mint:\n%s", h.n)
+	}
+}
+
 // A wallet that has a coin for the fee does not wait: the take answers at
 // once, and the mint is still in flight, uncollected, afterwards.
 func TestAFeeDoesNotWaitWhenThePoolCanPay(t *testing.T) {

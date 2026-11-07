@@ -157,7 +157,9 @@ func (p *Payer) takeAfterMints(ctx context.Context, sats uint64, allow []string,
 	p.note("no coin is spendable and %d funding tree(s) minted ahead hold one: waiting for the change", len(flights))
 	for len(flights) > 0 && wctx.Err() == nil {
 		for _, t := range flights {
-			if t.awaitResult(wctx) != nil {
+			// A refused mint is a result too: its error is reported, and
+			// the coin it put back may pay this take.
+			if t.awaitResult(wctx) != nil && wctx.Err() != nil {
 				// The wait ended first: the mint is still in flight.
 				continue
 			}
