@@ -65,7 +65,8 @@ peer, exists partly for the same reason (see
 
 | Tag | What changed |
 |---|---|
-| v0.33.11 | Documentation only. Do not pin: its TypeScript package still says 0.33.10, so no release was published for it; pin v0.33.10. |
+| v0.33.12 | Documentation only (the 2026-11-07 audit); the TypeScript package carries the same version. |
+| v0.33.11 | Documentation only. Do not pin: its TypeScript package still says 0.33.10, so no release was published for it; pin v0.33.12. |
 | v0.33.10 | Go `producer`: a fee take that waits for a funding tree minted ahead, which the leg then refuses, is paid with the coin the refused mint put back. Before, the refusal ended the wait and the take failed with no spendable output. The TypeScript package changes only its version. |
 | v0.33.9 | Go `carrier`: a carrier is signed over its one output where it lies, with no copy of the payload, and `pushdrop.Derivation.LockOne` builds the lock without copying a large field; same bytes. |
 | v0.33.8 | Go `chaintoken`: `ReadWireInPlace`, `ReadWire` with every script pointing into the bytes it was read from rather than copied, for a caller that does not reuse the buffer. |
