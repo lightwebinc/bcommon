@@ -124,3 +124,39 @@ func BenchmarkCarrier4MiB(b *testing.B) {
 		}
 	})
 }
+
+// AppendTx's locking script aliases the returned bytes, with a reserved dst (no growth) and with a dst
+// that has to grow: a byte changed in the bytes changes the script.
+func TestAppendTxAliasesTheReturnedBytes(t *testing.T) {
+	ctx, w, p, funding := onceFixture(t)
+	payload := bytes.Repeat([]byte{7}, 70000)
+	o, err := MintOnce(ctx, w, "test", p, payload[:10], payload[10:60000], payload[60000:], funding, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := []byte("prefix")
+	for name, dst := range map[string][]byte{
+		"reserved": append(make([]byte, 0, len(prefix)+o.Size()), prefix...),
+		"short":    append([]byte{}, prefix...),
+		"nil":      nil,
+	} {
+		before, start := cap(dst), len(dst)
+		got, tx := o.AppendTx(dst)
+		if name == "reserved" && cap(got) != before {
+			t.Fatalf("%s: capacity %d became %d", name, before, cap(got))
+		}
+		raw := got[start:]
+		if len(raw) != o.Size() {
+			t.Fatalf("%s: wrote %d, Size %d", name, len(raw), o.Size())
+		}
+		lock := *tx.Outputs[0].LockingScript
+		at := bytes.Index(raw, lock)
+		if at < 0 || &raw[at] != &lock[0] {
+			t.Fatalf("%s: the locking script does not alias the returned bytes", name)
+		}
+		raw[at+len(lock)/2] ^= 0xff
+		if lock[len(lock)/2] == 7 {
+			t.Fatalf("%s: a change in the bytes did not reach the script", name)
+		}
+	}
+}

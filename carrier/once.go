@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"slices"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/script"
@@ -175,8 +176,10 @@ func (o *Once) Size() int {
 
 // AppendTx appends the carrier's bytes to dst, the payload's body copied once, and returns them with the
 // carrier as a transaction whose locking script aliases those bytes (it is not copied: dst must outlive
-// the transaction and stay unchanged). The transaction is byte for byte Mint's.
+// the transaction and stay unchanged). The transaction is byte for byte Mint's. dst grows at most once,
+// before the first byte is written, so the script aliases the returned bytes whatever capacity dst came with.
 func (o *Once) AppendTx(dst []byte) ([]byte, *transaction.Transaction) {
+	dst = slices.Grow(dst, o.Size())
 	in := o.funding.TxID()
 	dst = binary.LittleEndian.AppendUint32(dst, 1) // version, as transaction.NewTransaction
 	dst = append(dst, 1)
