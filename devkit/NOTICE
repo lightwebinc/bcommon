@@ -107,7 +107,7 @@ This product includes third-party software, distributed under the terms
 of their respective licenses. Each dependency retains its own copyright;
 this notice does not modify those licenses.
 
-  github.com/bsv-blockchain/go-sdk            Open BSV License Version 5, MIT License
+  github.com/bsv-blockchain/go-sdk            Apache License 2.0
   github.com/mrz1836/go-whatsonchain           MIT License
   github.com/pkg/errors                        BSD License
   github.com/stretchr/testify                  MIT License
@@ -119,35 +119,43 @@ repository enforces in CI, and it is why the list is short. The other
 five arrive with go-sdk, whose own packages import them, and a statically
 linked binary contains them whether they were asked for directly or not.
 The list is every module reachable from this library's packages; a binary
-that imports only some of those packages may link fewer. go-sdk's license
-file carries two licenses: its own, and the MIT License under which
-Bitcoin SV 0.1.1, and the software it was based on, were released.
+that imports only some of those packages may link fewer.
 
-© BSV Association,
+go-sdk is under the Apache License 2.0 from v1.7.5, the version this
+library builds on. Earlier versions were under the Open BSV License
+Version 5, whose grant was revocable and limited to the BSV Blockchains;
+those terms do not apply to v1.7.5. A reader carrying this notice to a
+repository pinned below v1.7.5 must check which applies there rather than
+assume.
 
-The attribution line above is reproduced verbatim as the Open BSV License
-Version 5 requires it, for github.com/bsv-blockchain/go-sdk. Note the
-version. The Go go-sdk is under Version 5, which requires that text with
-the comma inside it; the npm @bsv packages are under Version 6, which
-requires it without the comma and narrows the field of use. A reader
-carrying this notice to another repository must check which applies
-there rather than assume.
+Section 4(d) of the Apache License asks that a module's NOTICE travel
+with it. go-sdk ships one, and its attribution notices are these:
 
-Two terms of that license are worth stating in plain words, because they
-do not match the permissive licenses usually found beside it: the grant
-is made on a revocable basis, and the software it covers, together with
-anything derived from it, must only be used on the BSV Blockchains.
-Non-compliance extinguishes the license. Those terms bind the use of that
-dependency, by this library and by anything built with it. They do not
-extend to Lightweb Inc.'s own source, which is Apache-2.0 as stated in
-LICENSE.
+  go-sdk
+  Copyright 2023-2026 BSV Association
+
+  This product includes software from these projects, under their own
+  licenses:
+  - btcd (chainhash, compat, script/interpreter): Copyright (c) 2013-2017
+    The btcsuite developers (ISC)
+  - btcec (primitives/ec): Copyright 2010 The Go Authors, Copyright 2011
+    ThePiachu, Copyright 2013-2014 The btcsuite developers (ISC)
+  - dcrd (chainhash, script/interpreter): Copyright (c) 2015-2018 The
+    Decred developers (ISC)
+  - Bitcoin Core script test data (script/interpreter/data): Copyright
+    (c) 2012-2014 The Bitcoin Core developers (MIT)
+
+go-sdk also ships a PATENTS file, in which BSV Association states that it
+holds no patent rights and undertakes not to assert any against a user of
+the software. It is not reproduced here; it travels with go-sdk's source.
 
 The TypeScript package under ts/ links nothing at runtime beyond its peer
 dependency @bsv/sdk, and it neither bundles nor installs that: whoever
 installs the package installs @bsv/sdk beside it, as their own copy, and
-the obligation of its license belongs to them. That license is the Open
-BSV License Version 6, whose attribution form differs from Version 5's
-above: "© BSV Association" WITHOUT the comma. The package itself carries
+the obligation of its license belongs to them. At the version this
+package names, that license is the Open BSV License Version 6, whose
+attribution is "© BSV Association" and which limits use to the BSV
+Blockchains. The package itself carries
 no third-party code, and ts/LICENSE-THIRD-PARTY, generated from its
 production dependency tree with peers left out, lists nothing.
 
@@ -156,9 +164,9 @@ LICENSE-THIRD-PARTY, which is GENERATED from what the library's packages
 actually link rather than maintained by hand.
 
 Every one of those licenses requires its own text to reach whoever
-receives a binary, not only whoever receives source: Open BSV in
-condition 1, MIT in "all copies or substantial portions", BSD in its
-binary-redistribution clause and Apache-2.0 in section 4. Static linking
+receives a binary, not only whoever receives source: MIT in "all copies
+or substantial portions", BSD in its binary-redistribution clause and
+Apache-2.0 in section 4. Static linking
 discards every one of those files, so LICENSE-THIRD-PARTY must travel
 with any binary built from this library.
 
