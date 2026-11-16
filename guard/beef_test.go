@@ -121,9 +121,10 @@ func TestHostileBEEFIsRefusedBeforeTheSDK(t *testing.T) {
 	}
 }
 
-// The walk allocates nothing on any input, admitted or refused but for the
-// refusal's own error value, so the guard's cost is bounded by the input's
-// length alone.
+// The walk allocates nothing on these inputs, admitted or refused but for
+// the refusal's own error value, so the guard's cost is bounded by the
+// input's length alone. Only a BEEF whose ancestry must be counted is
+// walked into a table (TestAncestryCountAllocatesOnlyWhenItCanMatter).
 func TestCheckBEEFAllocatesNothing(t *testing.T) {
 	for _, c := range readBEEFVector(t).Cases {
 		b := unhex(t, c.BeefHex)

@@ -588,10 +588,15 @@ Where the library applies it:
 Beyond the bytes, every walk of `guard` holds what it admits to
 `guard.DefaultLimits` (100,000 transactions and 100,000 BUMPs a BEEF,
 100,000 inputs and 100,000 outputs a transaction, a script of 16 MiB, a
-BUMP of 8 MiB), which bound the work a well-formed object can ask of its
-reader after the parse; `CheckBEEFWithin`, `ParseBEEFWithin`,
-`ParseTransactionWithin` and `ParseBUMPWithin` take a caller's `Limits`
-instead. Fuzz targets cover each walk (`FuzzCheckBEEF`,
+BUMP of 8 MiB, an ancestry of 2^20 steps), which bound the work a
+well-formed object can ask of its reader after the parse. The last is
+not a count of anything in the bytes: a walk that visits a transaction
+once for every path leading to it, as go-sdk's does, takes 2^n steps
+over n transactions that each spend two outputs of the one before, so a
+few kilobytes could hold a reader for hours. The count is made only for
+a BEEF in which a transaction without a proof has more than one input.
+`CheckBEEFWithin`, `ParseBEEFWithin`, `ParseTransactionWithin` and
+`ParseBUMPWithin` take a caller's `Limits` instead. Fuzz targets cover each walk (`FuzzCheckBEEF`,
 `FuzzCheckBEEFWithin`, `FuzzParseTransaction`, `FuzzParseBUMP`,
 `FuzzRawTransaction`), and `TestNoUnguardedParse` fails when a package
 outside `guard` calls one of go-sdk's readers of transactions, BEEF or
