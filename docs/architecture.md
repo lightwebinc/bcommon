@@ -588,13 +588,15 @@ Where the library applies it:
 Beyond the bytes, every walk of `guard` holds what it admits to
 `guard.DefaultLimits` (100,000 transactions and 100,000 BUMPs a BEEF,
 100,000 inputs and 100,000 outputs a transaction, a script of 16 MiB, a
-BUMP of 8 MiB, an ancestry of 2^20 steps), which bound the work a
-well-formed object can ask of its reader after the parse. The last is
-not a count of anything in the bytes: a walk that visits a transaction
-once for every path leading to it, as go-sdk's does, takes 2^n steps
-over n transactions that each spend two outputs of the one before, so a
-few kilobytes could hold a reader for hours. The count is made only for
-a BEEF in which a transaction without a proof has more than one input.
+BUMP of 8 MiB), which bound the work a well-formed object can ask of its
+reader after the parse. One more limit is the caller's to set:
+`Limits.Ancestry` bounds a transaction's ancestry counted by paths, the
+work of a walk that visits a transaction once for every path leading to
+it. go-sdk walked that way before v1.7.3, when n transactions that each
+spend two outputs of the one before cost 2^n steps; at this module's pin
+it visits each transaction once, so `DefaultLimits` sets none. Inside a
+transaction a count written wider than its value needs is refused, as a
+node refuses it, so a transaction has one id.
 `CheckBEEFWithin`, `ParseBEEFWithin`, `ParseTransactionWithin` and
 `ParseBUMPWithin` take a caller's `Limits` instead. Fuzz targets cover each walk (`FuzzCheckBEEF`,
 `FuzzCheckBEEFWithin`, `FuzzParseTransaction`, `FuzzParseBUMP`,

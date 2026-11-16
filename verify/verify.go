@@ -93,6 +93,12 @@ func Check(ctx context.Context, tx *transaction.Transaction, tracker chaintracke
 	switch {
 	case err == nil && ok:
 		return Passed, nil
+	case ctx.Err() != nil, errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		// The check was cut off, not failed: no verdict.
+		if err == nil {
+			err = ctx.Err()
+		}
+		return Transport, err
 	case err == nil:
 		return ScriptRefused, errors.New("not verified")
 	case errors.Is(err, spv.ErrInvalidMerklePath):
