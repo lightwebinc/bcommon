@@ -290,6 +290,17 @@ func TestCheck(t *testing.T) {
 		}
 		return tx
 	}
+	// The same carrier, its parent's proof swapped for the proof of another
+	// transaction: a path that does not lead from the transaction it is
+	// attached to. And one that claims a proof of its own, which a carrier
+	// never has.
+	other := f.mint(f.w2, payload(f.id2, 5), 0)
+	borrowed := parse(f.bare(good))
+	parent := *good.Inputs[0].SourceTransaction
+	parent.MerklePath = other.Inputs[0].SourceTransaction.MerklePath
+	borrowed.Inputs[0].SourceTransaction = &parent
+	selfProven := parse(f.bare(good))
+	selfProven.MerklePath = good.Inputs[0].SourceTransaction.MerklePath
 	down := &downTracker{}
 	for _, c := range []struct {
 		name    string
@@ -302,6 +313,9 @@ func TestCheck(t *testing.T) {
 		{"the parent's root is unknown", good, &goldentest.Tracker{Roots: map[uint32]string{}}, verify.ProofRefused, spv.ErrInvalidMerklePath},
 		{"the input does not unlock", stolen, f.tracker, verify.ScriptRefused, spv.ErrScriptVerificationFailed},
 		{"the parent is not in the answer", parse(f.bare(good)), f.tracker, verify.AncestryMissing, spv.ErrMissingSourceTransaction},
+		{"the parent's proof is another transaction's", borrowed, f.tracker, verify.ProofRefused, spv.ErrInvalidMerklePath},
+		{"a proof that does not lead from the transaction", selfProven, f.tracker, verify.ProofRefused, spv.ErrInvalidMerklePath},
+		{"a forged proof with the header source down is still a refusal", borrowed, &downTracker{}, verify.ProofRefused, spv.ErrInvalidMerklePath},
 		{"the header source is down", good, down, verify.Transport, nil},
 		{"no header source", good, nil, verify.Transport, verify.ErrNoTracker},
 	} {
