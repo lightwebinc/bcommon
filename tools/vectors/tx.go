@@ -11,7 +11,6 @@ import (
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
@@ -639,7 +638,7 @@ func transactions() (*txVector, *txParts, error) {
 	all := append([]*transaction.Transaction{tree}, carriers...)
 	all = append(all, create, update, payment, selfPaid, withFee)
 	for _, tx := range all {
-		ok, err := spv.Verify(ctx, tx, tracker, nil)
+		ok, err := overlaySPV(ctx, tx, tracker)
 		if err != nil || !ok {
 			return nil, nil, fmt.Errorf("%s does not verify: ok=%v err=%v", tx.TxID(), ok, err)
 		}

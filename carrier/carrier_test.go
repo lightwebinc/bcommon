@@ -10,14 +10,15 @@ import (
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
+	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
 	"github.com/bsv-blockchain/go-sdk/wallet"
 
 	"github.com/lightwebinc/bcommon/carrier"
 	"github.com/lightwebinc/bcommon/goldentest"
 	"github.com/lightwebinc/bcommon/mint"
 	"github.com/lightwebinc/bcommon/pushdrop"
+	"github.com/lightwebinc/bcommon/verify"
 )
 
 // A derivation, tag and payload format that belong to no application, so
@@ -135,7 +136,7 @@ func (f *fixture) spv(tx *transaction.Transaction) bool {
 	for _, in := range tx.Inputs {
 		in.SourceTransaction = f.funding
 	}
-	ok, err := spv.Verify(f.ctx, tx, f.tracker, nil)
+	ok, err := overlaySPV(f.ctx, tx, f.tracker)
 	if err != nil {
 		f.t.Fatalf("spv: %v", err)
 	}
@@ -687,4 +688,12 @@ func TestSweepAt(t *testing.T) {
 	if _, err := carrier.SweepAt(f.ctx, f.w, originator, params(), f.funding, []uint32{0, 1}, nil, 0, nil, change, capped); !errors.Is(err, mint.ErrFeeTooHigh) {
 		t.Fatalf("a fee above Max: %v", err)
 	}
+}
+
+// overlaySPV is SPV as an overlay reader runs it (verify.Check): proofs
+// against the tracker, scripts and amounts, and no finality rule, since a
+// carrier is not final by design and go-sdk's spv.Verify refuses one.
+func overlaySPV(ctx context.Context, tx *transaction.Transaction, tracker chaintracker.ChainTracker) (bool, error) {
+	k, err := verify.Check(ctx, tx, tracker)
+	return k == verify.Passed, err
 }

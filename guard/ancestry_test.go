@@ -71,10 +71,14 @@ func atomic(subject *transaction.Transaction, beef []byte) []byte {
 
 func inOrder(i int) int { return i }
 
+// pathLimit is a caller's path-count limit, as DefaultLimits carried while
+// go-sdk walked an ancestry once per path.
+var pathLimit = Limits{Ancestry: 1 << 20}
+
 // A few kilobytes of transactions, each spending two outputs of the one
-// before, ask whoever walks their ancestry for 2^n steps. The count of
-// transactions does not bound that; Limits.Ancestry does, in every BEEF
-// form and whatever order the transactions are written in.
+// before, ask a walk that keeps no record of what it visited for 2^n steps.
+// The count of transactions does not bound that; Limits.Ancestry does, in
+// every BEEF form and whatever order the transactions are written in.
 func TestAncestryIsBounded(t *testing.T) {
 	txs := chain(64, 2)
 	last := len(txs) - 1
@@ -95,16 +99,21 @@ func TestAncestryIsBounded(t *testing.T) {
 			t.Fatalf("%s: %d bytes is not a small input", name, len(b))
 		}
 		start := time.Now()
-		_, _, _, err := ParseBEEF(b, DefaultBound)
+		err := CheckBEEFWithin(b, DefaultBound, pathLimit)
 		if !errors.Is(err, ErrBEEF) || !strings.Contains(err.Error(), "ancestry") {
 			t.Fatalf("%s: %v, want the ancestry refusal", name, err)
 		}
 		if el := time.Since(start); el > time.Second {
 			t.Fatalf("%s: refused after %s", name, el)
 		}
-		// With no limit the walk admits it, as before.
-		if err := CheckBEEFWithin(b, DefaultBound, Limits{}); err != nil {
-			t.Fatalf("%s without a limit: %v", name, err)
+		// The default sets no path limit: go-sdk at the pin walks each
+		// transaction once, so the graph is admitted and parses at once.
+		start = time.Now()
+		if _, _, _, err := ParseBEEF(b, DefaultBound); err != nil {
+			t.Fatalf("%s under the default limits: %v", name, err)
+		}
+		if el := time.Since(start); el > time.Second {
+			t.Fatalf("%s: the SDK took %s to parse it", name, el)
 		}
 	}
 }
@@ -218,8 +227,8 @@ func TestRepeatedTransactionIsRefused(t *testing.T) {
 	}
 	b = append(append(b, subject.Bytes()...), 0)
 	start := time.Now()
-	_, _, _, err := ParseBEEF(b, DefaultBound)
-	if !errors.Is(err, ErrBEEF) {
+	err := CheckBEEFWithin(b, DefaultBound, pathLimit)
+	if !errors.Is(err, ErrBEEF) || !strings.Contains(err.Error(), "twice") {
 		t.Fatalf("%v, want the guard's refusal", err)
 	}
 	if el := time.Since(start); el > time.Second {

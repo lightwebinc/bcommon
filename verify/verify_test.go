@@ -336,3 +336,32 @@ func TestCheck(t *testing.T) {
 		t.Error("the down header source was never asked")
 	}
 }
+
+// cancelling is a tracker that holds every root and cancels the caller's
+// context as it answers, so the proofs pass and the scripts are checked
+// under a context that is already done.
+type cancelling struct {
+	chaintracker.ChainTracker
+	cancel context.CancelFunc
+}
+
+func (c cancelling) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash, height uint32) (bool, error) {
+	ok, err := c.ChainTracker.IsValidRootForHeight(ctx, root, height)
+	c.cancel()
+	return ok, err
+}
+
+// A check that was cut off is no verdict. It must never read as the
+// transaction refused.
+func TestCheckCancelledIsNoVerdict(t *testing.T) {
+	f := newFixture(t)
+	good := f.mint(f.w1, payload(f.id1, 5), 0)
+	ctx, cancel := context.WithCancel(f.ctx)
+	k, err := verify.Check(ctx, good, cancelling{f.tracker, cancel})
+	if k != verify.Transport || !errors.Is(err, context.Canceled) {
+		t.Fatalf("verdict %d (%v), want no verdict and context.Canceled", k, err)
+	}
+	if k, err := verify.Check(f.ctx, good, f.tracker); k != verify.Passed {
+		t.Fatalf("the same carrier under a live context: %d (%v)", k, err)
+	}
+}

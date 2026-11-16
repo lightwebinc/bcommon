@@ -28,31 +28,38 @@ in [NOTICE](../NOTICE), with their licenses, and their full texts are in
 `LICENSE-THIRD-PARTY`, which `make licences-update` regenerates from what the
 packages actually link and `make licences` checks is current.
 
-## Why go-sdk is pinned at exactly v1.7.1
-
-go-sdk releases below v1.5.0 size a slice from a count the input declares
-while parsing a merkle path, so a few hostile bytes can ask for an allocation
-that ends the process with an out-of-memory no `recover` sees. v1.5.2 bounds
-those counts against the bytes present, and so does v1.7.1. The `guard` package walks every
-BUMP, BEEF and raw transaction the library parses before the SDK sees it,
-bounding each count by the bytes present, so the library's own protection
-does not rest on the pin; the floor is the SDK's.
+## Why go-sdk is pinned at exactly v1.7.5
 
 The pin is exact rather than a minimum because minimal version selection
 takes the higher of two requirements. A raised pin here would silently change
 the go-sdk that every application pinning bcommon builds with, including the
 derivation, script and transaction encodings its records depend on.
 
-v1.7.1 is also the floor for the BRC-103 handshake: it sends the requested
-certificate set in the wire shape (`certifiers` and `types`), which
-TypeScript peers on `@bsv/sdk` 2.8 and later require, where releases below
-it sent Go's field names and those peers refused the handshake. v1.7.1
-still reads the old names, so a peer on an older go-sdk keeps working with
-it in both directions.
+What the pin has to clear, and what the library does itself whatever the
+pin:
 
-v1.7.1 still accepts a compressed public key whose x is at or above the
-field prime. `guard.ParsePubKey` stays in front of every key from the wire
-whatever the pin.
+| Concern | In go-sdk | In this library |
+| --- | --- | --- |
+| A merkle path's declared counts sized an allocation | bounded from v1.5.2 | `guard` walks every BUMP, BEEF and raw transaction before the SDK sees it |
+| A BEEF's ancestry was walked once per path, so a few kilobytes held a reader for hours | walked once per transaction from v1.7.3 | `guard.Limits.Ancestry` is there for a caller whose own walker is of the old kind; `DefaultLimits` sets none |
+| The BRC-103 handshake sent Go's field names, which TypeScript peers on `@bsv/sdk` 2.8 and later refuse | the wire shape from v1.7.1, which still reads the old names | |
+| A compressed public key whose x is at or above the field prime was accepted | accepted through v1.7.1 | `guard.ParsePubKey` is in front of every key from the wire |
+
+## What moving from v1.7.1 to v1.7.5 changed
+
+Three things changed for a reader of this library's objects. No derivation,
+signature or encoding changed: every transaction vector is byte for byte
+what v1.7.1 produced.
+
+| Change in go-sdk | From | Effect here |
+| --- | --- | --- |
+| `spv.Verify` refuses an unmined transaction that is not final, a coinbase spent before 100 blocks, and several shapes a node does not mine | v1.7.2 | A carrier is not final by design. `verify.Check` therefore runs SPV from the SDK's parts with no finality rule (every proof against the tracker, then `spv.VerifyScripts`). Payments still go through `spv.Verify` and gain the stricter rules |
+| The script interpreter refuses a high-S signature and an unlocking script that is not push-only, in a version 1 transaction | after v1.7.1 | Three cases of `unlocking-v1.json` are now `scriptValid: false`. `carrier.CheckUnlocking` refused them before and still does |
+| The license is Apache-2.0, with a NOTICE and a PATENTS file | v1.7.5 | [NOTICE](../NOTICE) carries go-sdk's attribution; the Open BSV License's terms no longer apply to it |
+
+A test that builds a parent by hand, with no inputs, marks it as mined with
+`goldentest.Proven`: the SDK now refuses an unmined transaction without
+inputs.
 
 ## Raising the pin
 

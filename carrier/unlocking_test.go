@@ -13,7 +13,6 @@ import (
 
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
 	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
 	"github.com/lightwebinc/bcommon/carrier"
@@ -109,7 +108,7 @@ func TestUnlockingIndependentVector(t *testing.T) {
 			for _, in := range tx.Inputs {
 				in.SourceTransaction = c.tree
 			}
-			ok, err := spv.Verify(c.ctx, tx, c.tracker, nil)
+			ok, err := overlaySPV(c.ctx, tx, c.tracker)
 			if valid := ok && err == nil; valid != tc.ScriptValid {
 				t.Fatalf("the interpreter says %v (%v), the vector %v", valid, err, tc.ScriptValid)
 			}

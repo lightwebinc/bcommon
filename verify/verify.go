@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
@@ -40,10 +41,10 @@ type Step struct {
 // quietly trust someone else's.
 var ErrNoTracker = errors.New("verify: no chain tracker; refusing to verify against a default")
 
-// Verdict classifies what spv.Verify reported. The SDK reports a proof the
-// tracker rejected, a failing script and a missing ancestor all as errors,
-// and a tracker that could not answer as an error too; only the last is a
-// reason to stop without a verdict, so they are told apart here.
+// Verdict classifies a verification. A proof the tracker rejected, a
+// failing script and a missing ancestor are refusals; a tracker that could
+// not answer is no verdict, and only that is a reason to stop without one,
+// so they are told apart here.
 type Verdict int
 
 const (
@@ -64,32 +65,85 @@ const (
 )
 
 // Check runs SPV over tx against the tracker and says which way it went.
-// The error carries the SDK's detail for every verdict but Passed.
+// The error carries the detail for every verdict but Passed.
+//
+// It is the overlay plane's SPV, not a node's: a transaction that is not
+// final is admitted. A carrier is not final by design (a lock time in 2100
+// and a non-final input keep it off the chain), and from v1.7.2 go-sdk's
+// spv.Verify refuses every such transaction as a node would refuse to mine
+// it. So Check does the two halves of SPV itself, from the SDK's parts:
+// every proof reached is verified against the tracker, and then the SDK
+// checks every unmined transaction's scripts, amounts and shape
+// (spv.VerifyScripts), which leaves finality and the maturity of coinbase
+// and confiscation outputs out. A payment, which must be mineable, is not
+// verified here: its readers call spv.Verify.
 func Check(ctx context.Context, tx *transaction.Transaction, tracker chaintracker.ChainTracker) (Verdict, error) {
 	if tracker == nil {
 		return Transport, ErrNoTracker
 	}
 	// A proof that does not lead from the transaction it is attached to is
-	// refused here, by arithmetic. The SDK reports it as a plain error,
-	// which would read below as a tracker that could not answer.
+	// refused here, by arithmetic, so that what the tracker is asked below
+	// can fail only because the tracker could not answer.
 	if err := pathsLead(tx); err != nil {
 		return ProofRefused, err
 	}
-	ok, err := spv.Verify(ctx, tx, tracker, nil)
+	if k, err := proofsHold(ctx, tx, tracker); k != Passed {
+		return k, err
+	}
+	ok, err := spv.VerifyScripts(ctx, tx)
 	switch {
 	case err == nil && ok:
 		return Passed, nil
+	case ctx.Err() != nil, errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
+		// The check was cut off, not failed: no verdict.
+		if err == nil {
+			err = ctx.Err()
+		}
+		return Transport, err
 	case err == nil:
-		return ProofRefused, errors.New("not verified")
+		return ScriptRefused, errors.New("not verified")
 	case errors.Is(err, spv.ErrInvalidMerklePath):
 		return ProofRefused, err
-	case errors.Is(err, spv.ErrScriptVerificationFailed):
-		return ScriptRefused, err
 	case errors.Is(err, spv.ErrMissingSourceTransaction):
 		return AncestryMissing, err
 	default:
-		return Transport, err
+		// No tracker is asked in this half, so every other error is the
+		// transaction's own: a script, an amount, a shape no node takes.
+		return ScriptRefused, err
 	}
+}
+
+// proofsHold asks the tracker about every Merkle path SPV rests on, tx's
+// own or its ancestors' down to the first proof on each line.
+func proofsHold(ctx context.Context, tx *transaction.Transaction, tracker chaintracker.ChainTracker) (Verdict, error) {
+	// Transactions proven in one block rest on one root, and a header
+	// source is often a request away, so it is asked about a root once.
+	tracker = &askedOnce{t: tracker, roots: map[rootAt]bool{}}
+	seen := map[*transaction.Transaction]bool{}
+	var walk func(t *transaction.Transaction) (Verdict, error)
+	walk = func(t *transaction.Transaction) (Verdict, error) {
+		if t == nil || seen[t] {
+			return Passed, nil
+		}
+		seen[t] = true
+		if t.MerklePath != nil {
+			ok, err := t.MerklePath.Verify(ctx, t.TxID(), tracker)
+			if err != nil {
+				return Transport, err
+			}
+			if !ok {
+				return ProofRefused, fmt.Errorf("%w for transaction %s", spv.ErrInvalidMerklePath, t.TxID())
+			}
+			return Passed, nil
+		}
+		for _, in := range t.Inputs {
+			if k, err := walk(in.SourceTransaction); k != Passed {
+				return k, err
+			}
+		}
+		return Passed, nil
+	}
+	return walk(tx)
 }
 
 // pathsLead checks every Merkle path SPV would rest on, tx's own or its
@@ -118,4 +172,35 @@ func pathsLead(tx *transaction.Transaction) error {
 		return nil
 	}
 	return walk(tx)
+}
+
+// askedOnce remembers what a tracker answered for a root at a height, for
+// one Check. An error is not remembered: it ends the check.
+type askedOnce struct {
+	t     chaintracker.ChainTracker
+	roots map[rootAt]bool
+}
+
+type rootAt struct {
+	root   chainhash.Hash
+	height uint32
+}
+
+func (a *askedOnce) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash, height uint32) (bool, error) {
+	if root == nil {
+		return a.t.IsValidRootForHeight(ctx, root, height)
+	}
+	k := rootAt{*root, height}
+	if ok, asked := a.roots[k]; asked {
+		return ok, nil
+	}
+	ok, err := a.t.IsValidRootForHeight(ctx, root, height)
+	if err == nil {
+		a.roots[k] = ok
+	}
+	return ok, err
+}
+
+func (a *askedOnce) CurrentHeight(ctx context.Context) (uint32, error) {
+	return a.t.CurrentHeight(ctx)
 }

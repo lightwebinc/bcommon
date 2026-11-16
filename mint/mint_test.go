@@ -49,12 +49,12 @@ func parties(t *testing.T) (holder, payer party) {
 	return newParty(t, 0x07), newParty(t, 0x42)
 }
 
-// coin is a parent with one output of sats locked to p. It has no inputs, so
-// script verification stops at it; each value gives a distinct txid.
+// coin is a parent with one output of sats locked to p. It carries a proof,
+// so script verification stops at it; each value gives a distinct txid.
 func (p party) coin(sats uint64) mint.Input {
 	tx := transaction.NewTransaction()
 	tx.AddOutput(&transaction.TransactionOutput{Satoshis: sats, LockingScript: p.lock})
-	return mint.Input{Tx: tx, Vout: 0, Unlocker: p.unlock}
+	return mint.Input{Tx: goldentest.Proven(tx, 800), Vout: 0, Unlocker: p.unlock}
 }
 
 // paid is what tx leaves to the fee: its inputs' values minus its outputs'.

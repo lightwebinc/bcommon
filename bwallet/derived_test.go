@@ -12,6 +12,7 @@ import (
 	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 
+	"github.com/lightwebinc/bcommon/goldentest"
 	"github.com/lightwebinc/bcommon/guard"
 )
 
@@ -59,6 +60,7 @@ func TestPaymentRoundTrip(t *testing.T) {
 	// The payment, then a spend of it by the recipient.
 	pay := transaction.NewTransaction()
 	pay.AddOutput(&transaction.TransactionOutput{Satoshis: 5000, LockingScript: dest})
+	goldentest.Proven(pay, 800)
 	spend := transaction.NewTransaction()
 	spend.AddInputFromTx(pay, 0, recipient.DerivedUnlocker(d))
 	back, _ := recipient.FundScript()

@@ -12,7 +12,6 @@ import (
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/template/p2pkh"
 	"github.com/bsv-blockchain/go-sdk/wallet"
@@ -163,7 +162,7 @@ func (c *vectorChain) script(t *testing.T, s string) *script.Script {
 // verifies runs SPV on tx through the vector's proven ancestry.
 func (c *vectorChain) verifies(t *testing.T, name string, tx *transaction.Transaction) {
 	t.Helper()
-	ok, err := spv.Verify(c.ctx, tx, c.tracker, nil)
+	ok, err := overlaySPV(c.ctx, tx, c.tracker)
 	if err != nil || !ok {
 		t.Errorf("%s does not verify: ok=%v err=%v", name, ok, err)
 	}
