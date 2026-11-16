@@ -145,6 +145,25 @@ with it. go-sdk ships one, and its attribution notices are these:
   - Bitcoin Core script test data (script/interpreter/data): Copyright
     (c) 2012-2014 The Bitcoin Core developers (MIT)
 
+go-sdk names those projects and ships no copy of the ISC License they
+are under, so LICENSE-THIRD-PARTY, which is generated from the license
+files modules ship, holds none. The ISC License asks that its copyright
+notice and its permission notice appear in all copies. The copyright
+notices are the ones go-sdk states, above. The permission notice, as
+btcd and dcrd publish it, is:
+
+  Permission to use, copy, modify, and distribute this software for any
+  purpose with or without fee is hereby granted, provided that the above
+  copyright notice and this permission notice appear in all copies.
+
+  THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+  WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+  MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+  ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+  WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+  ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+  OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 go-sdk also ships a PATENTS file, in which BSV Association states that it
 holds no patent rights and undertakes not to assert any against a user of
 the software. It is not reproduced here; it travels with go-sdk's source.
@@ -159,15 +178,18 @@ Blockchains. The package itself carries
 no third-party code, and ts/LICENSE-THIRD-PARTY, generated from its
 production dependency tree with peers left out, lists nothing.
 
-The full text of every license above is reproduced verbatim in
+The full text of every module's license above is reproduced verbatim in
 LICENSE-THIRD-PARTY, which is GENERATED from what the library's packages
-actually link rather than maintained by hand.
+actually link rather than maintained by hand. The ISC License, which no
+module ships, is reproduced in this notice instead.
 
 Every one of those licenses requires its own text to reach whoever
 receives a binary, not only whoever receives source: MIT in "all copies
-or substantial portions", BSD in its binary-redistribution clause and
-Apache-2.0 in section 4. Static linking
-discards every one of those files, so LICENSE-THIRD-PARTY must travel
-with any binary built from this library.
+or substantial portions", BSD in its binary-redistribution clause,
+Apache-2.0 in section 4 and ISC in "all copies". Static linking discards
+every one of those files, so both LICENSE-THIRD-PARTY and this NOTICE
+must travel with any binary built from this library: the first holds
+the modules' license texts, and this notice holds the ISC notices and
+the attribution notices Apache-2.0 asks for.
 
 =========================================================================
