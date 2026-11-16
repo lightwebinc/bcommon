@@ -8,7 +8,6 @@ import (
 	"math/big"
 
 	"github.com/bsv-blockchain/go-sdk/script"
-	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 )
 
@@ -223,7 +222,7 @@ func unlockingRow(parts *txParts, name string, accept bool, tx *transaction.Tran
 	for _, in := range check.Inputs {
 		in.SourceTransaction = parts.tree
 	}
-	ok, err := spv.Verify(context.Background(), check, parts.tracker, nil)
+	ok, err := overlaySPV(context.Background(), check, parts.tracker)
 	return unlockingCase{Name: name, Accept: accept, ScriptValid: ok && err == nil,
 		UnlockingHex: hex.EncodeToString(*tx.Inputs[0].UnlockingScript), Txid: tx.TxID().String(), TxHex: tx.Hex()}, nil
 }

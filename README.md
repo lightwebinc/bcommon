@@ -191,7 +191,7 @@ in-process test chain.
 ## Requirements
 
 Go 1.27.2 or later, and github.com/bsv-blockchain/go-sdk pinned at exactly
-v1.7.1, the library's only direct dependency. See
+v1.7.5, the library's only direct dependency. See
 [docs/dependencies.md](docs/dependencies.md). The TypeScript package needs
 Node 24 and `@bsv/sdk` 2.7.1 exactly, as a peer; `make ts-test` builds and
 tests it, and nothing in the Go build needs Node.

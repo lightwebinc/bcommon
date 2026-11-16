@@ -5,10 +5,12 @@
 //
 // A carrier is kept off the chain by BRC-60's device turned the other way
 // round: a far-future nLockTime with a non-final input makes it unmineable in
-// practice, while SPV still verifies it through its funding parent. Nothing in
-// the SDK's verification path reads finality (verified at v1.5.2 and v1.7.1), so a host
-// admits it like any other object; the topic manager is what refuses one that
-// could reach the chain.
+// practice, while SPV still verifies it through its funding parent. That SPV
+// is the overlay plane's, verify.Check, which has no finality rule: from
+// v1.7.2 go-sdk's spv.Verify refuses a transaction that is not final, as a
+// node refuses to mine it, so a reader that called it would refuse every
+// carrier. A host admits a carrier like any other object; the topic manager
+// is what refuses one that could reach the chain.
 //
 // The carrier is funded from a funding tree whose outputs are PushDrop [tag]
 // with no signature under the same derivation, so the derivation's one

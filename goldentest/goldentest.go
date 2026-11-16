@@ -61,6 +61,18 @@ func Tx(t testing.TB, s string) *transaction.Transaction {
 	return tx
 }
 
+// Proven gives tx a proof of its own, a block of that one transaction at
+// height, and returns it. A fixture parent built by hand has no inputs, and
+// from v1.7.2 go-sdk's SPV refuses an unmined transaction without any, so a
+// test marks the parent as mined and verification stops at it, as it does
+// at any proven transaction. Its root is the transaction's own id, which a
+// Tracker is given when a test proves against one.
+func Proven(tx *transaction.Transaction, height uint32) *transaction.Transaction {
+	isTxid := true
+	tx.MerklePath = transaction.NewMerklePath(height, [][]*transaction.PathElement{{{Offset: 0, Hash: tx.TxID(), Txid: &isTxid}}})
+	return tx
+}
+
 // Tracker is a chain tracker that knows exactly the roots it was given, so a
 // test proves a BUMP against a root it chose rather than against anything
 // live. Any other height, and a nil root, answers (false, nil), as a header
