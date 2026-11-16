@@ -72,6 +72,11 @@ type cursor struct {
 	b   []byte
 	pos int
 	lim Limits
+	// prevs, when set, collects the offset of each input's previous
+	// transaction id as tx walks it.
+	prevs *[]int
+	// nIn is the input count of the transaction tx walked last.
+	nIn uint64
 }
 
 func (c *cursor) remaining() int { return len(c.b) - c.pos }

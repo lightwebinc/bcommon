@@ -28,6 +28,15 @@ type Limits struct {
 	Script int
 	// BUMPBytes is the longest one BUMP's encoding, in bytes.
 	BUMPBytes int
+	// Ancestry is the most steps a walk of one transaction's ancestry
+	// takes when it visits a transaction once for every path that leads to
+	// it, as the SDK's does (Transaction.BEEF, and ParseBeef of a bare V1
+	// BEEF): one step for a transaction with a proof, and for one without,
+	// one step and its parents' steps. A transaction that spends two
+	// outputs of its parent doubles the count, so thirty such transactions
+	// in a row, a few kilobytes, ask for a billion steps. The count of
+	// transactions does not bound it; this does.
+	Ancestry int
 }
 
 // DefaultLimits are the limits every walk without its own applies. Each is
@@ -43,6 +52,7 @@ func DefaultLimits() Limits {
 		Outputs:      100_000,
 		Script:       16 << 20,
 		BUMPBytes:    8 << 20,
+		Ancestry:     1 << 20,
 	}
 }
 

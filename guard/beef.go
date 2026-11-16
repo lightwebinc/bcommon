@@ -1,6 +1,7 @@
 package guard
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -57,8 +58,11 @@ const (
 // anything whose declared counts or lengths overrun the bytes present or
 // that leaves bytes over. It admits BEEF V1 (BRC-62), BEEF V2 (BRC-96) with
 // its txid-only entries, and Atomic BEEF (BRC-95) around either, and
-// allocates nothing. After it returns nil no count in the BEEF can ask the
-// SDK for more than the bytes hold.
+// allocates nothing, unless a transaction with no proof has more than one
+// input: only such a BEEF can exceed Limits.Ancestry, and it is walked a
+// second time into a table of its transactions. After it returns nil no count in the BEEF can ask the SDK
+// for more than the bytes hold, and no transaction's ancestry for more
+// steps than Limits.Ancestry.
 //
 // It is a structural check, not a second parser: whether the transactions
 // are valid, the proofs prove them and an Atomic BEEF holds its subject are
@@ -138,8 +142,31 @@ func parseTransaction(b []byte, bound int, l Limits) (tx *transaction.Transactio
 	return transaction.NewTransactionFromBytes(b)
 }
 
-// beef walks a V1 or V2 BEEF, not another Atomic wrapper.
+// beef walks a V1 or V2 BEEF, not another Atomic wrapper. The ancestry is
+// counted only when it can exceed the number of transactions: while every
+// transaction without a proof has one input, each has one line of
+// ancestors and a walk visits no transaction twice.
 func (c *cursor) beef() error {
+	start := c.pos
+	branches, err := c.beefWalk(false)
+	if err != nil || !branches || c.lim.Ancestry <= 0 {
+		return err
+	}
+	c.pos = start
+	_, err = c.beefWalk(true)
+	return err
+}
+
+// beefWalk is one walk of a BEEF. It reports whether a transaction without
+// a proof has more than one input, and with count set it counts the
+// ancestry.
+func (c *cursor) beefWalk(count bool) (bool, error) {
+	branches := false
+	err := c.beefBody(count, &branches)
+	return branches, err
+}
+
+func (c *cursor) beefBody(count bool, branches *bool) error {
 	v, err := c.uint32LE()
 	if err != nil {
 		return err
@@ -183,6 +210,15 @@ func (c *cursor) beef() error {
 	if over(nTx, c.lim.Transactions) {
 		return limitErr("transactions", nTx, c.lim.Transactions)
 	}
+	// For the count, each transaction's id, whether it has a proof, and
+	// where its inputs' previous ids lie are kept. The table is made only
+	// then, so a walk that does not count allocates nothing.
+	var anc *ancTable
+	if count {
+		anc = &ancTable{}
+		c.prevs = &anc.prevs
+		defer func() { c.prevs = nil }()
+	}
 	bumpIndex := func(i uint64) error {
 		idx, err := c.varInt()
 		if err != nil {
@@ -195,9 +231,11 @@ func (c *cursor) beef() error {
 	}
 	for i := uint64(0); i < nTx; i++ {
 		if v == beefV1 {
+			start, from := c.pos, anc.mark()
 			if err := c.tx(); err != nil {
 				return fmt.Errorf("transaction %d: %w", i, err)
 			}
+			end, nIn := c.pos, c.nIn
 			has, err := c.byteAt()
 			if err != nil {
 				return err
@@ -211,6 +249,10 @@ func (c *cursor) beef() error {
 			default:
 				return fmt.Errorf("transaction %d has-BUMP byte %d", i, has)
 			}
+			if has == 0 && nIn > 1 {
+				*branches = true
+			}
+			anc.add(c.b[start:end], has == 1, from)
 			continue
 		}
 		format, err := c.byteAt()
@@ -227,12 +269,117 @@ func (c *cursor) beef() error {
 			if err := c.skip(32); err != nil {
 				return err
 			}
+			// Known to the reader, so a walk stops at it as at a proof.
+			anc.known(c.b[c.pos-32 : c.pos])
 			continue
 		default:
 			return fmt.Errorf("transaction %d data format %d", i, format)
 		}
+		start, from := c.pos, anc.mark()
 		if err := c.tx(); err != nil {
 			return fmt.Errorf("transaction %d: %w", i, err)
+		}
+		if format == formatRawTx && c.nIn > 1 {
+			*branches = true
+		}
+		anc.add(c.b[start:c.pos], format == formatRawTxBump, from)
+	}
+	if anc != nil {
+		return c.ancestry(anc.entries, anc.prevs)
+	}
+	return nil
+}
+
+// ancTable is what the ancestry count keeps of a BEEF. Its methods do
+// nothing on a nil table, which is a walk that does not count.
+type ancTable struct {
+	entries []ancEntry
+	prevs   []int
+}
+
+// mark is where the next transaction's inputs begin in prevs.
+func (a *ancTable) mark() int {
+	if a == nil {
+		return 0
+	}
+	return len(a.prevs)
+}
+
+// add records a transaction from its raw bytes.
+func (a *ancTable) add(raw []byte, proven bool, from int) {
+	if a == nil {
+		return
+	}
+	first := sha256.Sum256(raw)
+	a.entries = append(a.entries, ancEntry{txid: sha256.Sum256(first[:]), proven: proven, from: from, to: len(a.prevs)})
+}
+
+// known records a txid-only entry.
+func (a *ancTable) known(txid []byte) {
+	if a == nil {
+		return
+	}
+	e := ancEntry{proven: true, from: len(a.prevs), to: len(a.prevs)}
+	copy(e.txid[:], txid)
+	a.entries = append(a.entries, e)
+}
+
+// ancEntry is one transaction of a BEEF for the ancestry count: its id,
+// whether a walk stops at it, and its inputs' previous ids as offsets
+// prevs[from:to] into the BEEF.
+type ancEntry struct {
+	txid     [32]byte
+	proven   bool
+	from, to int
+}
+
+// ancestry refuses a BEEF holding a transaction whose ancestry takes more
+// than Limits.Ancestry steps to walk (see Limits.Ancestry). The count does
+// not depend on the order the transactions are written in.
+func (c *cursor) ancestry(entries []ancEntry, prevs []int) error {
+	limit := uint64(c.lim.Ancestry) //nolint:gosec // positive, checked by the caller
+	index := make(map[[32]byte]int, len(entries))
+	for i := range entries {
+		index[entries[i].txid] = i
+	}
+	const unknown, open = 0, ^uint64(0)
+	steps := make([]uint64, len(entries))
+	var walk func(i int) uint64
+	walk = func(i int) uint64 {
+		switch steps[i] {
+		case unknown:
+		case open:
+			// A transaction among its own ancestors: no hash allows it, and
+			// counting it once more ends the walk.
+			return 1
+		default:
+			return steps[i]
+		}
+		e := &entries[i]
+		if e.proven {
+			steps[i] = 1
+			return 1
+		}
+		steps[i] = open
+		n := uint64(1)
+		for _, at := range prevs[e.from:e.to] {
+			var prev [32]byte
+			copy(prev[:], c.b[at:at+32])
+			if j, ok := index[prev]; ok {
+				n += walk(j)
+			}
+			if n > limit {
+				// Saturated: more than the limit is all a caller asks.
+				n = limit + 1
+				break
+			}
+		}
+		steps[i] = n
+		return n
+	}
+	for i := range entries {
+		if walk(i) > limit {
+			return fmt.Errorf("transaction %d has an ancestry of more than %d steps to walk", i, limit)
 		}
 	}
 	return nil
@@ -251,6 +398,7 @@ func (c *cursor) tx() error {
 	if nIn == 0 {
 		return errors.New("no inputs")
 	}
+	c.nIn = nIn
 	if !c.fits(nIn, minInputBytes) {
 		return fmt.Errorf("declares %d inputs, %d bytes remain", nIn, c.remaining())
 	}
@@ -260,6 +408,9 @@ func (c *cursor) tx() error {
 	for i := uint64(0); i < nIn; i++ {
 		if err := c.skip(32 + 4); err != nil { // outpoint
 			return err
+		}
+		if c.prevs != nil {
+			*c.prevs = append(*c.prevs, c.pos-36)
 		}
 		l, err := c.script()
 		if err != nil {
