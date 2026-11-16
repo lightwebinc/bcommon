@@ -75,8 +75,9 @@ type cursor struct {
 	// prevs, when set, collects the offset of each input's previous
 	// transaction id as tx walks it.
 	prevs *[]int
-	// nIn is the input count of the transaction tx walked last.
-	nIn uint64
+	// nIn is the input count of the transaction tx walked last, and nTx
+	// the transaction count of the BEEF walked last.
+	nIn, nTx uint64
 }
 
 func (c *cursor) remaining() int { return len(c.b) - c.pos }
@@ -148,6 +149,25 @@ func (c *cursor) varInt() (uint64, error) {
 	default:
 		return uint64(p), nil
 	}
+}
+
+// compact reads a VarInt inside a transaction and refuses one written wider
+// than its value needs, as a node's ReadCompactSize does. A transaction's id
+// is the hash of its bytes, and the SDK computes it from the transaction
+// written again in the one canonical form, so a count written wide would
+// give the same transaction two ids: the one its bytes hash to, and the one
+// the SDK binds its spenders by.
+func (c *cursor) compact() (uint64, error) {
+	at := c.pos
+	v, err := c.varInt()
+	if err != nil {
+		return 0, err
+	}
+	switch width := c.pos - at; {
+	case width == 3 && v < 0xFD, width == 5 && v <= 0xFFFF, width == 9 && v <= 0xFFFFFFFF:
+		return 0, fmt.Errorf("the count %d is not written in its shortest form", v)
+	}
+	return v, nil
 }
 
 // fits reports whether n items of at least each bytes could be encoded in

@@ -149,8 +149,13 @@ func parseTransaction(b []byte, bound int, l Limits) (tx *transaction.Transactio
 func (c *cursor) beef() error {
 	start := c.pos
 	branches, err := c.beefWalk(false)
-	if err != nil || !branches || c.lim.Ancestry <= 0 {
+	if err != nil || c.lim.Ancestry <= 0 {
 		return err
+	}
+	// Without a branch no ancestry is longer than the transactions there
+	// are, so the count is needed only when those alone could exceed it.
+	if !branches && c.nTx <= uint64(c.lim.Ancestry) {
+		return nil
 	}
 	c.pos = start
 	_, err = c.beefWalk(true)
@@ -207,6 +212,7 @@ func (c *cursor) beefBody(count bool, branches *bool) error {
 	if nTx == 0 {
 		return errors.New("no transactions")
 	}
+	c.nTx = nTx
 	if over(nTx, c.lim.Transactions) {
 		return limitErr("transactions", nTx, c.lim.Transactions)
 	}
@@ -340,6 +346,12 @@ func (c *cursor) ancestry(entries []ancEntry, prevs []int) error {
 	limit := uint64(c.lim.Ancestry) //nolint:gosec // positive, checked by the caller
 	index := make(map[[32]byte]int, len(entries))
 	for i := range entries {
+		// A transaction written twice would be counted as one of its
+		// copies and walked as the other, so it is refused: no writer has
+		// a reason to repeat one.
+		if _, twice := index[entries[i].txid]; twice {
+			return fmt.Errorf("transaction %d is in the BEEF twice", i)
+		}
 		index[entries[i].txid] = i
 	}
 	const unknown, open = 0, ^uint64(0)
@@ -391,7 +403,7 @@ func (c *cursor) tx() error {
 		return errTruncated
 	}
 	c.pos += 4 // version
-	nIn, err := c.varInt()
+	nIn, err := c.compact()
 	if err != nil {
 		return err
 	}
@@ -423,7 +435,7 @@ func (c *cursor) tx() error {
 			return err
 		}
 	}
-	nOut, err := c.varInt()
+	nOut, err := c.compact()
 	if err != nil {
 		return err
 	}
@@ -451,7 +463,7 @@ func (c *cursor) tx() error {
 // script reads a script's length and holds it to the Script limit; the
 // caller still bounds it by the bytes present.
 func (c *cursor) script() (uint64, error) {
-	l, err := c.varInt()
+	l, err := c.compact()
 	if err != nil {
 		return 0, err
 	}

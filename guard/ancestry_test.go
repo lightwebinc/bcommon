@@ -148,3 +148,81 @@ func TestAncestryCountAllocatesOnlyWhenItCanMatter(t *testing.T) {
 		t.Fatalf("%v allocations for a line of transactions", n)
 	}
 }
+
+// A caller's small limit holds for a line of transactions too, which has no
+// branch to count.
+func TestAncestrySmallLimitOnALine(t *testing.T) {
+	b := encode(beefV2, chain(2, 1), inOrder) // three steps to walk the tip
+	if err := CheckBEEFWithin(b, DefaultBound, Limits{Ancestry: 3}); err != nil {
+		t.Fatalf("three steps under a limit of three: %v", err)
+	}
+	if err := CheckBEEFWithin(b, DefaultBound, Limits{Ancestry: 2}); !errors.Is(err, ErrBEEF) {
+		t.Fatalf("three steps under a limit of two: %v", err)
+	}
+}
+
+// wideCount rewrites a transaction's input count, one byte at offset 4, in the
+// three-byte form. The SDK reads it and names the transaction by its
+// canonical bytes, so the bytes here hash to another id.
+func wideCount(raw []byte) []byte {
+	out := append([]byte{}, raw[:4]...)
+	out = append(out, 0xFD, raw[4], 0x00)
+	return append(out, raw[5:]...)
+}
+
+// A count written wider than its value needs gives a transaction two ids,
+// and a count made over one of them misses the other. It is refused, in a
+// BEEF and alone.
+func TestWideCountsAreRefused(t *testing.T) {
+	txs := chain(64, 2)
+	b := binary.LittleEndian.AppendUint32(nil, beefV1)
+	b = append(b, 1)
+	b = append(b, txs[0].MerklePath.Bytes()...)
+	b = append(b, util.VarInt(uint64(len(txs))).Bytes()...)
+	b = append(append(b, txs[0].Bytes()...), 1, 0)
+	for _, tx := range txs[1:] {
+		b = append(append(b, wideCount(tx.Bytes())...), 0)
+	}
+	_, _, _, err := ParseBEEF(b, DefaultBound)
+	if !errors.Is(err, ErrBEEF) || !strings.Contains(err.Error(), "shortest form") {
+		t.Fatalf("a BEEF of wide counts: %v", err)
+	}
+	if _, err := ParseTransaction(wideCount(txs[1].Bytes()), DefaultBound); !errors.Is(err, ErrTransaction) {
+		t.Fatalf("a transaction with a wide count: %v", err)
+	}
+	if _, err := ParseTransaction(txs[1].Bytes(), DefaultBound); err != nil {
+		t.Fatalf("the same transaction written canonically: %v", err)
+	}
+}
+
+// A transaction written twice could be counted as one copy and walked as
+// the other: the branching chain, then its transactions again marked as
+// proven, then a subject spending the tip.
+func TestRepeatedTransactionIsRefused(t *testing.T) {
+	txs := chain(64, 2)
+	tip := txs[len(txs)-1]
+	subject := transaction.NewTransaction()
+	subject.AddInput(&transaction.TransactionInput{SourceTXID: tip.TxID(), UnlockingScript: &script.Script{}})
+	subject.AddOutput(tip.Outputs[0])
+
+	b := binary.LittleEndian.AppendUint32(nil, beefV1)
+	b = append(b, 1)
+	b = append(b, txs[0].MerklePath.Bytes()...)
+	b = append(b, util.VarInt(uint64(2*len(txs))).Bytes()...)
+	b = append(append(b, txs[0].Bytes()...), 1, 0)
+	for _, tx := range txs[1:] {
+		b = append(append(b, tx.Bytes()...), 0)
+	}
+	for _, tx := range txs[1:] {
+		b = append(append(b, tx.Bytes()...), 1, 0)
+	}
+	b = append(append(b, subject.Bytes()...), 0)
+	start := time.Now()
+	_, _, _, err := ParseBEEF(b, DefaultBound)
+	if !errors.Is(err, ErrBEEF) {
+		t.Fatalf("%v, want the guard's refusal", err)
+	}
+	if el := time.Since(start); el > time.Second {
+		t.Fatalf("refused after %s", el)
+	}
+}
