@@ -15,6 +15,7 @@ package verify
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
@@ -68,6 +69,12 @@ func Check(ctx context.Context, tx *transaction.Transaction, tracker chaintracke
 	if tracker == nil {
 		return Transport, ErrNoTracker
 	}
+	// A proof that does not lead from the transaction it is attached to is
+	// refused here, by arithmetic. The SDK reports it as a plain error,
+	// which would read below as a tracker that could not answer.
+	if err := pathsLead(tx); err != nil {
+		return ProofRefused, err
+	}
 	ok, err := spv.Verify(ctx, tx, tracker, nil)
 	switch {
 	case err == nil && ok:
@@ -83,4 +90,32 @@ func Check(ctx context.Context, tx *transaction.Transaction, tracker chaintracke
 	default:
 		return Transport, err
 	}
+}
+
+// pathsLead checks every Merkle path SPV would rest on, tx's own or its
+// ancestors' down to the first proof on each line: each must lead from the
+// transaction it is attached to up to a root. Whether that root is the
+// chain's is the tracker's to say.
+func pathsLead(tx *transaction.Transaction) error {
+	seen := map[*transaction.Transaction]bool{}
+	var walk func(t *transaction.Transaction) error
+	walk = func(t *transaction.Transaction) error {
+		if t == nil || seen[t] {
+			return nil
+		}
+		seen[t] = true
+		if t.MerklePath != nil {
+			if _, err := t.MerklePath.ComputeRoot(t.TxID()); err != nil {
+				return fmt.Errorf("%w: the proof attached to %s does not lead from it: %v", spv.ErrInvalidMerklePath, t.TxID(), err)
+			}
+			return nil
+		}
+		for _, in := range t.Inputs {
+			if err := walk(in.SourceTransaction); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return walk(tx)
 }
