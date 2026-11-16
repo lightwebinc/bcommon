@@ -185,9 +185,11 @@ module ships, is reproduced in this notice instead.
 
 Every one of those licenses requires its own text to reach whoever
 receives a binary, not only whoever receives source: MIT in "all copies
-or substantial portions", BSD in its binary-redistribution clause and
-Apache-2.0 in section 4. Static linking
-discards every one of those files, so LICENSE-THIRD-PARTY must travel
-with any binary built from this library.
+or substantial portions", BSD in its binary-redistribution clause,
+Apache-2.0 in section 4 and ISC in "all copies". Static linking discards
+every one of those files, so both LICENSE-THIRD-PARTY and this NOTICE
+must travel with any binary built from this library: the first holds
+the modules' license texts, and this notice holds the ISC notices and
+the attribution notices Apache-2.0 asks for.
 
 =========================================================================
