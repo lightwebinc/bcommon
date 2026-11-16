@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bsv-blockchain/go-sdk/chainhash"
 	"github.com/bsv-blockchain/go-sdk/spv"
 	"github.com/bsv-blockchain/go-sdk/transaction"
 	"github.com/bsv-blockchain/go-sdk/transaction/chaintracker"
@@ -115,6 +116,9 @@ func Check(ctx context.Context, tx *transaction.Transaction, tracker chaintracke
 // proofsHold asks the tracker about every Merkle path SPV rests on, tx's
 // own or its ancestors' down to the first proof on each line.
 func proofsHold(ctx context.Context, tx *transaction.Transaction, tracker chaintracker.ChainTracker) (Verdict, error) {
+	// Transactions proven in one block rest on one root, and a header
+	// source is often a request away, so it is asked about a root once.
+	tracker = &askedOnce{t: tracker, roots: map[rootAt]bool{}}
 	seen := map[*transaction.Transaction]bool{}
 	var walk func(t *transaction.Transaction) (Verdict, error)
 	walk = func(t *transaction.Transaction) (Verdict, error) {
@@ -168,4 +172,35 @@ func pathsLead(tx *transaction.Transaction) error {
 		return nil
 	}
 	return walk(tx)
+}
+
+// askedOnce remembers what a tracker answered for a root at a height, for
+// one Check. An error is not remembered: it ends the check.
+type askedOnce struct {
+	t     chaintracker.ChainTracker
+	roots map[rootAt]bool
+}
+
+type rootAt struct {
+	root   chainhash.Hash
+	height uint32
+}
+
+func (a *askedOnce) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash, height uint32) (bool, error) {
+	if root == nil {
+		return a.t.IsValidRootForHeight(ctx, root, height)
+	}
+	k := rootAt{*root, height}
+	if ok, asked := a.roots[k]; asked {
+		return ok, nil
+	}
+	ok, err := a.t.IsValidRootForHeight(ctx, root, height)
+	if err == nil {
+		a.roots[k] = ok
+	}
+	return ok, err
+}
+
+func (a *askedOnce) CurrentHeight(ctx context.Context) (uint32, error) {
+	return a.t.CurrentHeight(ctx)
 }
