@@ -88,6 +88,7 @@ beside the standard library and, where noted, go-sdk.
 Every edge inside the module:
 
 ```text
+  termsroute ▶ acceptance, guard, module, nodeapi, payee, publish
   payeecmd ──▶ payee
   payee    ──▶ purse, guard, termsafe
   purse    ──▶ producer, bwallet, chainview, funding, guard, mint, nodeapi,
@@ -124,7 +125,7 @@ needs no SDK. `keyed` and `testchain` stand on go-sdk alone: the stand-in
 chain serves the wire formats the clients read without importing a client,
 so a test of a client is a test against something it shares no code with.
 `TestLayers` holds `record`, `keyed`, `chaintoken`, `chainview`, `acceptance`,
-`testchain`, `sanitize`, `payee`, `payeecmd`, `unicast`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
+`testchain`, `sanitize`, `payee`, `payeecmd`, `unicast`, `heldpay`, `resolve`, `commit`, `chirp` and `feepolicy` to these edges, tests included.
 `hostset` repeats `resolve`'s same-origin redirect rule rather than importing
 it, so that neither package depends on the other. `headers` speaks the
 overlay bridge's header API over HTTP and imports nothing from the bridge.
@@ -230,7 +231,10 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   zero fee. It also owns the funding-output lock (`<key> OP_CHECKSIG <tag>
   OP_DROP`), its decode, the kill-switch `Sweep`, and `Validate`, whose check
   order is part of the contract: the payload's rules, then unmineability,
-  then the lock derivation, then the signature. `Decode` and
+  then the canonical unlocking script, then the lock derivation, then the
+  signature. `MintOnce` signs the carrier `Mint` signs from a payload given
+  in parts, and `Once.AppendTx` writes it into the caller's buffer with
+  the body copied once. `Decode` and
   `DecodeFunding` take a lock only in its canonical encoding, and `Validate`
   parses the identity key with `guard.ParsePubKey`.
 
@@ -488,7 +492,12 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
 - **`verify`** owns the refusal vocabulary (`Code`), the SPV verdict on one
   transaction (`Check`) and the carrier check every reader runs
   (`VerifyCarrier`). It refuses a nil chain tracker rather than let the SDK
-  dial a public service in its place.
+  dial a public service in its place. `Check` is the overlay plane's SPV,
+  with no finality rule, since a carrier is not final by design: every
+  proof it reaches is verified against the tracker, and then go-sdk's
+  `spv.VerifyScripts` checks the unmined transactions' scripts, amounts and
+  shape. A payment, which must be mineable, is checked with go-sdk's
+  `spv.Verify` by the packages that take one.
 - **`guard`** owns the checks on bytes someone else supplied before the SDK
   allocates for them or trusts them: a structural walk of a BRC-74 BUMP, a
   BEEF and a raw transaction, each bounding every declared count and length
@@ -602,7 +611,7 @@ node refuses it, so a transaction has one id.
 `FuzzCheckBEEFWithin`, `FuzzParseTransaction`, `FuzzParseBUMP`,
 `FuzzRawTransaction`), and `TestNoUnguardedParse` fails when a package
 outside `guard` calls one of go-sdk's readers of transactions, BEEF or
-BUMPs, except at the two calls it lists with their reasons and in the test
+BUMPs, except at the three calls it lists with their reasons and in the test
 helpers `testchain` and `goldentest`.
 
 After parsing, a reader checks what an answer is before believing what it

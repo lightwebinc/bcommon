@@ -43,7 +43,7 @@ pin:
 | A merkle path's declared counts sized an allocation | bounded from v1.5.2 | `guard` walks every BUMP, BEEF and raw transaction before the SDK sees it |
 | A BEEF's ancestry was walked once per path, so a few kilobytes held a reader for hours | walked once per transaction from v1.7.3 | `guard.Limits.Ancestry` is there for a caller whose own walker is of the old kind; `DefaultLimits` sets none |
 | The BRC-103 handshake sent Go's field names, which TypeScript peers on `@bsv/sdk` 2.8 and later refuse | the wire shape from v1.7.1, which still reads the old names | |
-| A compressed public key whose x is at or above the field prime was accepted | accepted through v1.7.1 | `guard.ParsePubKey` is in front of every key from the wire |
+| A compressed public key whose x is at or above the field prime was accepted | accepted through v1.7.5 | `guard.ParsePubKey` is in front of every key from the wire |
 
 ## What moving from v1.7.1 to v1.7.5 changed
 

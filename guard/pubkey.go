@@ -21,7 +21,7 @@ var fieldPrime, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffff
 // 0x02 or 0x03, and an x coordinate below the field prime that names a point
 // on the curve. Only then is the key handed to the SDK.
 //
-// go-sdk v1.5.2 to v1.7.1 accept a compressed key whose x is at or above
+// go-sdk v1.5.2 to v1.7.5 accept a compressed key whose x is at or above
 // the prime (02 || p+1 is an alias of the point with x = 1), keep x
 // unreduced and write the alias bytes back, so one point has two encodings and IsEqual
 // calls them two keys. No private key is known for such a key, so it cannot

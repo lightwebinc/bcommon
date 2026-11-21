@@ -92,8 +92,15 @@ bool, err error)`: `(false, _)` skips an output, `(true, nil)` takes it, and
 
 `carrier.Mint(ctx, w, originator, p, payload, funding, vout)` spends output
 `vout` of the funding tree; output 0 carries the whole input value, so the
-fee is zero. `carrier.Sweep(ctx, w, originator, p, tree, vouts, fee,
-feeVout, feeUnlocker, change, feeRate, floor)` is the kill switch: with a nil
+fee is zero. `carrier.MintOnce(ctx, w, originator, p, head, body, tail,
+funding, vout)` signs the same carrier for the payload `head || body ||
+tail`, which must be two bytes or more, without joining the parts; they stay
+unchanged until `Once.AppendTx(dst)` writes the carrier's bytes into `dst`,
+the body copied once. The transaction it returns points into those bytes,
+so `dst` stays unchanged while the transaction is used, and `TxIDAt` hashes
+them in place for its txid: pass it only the carrier's bytes, the returned
+slice from the length `dst` had before the call. `carrier.Sweep(ctx, w, originator, p, tree,
+vouts, fee, feeVout, feeUnlocker, change, feeRate, floor)` is the kill switch: with a nil
 `fee` the fee comes out of the tombstone, otherwise from `fee` with the
 remainder to `change`.
 
@@ -1124,6 +1131,20 @@ bound on the input's size, in bytes; a bound of zero or less admits nothing.
 whole lookup answer, and `purse.Check` passes it for a payment.
 `chaintoken.ReadWire` passes the host's own BEEF bound. `ParsePubKey` and
 `ParsePubKeyHex` take no setting.
+
+Beyond the bytes, every walk holds what it admits to `guard.Limits`;
+`CheckBEEFWithin`, `ParseBEEFWithin`, `ParseTransactionWithin` and
+`ParseBUMPWithin` take a caller's in place of `DefaultLimits()`. A zero
+field sets no limit beyond the bytes.
+
+| Field | `DefaultLimits()` | |
+|---|---|---|
+| `Transactions` | 100,000 | transactions in one BEEF, txid-only entries included |
+| `BUMPs` | 100,000 | BUMPs in one BEEF |
+| `Inputs`, `Outputs` | 100,000 each | inputs and outputs of one transaction |
+| `Script` | 16 MiB | the longest unlocking or locking script, and an Extended Format input's previous locking script |
+| `BUMPBytes` | 8 MiB | the longest one BUMP's encoding; the only field `ParseBUMPWithin` applies |
+| `Ancestry` | none | a transaction's ancestry counted by paths, for a caller that hands what it parsed to a walker that visits a transaction once per path. A BEEF whose ancestry is counted (one in which an unproven transaction has more than one input, or that holds more transactions than the limit) is also refused when it holds one transaction twice |
 
 ## Terminal text: `termsafe`
 
