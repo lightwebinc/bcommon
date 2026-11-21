@@ -98,7 +98,8 @@ tail`, which must be two bytes or more, without joining the parts; they stay
 unchanged until `Once.AppendTx(dst)` writes the carrier's bytes into `dst`,
 the body copied once. The transaction it returns points into those bytes,
 so `dst` stays unchanged while the transaction is used, and `TxIDAt` hashes
-them in place for its txid. `carrier.Sweep(ctx, w, originator, p, tree,
+them in place for its txid: pass it only the carrier's bytes, the returned
+slice from the length `dst` had before the call. `carrier.Sweep(ctx, w, originator, p, tree,
 vouts, fee, feeVout, feeUnlocker, change, feeRate, floor)` is the kill switch: with a nil
 `fee` the fee comes out of the tombstone, otherwise from `fee` with the
 remainder to `change`.

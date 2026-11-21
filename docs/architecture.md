@@ -233,8 +233,8 @@ GOWORK=off go list -f '{{$p := .ImportPath}}{{range .Imports}}{{$p}} {{.}}{{"\n"
   order is part of the contract: the payload's rules, then unmineability,
   then the canonical unlocking script, then the lock derivation, then the
   signature. `MintOnce` signs the carrier `Mint` signs from a payload given
-  in parts, and writes it into the caller's buffer with the body copied
-  once. `Decode` and
+  in parts, and `Once.AppendTx` writes it into the caller's buffer with
+  the body copied once. `Decode` and
   `DecodeFunding` take a lock only in its canonical encoding, and `Validate`
   parses the identity key with `guard.ParsePubKey`.
 
