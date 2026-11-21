@@ -88,6 +88,12 @@ jobs:
   # moves the bytes on one side and not the other fails here.
   ts:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24 is the major the reference overlay host runs; 26 is the newest
+        # one package.json's engines (>=24 <27) admits.
+        node: ["24", "26"]
     defaults:
       run:
         working-directory: ts
@@ -97,9 +103,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          # The runtime major the overlay host runs, which package.json also
-          # pins. Testing on anything else tests a host nobody deploys.
-          node-version: "26"
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: ts/package-lock.json
       - run: npm ci
