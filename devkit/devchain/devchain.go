@@ -263,6 +263,16 @@ func (j *journaled) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	for k, v := range rec.Header() {
 		w.Header()[k] = v
 	}
+	// The reply can echo the request (the chain names a method it does not
+	// know), so it is served as JSON when the chain answered JSON and as
+	// plain text otherwise, never sniffed: a browser never renders it as a
+	// page.
+	if strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json") {
+		w.Header().Set("Content-Type", "application/json")
+	} else {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(rec.Code)
 	_, _ = w.Write(rec.Body.Bytes())
 }

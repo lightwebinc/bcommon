@@ -63,6 +63,53 @@ func TestTheJournalReplaysTheChain(t *testing.T) {
 	}
 }
 
+// A reply the journal passes on is never served as a page, whatever the
+// handler behind it wrote: JSON stays JSON, anything else is plain text,
+// and neither is sniffed. The chain's reply to a method it does not know
+// names the method, so a request can choose part of what comes back.
+func TestJournaledRepliesAreNeverPages(t *testing.T) {
+	post := func(h http.Handler, body string) *http.Response {
+		t.Helper()
+		srv := httptest.NewServer(h)
+		t.Cleanup(srv.Close)
+		resp, err := http.Post(srv.URL+"/rpc", "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = resp.Body.Close() })
+		return resp
+	}
+	notAPage := func(name string, resp *http.Response, wantType string) {
+		t.Helper()
+		if ct := resp.Header.Get("Content-Type"); ct != wantType || resp.Header.Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("%s: served as %q, X-Content-Type-Options %q", name, ct, resp.Header.Get("X-Content-Type-Options"))
+		}
+	}
+	const page = `<html><script>alert(1)</script></html>`
+
+	// The chain itself: an unknown method is named in a JSON error.
+	j, err := Journaled(testchain.New(700), filepath.Join(t.TempDir(), "journal"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp := post(j, `{"id":1,"method":"`+strings.ReplaceAll(page, `"`, `\"`)+`","params":[]}`)
+	notAPage("an unknown method", resp, "application/json")
+	if b, _ := io.ReadAll(resp.Body); bytes.Contains(b, []byte("<script>")) || !bytes.Contains(b, []byte("not found")) {
+		t.Errorf("the reply carries the method as markup: %s", b)
+	}
+
+	// A handler that echoes what it is sent, with no type of its own.
+	echo := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		_, _ = w.Write(b)
+	})
+	j, err = Journaled(echo, filepath.Join(t.TempDir(), "journal"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notAPage("an echo", post(j, page), "text/plain; charset=utf-8")
+}
+
 func TestCertsVerifyAgainstTheirCA(t *testing.T) {
 	dir := t.TempDir()
 	if err := WriteCerts(dir, "sample", []string{"provider-a", "127.0.0.1"}, io.Discard); err != nil {
