@@ -17,10 +17,13 @@ and nothing in the library imports it:
   of RFC 9162 §2.1.3.2 before it is written.
 - Transactions are built with go-sdk's primitives and its P2PKH and PushDrop
   templates, called directly. Before it is written, every transaction in
-  `transactions-v1.json` but the stand-in coin passes go-sdk's SPV check:
-  its scripts run, and its ancestry proves against the two stand-in blocks
-  the generator builds. The unlocking cases record go-sdk's SPV verdict
-  instead of requiring a pass, since most of them are meant to fail it.
+  `transactions-v1.json` but the stand-in coin passes SPV as an overlay
+  reader runs it, written from go-sdk's parts: its ancestry proves against
+  the two stand-in blocks the generator builds, and go-sdk's
+  `spv.VerifyScripts` runs its scripts. There is no finality rule, since
+  go-sdk's `spv.Verify` refuses every carrier. The unlocking cases record
+  that check's verdict instead of requiring a pass, since most of them are
+  meant to fail it.
 - The BEEF, public-key, PushDrop and chain-token cases are built from the
   transaction family's bytes, by hand where a case breaks one thing. The
   chain-token family's blocks are merkle trees the generator computes

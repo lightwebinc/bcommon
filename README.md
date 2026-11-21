@@ -75,7 +75,7 @@ same vectors as the Go packages. It has three entry points:
 
 | Entry point | What it provides |
 |---|---|
-| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, the writer (funding lock, carrier and self-paying sweep through a BRC-100 wallet), WhatsOnChain as a node view (who spent an output, a proof, a raw transaction), and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host, and `HeaderTracker` (block headers over a header source's native routes, every answer bounded) |
+| `@lightwebinc/bcommon` | Deterministic CBOR, the record reader, store refs entries, the reader's BRC-42 derivation, PushDrop reading and field signatures, the funding decode, the carrier check, the BEEF a mined token is admitted in, byte-leaf RFC 6962 roots and compact paths, the CHIRP codec and closure check, the renderer filter, the writer (funding lock, carrier and self-paying sweep through a BRC-100 wallet), WhatsOnChain as a node view (who spent an output, a proof, a raw transaction), `HeaderTracker` (block headers over a header source's native routes, every answer bounded), and the overlay engine interfaces a module satisfies. It imports nothing but its peer `@bsv/sdk` and nothing from `node:`, so a browser can load it as well as a host |
 | `@lightwebinc/bcommon/host` | For Node: what an overlay host module runs beside the engine when it answers questions itself. The terms route (`LookupFront`: BRC-104 server side, BRC-105 priced questions, the terms document and price list), its hardening (handshake budgets checked before any signature work, per-session response budgets, replay refusal, bounded sessions), the payee ledger as a host writes and reads it, the Go `payee` package's lines byte for byte, and payment acceptance over arcade and the node, and a module's block headers over a header source's native routes (`HeaderTracker`, `readCapped`) |
 | `@lightwebinc/bcommon/testing` | Test helpers for Node: a counting host, restore rows and storage, BEEF built as the engine builds it, a minter over a test key, and a simulator that calls a lookup service in the engine's order; `TestNetwork` and `serveNetwork` (arcade and the node's asset API in memory and over HTTP, for payment-acceptance tests), and `bundleRefusals` (what a host module's bundle step refuses in esbuild's metafile) |
 
@@ -199,7 +199,7 @@ tests it, and nothing in the Go build needs Node.
 ## Build and test
 
 ```bash
-make verify     # formatting, vet, the dependency rule, licenses, vectors, build, tests
+make verify     # formatting, vet, the dependency rule, licenses, vectors, devkit, build, tests
 make ts-test    # the TypeScript package: type-check, build, tests (Node 24)
 ```
 
