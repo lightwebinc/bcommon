@@ -13,7 +13,8 @@
  * Before anything is parsed the bytes are walked as the Go guard walks
  * them (checkBEEF): every count and length a BEEF declares is held to the
  * bytes present, so nothing it declares can make a parser allocate or loop
- * for more than it holds.
+ * for more than it holds, and every count and length inside a transaction
+ * to its shortest form.
  */
 import { MerklePath, PublicKey, Transaction, Utils, type ChainTracker } from '@bsv/sdk'
 import { strictSignature } from './carrier.js'
@@ -102,6 +103,25 @@ class Cursor {
     return p
   }
 
+  /**
+   * A VarInt inside a transaction, refused when it is written wider than
+   * its value needs, as the Go guard's compact and a node's ReadCompactSize
+   * refuse it. A transaction's id is the hash of its bytes, and the SDK
+   * computes it from the transaction written again in its one canonical
+   * form, so a count written wide would give one transaction two ids. The
+   * BEEF's own counts and a BUMP's numbers are read with varInt, as the Go
+   * guard reads them.
+   */
+  compact(): number {
+    const at = this.pos
+    const v = this.varInt()
+    const width = this.pos - at
+    if ((width === 3 && v < 0xfd) || (width === 5 && v <= 0xffff) || (width === 9 && v <= 0xffffffff)) {
+      throw new BeefRefusal(`the count ${v} is not written in its shortest form`)
+    }
+    return v
+  }
+
   /** Whether n items of at least each bytes could be encoded in what remains. */
   fits(n: number, each: number): boolean {
     return n <= Math.floor(this.remaining / each)
@@ -127,21 +147,21 @@ class Cursor {
   tx(): void {
     if (this.remaining < minTxBytes) throw new BeefRefusal('ends mid-structure')
     this.pos += 4 // version
-    const nIn = this.varInt()
+    const nIn = this.compact()
     if (nIn === 0) throw new BeefRefusal('a transaction of no inputs')
     if (!this.fits(nIn, minInputBytes)) throw new BeefRefusal(`declares ${nIn} inputs, ${this.remaining} bytes remain`)
     for (let i = 0; i < nIn; i++) {
       this.skip(32 + 4) // outpoint
-      const l = this.varInt()
+      const l = this.compact()
       if (l > this.remaining) throw new BeefRefusal(`an input script declares ${l} bytes, ${this.remaining} remain`)
       this.pos += l
       this.skip(4) // sequence
     }
-    const nOut = this.varInt()
+    const nOut = this.compact()
     if (!this.fits(nOut, minOutputBytes)) throw new BeefRefusal(`declares ${nOut} outputs, ${this.remaining} bytes remain`)
     for (let i = 0; i < nOut; i++) {
       this.skip(8) // value
-      const l = this.varInt()
+      const l = this.compact()
       if (l > this.remaining) throw new BeefRefusal(`an output script declares ${l} bytes, ${this.remaining} remain`)
       this.pos += l
     }
@@ -191,7 +211,8 @@ class Cursor {
  * (BRC-96) with its txid-only entries, and Atomic BEEF (BRC-95) around
  * either, and allocates nothing. The twin of the Go guard.CheckBEEF: a
  * structural check, not a parser. It refuses trailing bytes, a BEEF of no
- * transactions and a transaction of no inputs.
+ * transactions, a transaction of no inputs, and a count or script length
+ * inside a transaction written wider than its value needs.
  */
 export function checkBEEF(raw: Uint8Array, bound: number): string | undefined {
   if (raw.length > bound) return `${raw.length} bytes, max ${bound}`
