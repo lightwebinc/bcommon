@@ -63,28 +63,34 @@ func TestTheJournalReplaysTheChain(t *testing.T) {
 	}
 }
 
+// post sends body to h's /rpc through a real server, so the reply's header
+// lines are as a browser receives them.
+func post(t *testing.T, h http.Handler, body string) *http.Response {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	resp, err := http.Post(srv.URL+"/rpc", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	return resp
+}
+
+// notAPage asserts that a reply carries exactly one Content-Type, wantType,
+// and exactly one X-Content-Type-Options, nosniff.
+func notAPage(t *testing.T, name string, resp *http.Response, wantType string) {
+	t.Helper()
+	if ct, xo := resp.Header.Values("Content-Type"), resp.Header.Values("X-Content-Type-Options"); len(ct) != 1 || ct[0] != wantType || len(xo) != 1 || xo[0] != "nosniff" {
+		t.Errorf("%s: served with Content-Type %q and X-Content-Type-Options %q, want %q and nosniff alone", name, ct, xo, wantType)
+	}
+}
+
 // A reply the journal passes on is never served as a page, whatever the
 // handler behind it wrote: JSON stays JSON, anything else is plain text,
 // and neither is sniffed. The chain's reply to a method it does not know
 // names the method, so a request can choose part of what comes back.
 func TestJournaledRepliesAreNeverPages(t *testing.T) {
-	post := func(h http.Handler, body string) *http.Response {
-		t.Helper()
-		srv := httptest.NewServer(h)
-		t.Cleanup(srv.Close)
-		resp, err := http.Post(srv.URL+"/rpc", "application/json", strings.NewReader(body))
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = resp.Body.Close() })
-		return resp
-	}
-	notAPage := func(name string, resp *http.Response, wantType string) {
-		t.Helper()
-		if ct := resp.Header.Get("Content-Type"); ct != wantType || resp.Header.Get("X-Content-Type-Options") != "nosniff" {
-			t.Errorf("%s: served as %q, X-Content-Type-Options %q", name, ct, resp.Header.Get("X-Content-Type-Options"))
-		}
-	}
 	const page = `<html><script>alert(1)</script></html>`
 
 	// The chain itself: an unknown method is named in a JSON error.
@@ -92,8 +98,8 @@ func TestJournaledRepliesAreNeverPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resp := post(j, `{"id":1,"method":"`+strings.ReplaceAll(page, `"`, `\"`)+`","params":[]}`)
-	notAPage("an unknown method", resp, "application/json")
+	resp := post(t, j, `{"id":1,"method":"`+strings.ReplaceAll(page, `"`, `\"`)+`","params":[]}`)
+	notAPage(t, "an unknown method", resp, "application/json")
 	if b, _ := io.ReadAll(resp.Body); bytes.Contains(b, []byte("<script>")) || !bytes.Contains(b, []byte("not found")) {
 		t.Errorf("the reply carries the method as markup: %s", b)
 	}
@@ -107,7 +113,41 @@ func TestJournaledRepliesAreNeverPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notAPage("an echo", post(j, page), "text/plain; charset=utf-8")
+	notAPage(t, "an echo", post(t, j, page), "text/plain; charset=utf-8")
+}
+
+// The type headers a handler sets never reach the reply, under a key in any
+// case: a header map keeps "content-type" apart from "Content-Type", and a
+// browser takes either. The reply is JSON only when every type the handler
+// gave is application/json as a media type, which ignores case and takes no
+// prefix.
+func TestJournaledReplyTypeIsTheJournals(t *testing.T) {
+	for _, c := range []struct {
+		name string
+		set  func(h http.Header)
+		want string
+	}{
+		{"a page under lowercase keys", func(h http.Header) {
+			h["content-type"] = []string{"text/html"}
+			h["x-content-type-options"] = []string{"none"}
+		}, "text/plain; charset=utf-8"},
+		{"JSON and a page under two keys", func(h http.Header) {
+			h.Set("Content-Type", "application/json")
+			h["content-type"] = []string{"text/html"}
+		}, "text/plain; charset=utf-8"},
+		{"JSON in capitals with a parameter", func(h http.Header) { h.Set("Content-Type", "Application/JSON; charset=utf-8") }, "application/json"},
+		{"a type that only starts like JSON", func(h http.Header) { h.Set("Content-Type", "application/jsonx") }, "text/plain; charset=utf-8"},
+	} {
+		h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			c.set(w.Header())
+			_, _ = io.WriteString(w, `{"result":"<html><script>alert(1)</script></html>"}`)
+		})
+		j, err := Journaled(h, filepath.Join(t.TempDir(), "journal"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		notAPage(t, c.name, post(t, j, `{"id":1,"method":"getinfo","params":[]}`), c.want)
+	}
 }
 
 func TestCertsVerifyAgainstTheirCA(t *testing.T) {

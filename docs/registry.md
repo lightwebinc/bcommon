@@ -111,6 +111,7 @@ uses them; what each is for is the application's own.
 | Kind | Value |
 |---|---|
 | Protocol | `[1, "bgateway"]` |
+| Key ids | `flow`, `fund` |
 | Tags | `gw` `0x01`, `gw` `0x04` |
 | Record magic | `gwr` `0x01` |
 | Basket | `bgateway fund` |
@@ -125,6 +126,7 @@ uses them; what each is for is the application's own.
 | Kind | Value |
 |---|---|
 | Protocol | `[2, "pay per flow"]` |
+| Key ids | `<channel id> ...`: derived per channel, each starting with the channel's id |
 | `OP_RETURN` tag | `PPF`, version `0x02` |
 
 ### blogs
@@ -317,6 +319,7 @@ uses them; what each is for is the application's own.
 | Kind | Value |
 |---|---|
 | Protocol | `[1, "bchat"]` |
+| Key ids | `message`, `workspace`, `chain`, `fund` |
 | Tags | `bc` `0x01`, `bc` `0x02` |
 | Record magic | `bcm` `0x01`, `bcw` `0x01`, `bcp` `0x01` |
 | Topics | `tm_bchat_<name>_<suffix>` |

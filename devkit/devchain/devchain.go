@@ -36,6 +36,7 @@ import (
 	"io"
 	"log"
 	"math/big"
+	"mime"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -260,14 +261,31 @@ func (j *journaled) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	for k, v := range rec.Header() {
-		w.Header()[k] = v
-	}
 	// The reply can echo the request (the chain names a method it does not
 	// know), so it is served as JSON when the chain answered JSON and as
 	// plain text otherwise, never sniffed: a browser never renders it as a
-	// page.
-	if strings.HasPrefix(rec.Header().Get("Content-Type"), "application/json") {
+	// page. A header map holds one name under keys in any case
+	// ("content-type" beside "Content-Type"), and a browser reads each, so
+	// the handler's Content-Type and X-Content-Type-Options are not copied
+	// under any key: the two set below are the only ones the reply carries.
+	// It is JSON only when every type the handler gave is, as a media type.
+	types, isJSON := 0, true
+	for k, v := range rec.Header() {
+		switch http.CanonicalHeaderKey(k) {
+		case "Content-Type":
+			for _, t := range v {
+				types++
+				if mt, _, err := mime.ParseMediaType(t); err != nil || mt != "application/json" {
+					isJSON = false
+				}
+			}
+			continue
+		case "X-Content-Type-Options":
+			continue
+		}
+		w.Header()[k] = v
+	}
+	if types > 0 && isJSON {
 		w.Header().Set("Content-Type", "application/json")
 	} else {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
