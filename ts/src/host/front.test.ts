@@ -248,6 +248,62 @@ test('SDK 4 holds an initial nonce to exactly 48 bytes: a 32-byte one is refused
   assert.equal((await shake(r.url, '127.0.0.2')).status, 200)
 })
 
+test('one-time message nonces: a replay is refused, an unknown session is refused not thrown, a claim does not keep a session alive', () => {
+  let now = 1_000
+  const s = new BoundedSessions(10, 60_000, () => now)
+  s.addSession(session('n1', 'k1', now))
+  assert.equal(s.claimMessageNonce('n1', 'a'), true)
+  assert.equal(s.claimMessageNonce('n1', 'a'), false, 'replayed')
+  s.updateSession(session('n1', 'k1', now))
+  assert.equal(s.claimMessageNonce('n1', 'a'), false, 'an update of the session keeps its claims')
+  assert.equal(s.claimMessageNonce('nope', 'a'), false, 'unknown session')
+  now += 59_000
+  assert.equal(s.claimMessageNonce('n1', 'b'), true)
+  now += 2_000
+  assert.equal(s.claimMessageNonce('n1', 'c'), false, 'a claim did not refresh the idle life: the session is gone')
+  assert.equal(s.size, 0)
+  assert.equal(s.claims.messages, 0, 'its claims went with it')
+  s.addSession(session('n1', 'k1', now))
+  assert.equal(s.claimMessageNonce('n1', 'a'), true, 'a new session of that nonce starts clean')
+})
+
+test('message nonce bounds: per session it refuses, over all sessions the least recently used session goes whole', () => {
+  const evicted: string[] = []
+  const s = new BoundedSessions(10, 60_000, () => 1_000, (w) => evicted.push(w), { messageNoncesPerSession: 3, messageNoncesTotal: 5 })
+  s.addSession(session('n1', 'k1'))
+  s.addSession(session('n2', 'k2'))
+  for (const m of ['a', 'b', 'c']) assert.equal(s.claimMessageNonce('n1', m), true)
+  assert.throws(() => s.claimMessageNonce('n1', 'd'), /capacity exhausted/)
+  assert.equal(s.claimMessageNonce('n2', 'a'), true)
+  assert.equal(s.claimMessageNonce('n2', 'b'), true)
+  assert.equal(s.claims.messages, 5)
+  assert.equal(s.claimMessageNonce('n2', 'c'), true, 'at the total, n1 (least recently used) goes whole')
+  assert.equal(s.hasSession('n1'), false)
+  assert.deepEqual(evicted, ['cap'])
+  assert.equal(s.claims.messages, 3)
+  assert.equal(s.claimMessageNonce('n1', 'a'), false, 'its replays are refused, not accepted afresh')
+})
+
+test('initial nonces: a replay is refused inside the life, a claim older than it expires, the bounds hold and the oldest claim goes', () => {
+  let now = 1_000
+  const s = new BoundedSessions(10, 60_000, () => now, undefined, { initialNonces: 4, initialNoncesPerIdentity: 2, initialNonceLifeMs: 10_000 })
+  assert.equal(s.claimInitialRequestNonce('k1', 'a'), true)
+  assert.equal(s.claimInitialRequestNonce('k1', 'a'), false, 'replayed inside the life')
+  assert.equal(s.claimInitialRequestNonce('k2', 'a'), true, 'the same nonce from another identity')
+  now += 10_000
+  assert.equal(s.claimInitialRequestNonce('k1', 'a'), true, 'older than the life: expired')
+  assert.equal(s.claims.initial, 1, 'the expired claims were swept')
+  assert.equal(s.claimInitialRequestNonce('k1', 'b'), true)
+  assert.equal(s.claimInitialRequestNonce('k1', 'c'), true, 'per identity: the oldest of k1 goes')
+  assert.equal(s.claimInitialRequestNonce('k1', 'a'), true, 'k1 a was the oldest and is free again')
+  assert.equal(s.claimInitialRequestNonce('k1', 'c'), false, 'a live claim stays held')
+  now += 1
+  for (const k of ['k3', 'k4', 'k5']) s.claimInitialRequestNonce(k, 'x')
+  assert.equal(s.claims.initial, 4, 'the total holds')
+  assert.equal(s.claimInitialRequestNonce('k5', 'x'), false, 'the newest is kept')
+  assert.equal(s.claimInitialRequestNonce('k3', 'x'), false, 'newer than the evicted one, so kept')
+})
+
 test('a malformed handshake inside the budget is counted failed and costs no signature', async () => {
   const r = await rig()
   assert.equal((await fetch(`${r.url}/.well-known/auth`, post({ messageType: 'general' }))).status, 400)
