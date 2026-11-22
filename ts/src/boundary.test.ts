@@ -179,11 +179,11 @@ test('the package installs nothing: @bsv/sdk is a peer, at the version its tests
   for (const field of ['dependencies', 'optionalDependencies', 'bundleDependencies', 'bundledDependencies']) {
     assert.equal(pkg[field], undefined, `package.json declares ${field}`)
   }
-  assert.deepEqual(pkg.peerDependencies, { '@bsv/sdk': '2.7.1' })
+  assert.deepEqual(pkg.peerDependencies, { '@bsv/sdk': '4.1.2' })
   const dev = pkg.devDependencies as Record<string, string>
-  assert.equal(dev['@bsv/sdk'], '2.7.1', 'the tests must run on the peer version exactly')
+  assert.equal(dev['@bsv/sdk'], '4.1.2', 'the tests must run on the peer version exactly')
   const sdk = JSON.parse(readFileSync(new URL('../node_modules/@bsv/sdk/package.json', root), 'utf8')) as { version: string }
-  assert.equal(sdk.version, '2.7.1', 'the installed @bsv/sdk is not the peer version')
+  assert.equal(sdk.version, '4.1.2', 'the installed @bsv/sdk is not the peer version')
 })
 
 // The exports map names compiled files, and a typo there is invisible until

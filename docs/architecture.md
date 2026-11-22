@@ -752,7 +752,7 @@ evidence (the host's own broadcast, the status read, the node's spend
 view) is gathered by the host with its own clients.
 
 The runtime entry point imports nothing but its peer `@bsv/sdk`, pinned
-exactly at 2.7.1, and nothing from `node:`, so a browser can load it too.
+exactly at 4.1.2, and nothing from `node:`, so a browser can load it too.
 
 ## One set of vectors for both
 

@@ -12,7 +12,7 @@ import { Signature, type PublicKey } from '@bsv/sdk'
  * digest directly, and PublicKey.verify hashes its message once with sha256
  * before verifying. So the raw concatenation is what is passed here, and the
  * digest checked is sha256 of the signed fields, the same one the Go side
- * checks with hash.Sha256. Confirmed against @bsv/sdk 2.7.1's ProtoWallet.js
+ * checks with hash.Sha256. Confirmed against @bsv/sdk 4.1.2's ProtoWallet.js
  * and PublicKey.js rather than assumed.
  */
 export function verifyFieldSignature(key: PublicKey, signed: number[], der: number[]): boolean {

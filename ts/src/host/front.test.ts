@@ -153,6 +153,7 @@ test('one coin pays once: conflicting payments that spend it buy one answer, not
   class OneCoin extends PayingWallet {
     readonly same = this.coin()
     override async createAction(args: CreateActionArgs): Promise<CreateActionResult> {
+      if (args.options?.sendWith !== undefined) return super.createAction(args)
       const tx = await this.pay((args.outputs ?? []).map((o) => ({ satoshis: o.satoshis, lockingScript: o.lockingScript })), this.same)
       return { tx: tx.toAtomicBEEF(), txid: tx.id('hex') }
     }
@@ -207,12 +208,12 @@ test('the terms route keeps at most its bound of sessions; a client whose sessio
 })
 
 /** One BRC-104 initial request, raw, from a fresh identity, sent from localAddress. */
-async function shake(url: string, localAddress: string): Promise<{ status: number; retryAfter?: string }> {
+async function shake(url: string, localAddress: string, nonceBytes = 48): Promise<{ status: number; retryAfter?: string }> {
   const body = JSON.stringify({
     version: '0.1',
     messageType: 'initialRequest',
     identityKey: PrivateKey.fromRandom().toPublicKey().toString(),
-    initialNonce: Utils.toBase64(Random(32)),
+    initialNonce: Utils.toBase64(Random(nonceBytes)),
     requestedCertificates: { certifiers: [], types: {} },
   })
   return await new Promise((resolve, reject) => {
@@ -238,6 +239,13 @@ test('a handshake flood is refused 429 before any signature, per address and the
   const others = await Promise.all(['127.0.0.3', '127.0.0.3', '127.0.0.4', '127.0.0.5'].map((a) => shake(r.url, a)))
   assert.deepEqual(others.map((x) => x.status).sort(), [200, 200, 200, 429])
   assert.equal(r.host.count('example_handshakes_total', { result: 'limited_global' }), 1)
+})
+
+test('SDK 4 holds an initial nonce to exactly 48 bytes: a 32-byte one is refused 401 and costs no signature', async () => {
+  const r = await rig()
+  assert.equal((await shake(r.url, '127.0.0.2', 32)).status, 401)
+  assert.equal(r.signatures(), 0)
+  assert.equal((await shake(r.url, '127.0.0.2')).status, 200)
 })
 
 test('a malformed handshake inside the budget is counted failed and costs no signature', async () => {
