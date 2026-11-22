@@ -16,7 +16,7 @@ a producer wrote, tested against the same vectors as the Go packages.
 but `@bsv/sdk` and nothing from `node:`, and compiles without Node's types,
 so a browser can load it as well as a host. The host and testing entry
 points are for Node. The package declares no dependency of its own; `@bsv/sdk` is a peer
-at exactly 2.7.1. npm installs the peer beside the package when it is
+at exactly 4.1.2. npm installs the peer beside the package when it is
 missing, so a module shares the host's copy only when its bundle keeps
 `@bsv/sdk` external.
 

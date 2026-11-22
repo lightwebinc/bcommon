@@ -74,7 +74,7 @@ byte before tagging.
 ## The TypeScript package
 
 The package under `ts/` has no runtime dependency. Its one peer, `@bsv/sdk`,
-is pinned exactly, at 2.7.1, and the development dependency is the same
+is pinned exactly, at 4.1.2, and the development dependency is the same
 version; the package's boundary test fails if the two differ or if a runtime
 dependency appears. The exact peer holds the TypeScript twins to the SDK
 their bytes were checked against, as the go-sdk pin does for Go. Raising it
