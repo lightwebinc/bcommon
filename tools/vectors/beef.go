@@ -145,6 +145,27 @@ func beefs(v *txVector, parts *txParts) (*beefVector, error) {
 	// A proof with a tree height outside what a block can have.
 	tall := cat(varint(uint64(treeHeight)), []byte{65})
 	flat := cat(varint(uint64(treeHeight)), []byte{0})
+	// widened is one raw transaction with the one-byte count at off written
+	// in the wide form prefix starts (0xfd, 0xfe or 0xff): the same value
+	// in more bytes than it needs, as a node refuses it.
+	widened := func(raw []byte, off int, prefix byte) []byte {
+		if raw[off] >= 0xfd {
+			panic("widened: not a one-byte count")
+		}
+		form := make([]byte, 1+map[byte]int{0xfd: 2, 0xfe: 4, 0xff: 8}[prefix])
+		form[0], form[1] = prefix, raw[off]
+		return cat(raw[:off], form, raw[off+1:])
+	}
+	// outputCount is where a raw transaction's output count is, for one whose
+	// input count and input script lengths are a byte each.
+	outputCount := func(raw []byte) int {
+		pos := 4 + 1
+		for range int(raw[4]) {
+			pos += 36
+			pos += 1 + int(raw[pos]) + 4
+		}
+		return pos
+	}
 
 	cases := []struct {
 		name   string
@@ -177,6 +198,12 @@ func beefs(v *txVector, parts *txParts) (*beefVector, error) {
 		{"one trailing byte", false, cat(atomic, []byte{0})},
 		{"V1 hand-built as go-sdk writes it", true, handV1},
 		{"V2 hand-built, proven parent then carrier", true, v2Of(v2Entry(1, varint(0), treeRaw), v2Entry(0, carrierRaw))},
+		// A count inside a transaction is held to its shortest form; the
+		// BEEF's own counts are not.
+		{"a transaction's input count in three bytes", false, manual([][]byte{bump}, cat(widened(treeRaw, 4, 0xfd), []byte{1}, varint(0)), unproven)},
+		{"an input script length in five bytes", false, manual([][]byte{bump}, proven, cat(widened(carrierRaw, 4+1+36, 0xfe), []byte{0}))},
+		{"an output count in nine bytes", false, manual([][]byte{bump}, proven, cat(widened(carrierRaw, outputCount(carrierRaw), 0xff), []byte{0}))},
+		{"the transaction count in three bytes, outside any transaction", true, cat(versionV1, varint(1), bump, []byte{0xfd, 2, 0}, proven, unproven)},
 	}
 	out := &beefVector{}
 	for _, c := range cases {

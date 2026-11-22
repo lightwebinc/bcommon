@@ -706,7 +706,8 @@ A topic manager that admits a mined token must read the BEEF it was
 submitted in, as declared, because what the BEEF holds is part of the rule.
 `readWire` does that, after the same structural walk the Go guard makes
 (`checkBEEF`): every count and length the bytes declare is held to the
-bytes present before the SDK's readers follow it. The SDK's own readers
+bytes present before the SDK's readers follow it, and every count and
+length inside a transaction to its shortest form. The SDK's own readers
 refuse some paths the Go reader reads and a shape then refuses, a path
 listing one offset twice for one; either way the BEEF is refused as a BEEF,
 and the vectors hold both languages to the same verdict on every case.
