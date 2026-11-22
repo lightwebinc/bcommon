@@ -167,6 +167,21 @@ func beefs(v *txVector, parts *txParts) (*beefVector, error) {
 		return pos
 	}
 
+	// scriptTx is a one-input, one-output transaction whose output script
+	// length is written as the given bytes, followed by n script bytes: the
+	// boundaries compact branches on need a length of each size.
+	scriptTx := func(length []byte, n int) []byte {
+		return cat(le32(1), varint(1), outpoint, varint(0), le32(0), varint(1), make([]byte, 8), length, make([]byte, n), le32(0))
+	}
+	wide := func(prefix byte, v uint64, width int) []byte {
+		b := make([]byte, width)
+		b[0] = prefix
+		for i := 1; i < width; i++ {
+			b[i] = byte(v >> (8 * (i - 1)))
+		}
+		return b
+	}
+
 	cases := []struct {
 		name   string
 		accept bool
@@ -203,6 +218,13 @@ func beefs(v *txVector, parts *txParts) (*beefVector, error) {
 		{"a transaction's input count in three bytes", false, manual([][]byte{bump}, cat(widened(treeRaw, 4, 0xfd), []byte{1}, varint(0)), unproven)},
 		{"an input script length in five bytes", false, manual([][]byte{bump}, proven, cat(widened(carrierRaw, 4+1+36, 0xfe), []byte{0}))},
 		{"an output count in nine bytes", false, manual([][]byte{bump}, proven, cat(widened(carrierRaw, outputCount(carrierRaw), 0xff), []byte{0}))},
+		{"an output script length 0xfc in three bytes", false, v2Of(v2Entry(0, scriptTx(wide(0xfd, 0xfc, 3), 0xfc)))},
+		{"an output script length 0xfd in three bytes", true, v2Of(v2Entry(0, scriptTx(wide(0xfd, 0xfd, 3), 0xfd)))},
+		{"an output script length 0xffff in five bytes", false, v2Of(v2Entry(0, scriptTx(wide(0xfe, 0xffff, 5), 0xffff)))},
+		{"an output script length 0x10000 in five bytes", true, v2Of(v2Entry(0, scriptTx(wide(0xfe, 0x10000, 5), 0x10000)))},
+		// Refused with or without the shortest-form rule (the script is not
+		// there), so it pins the nine-byte branch only by its refusal.
+		{"an output script length 0xffffffff in nine bytes", false, v2Of(v2Entry(0, scriptTx(wide(0xff, 0xffffffff, 9), 0)))},
 		{"the transaction count in three bytes, outside any transaction", true, cat(versionV1, varint(1), bump, []byte{0xfd, 2, 0}, proven, unproven)},
 	}
 	out := &beefVector{}
