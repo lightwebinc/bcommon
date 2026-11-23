@@ -131,8 +131,15 @@ func MinedCheck(ctx context.Context, tx *transaction.Transaction, headers chaint
 	if tx == nil || tx.MerklePath == nil || headers == nil {
 		return false, nil
 	}
+	// The proof is folded to a root first: a txid the path does not hold, or a
+	// malformed path, is a proof that fails, never an outage. Only asking the
+	// headers can be an outage.
 	txid := chainhash.Hash(*tx.TxID())
-	ok, err := tx.MerklePath.Verify(ctx, &txid, headers)
+	root, err := tx.MerklePath.ComputeRoot(&txid)
+	if err != nil {
+		return false, nil
+	}
+	ok, err := headers.IsValidRootForHeight(ctx, root, tx.MerklePath.BlockHeight)
 	if err != nil {
 		return false, fmt.Errorf("headers: %w", err)
 	}

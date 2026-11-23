@@ -324,6 +324,13 @@ func TestMinedCheckKeepsAnOutageApart(t *testing.T) {
 	if ok, err := chaintoken.MinedCheck(ctx, tx, wrong); ok || err != nil {
 		t.Fatalf("another root: (%v, %v), want (false, nil)", ok, err)
 	}
+	stray := *tx
+	path := *tx.MerklePath
+	path.Path = nil
+	stray.MerklePath = &path
+	if ok, err := chaintoken.MinedCheck(ctx, &stray, failing{errors.New("never asked")}); ok || err != nil {
+		t.Fatalf("a malformed path: (%v, %v), want (false, nil) without asking the headers", ok, err)
+	}
 	down := errors.New("dial tcp: connect: cannot assign requested address")
 	ok, err := chaintoken.MinedCheck(ctx, tx, failing{down})
 	if ok || !errors.Is(err, down) {

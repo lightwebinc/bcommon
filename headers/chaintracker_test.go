@@ -332,17 +332,17 @@ func TestDefaultClientPolicy(t *testing.T) {
 // connections per host, so every other concurrent request closed its
 // connection after use: one host held 28,230 sockets in TIME_WAIT and then
 // failed to dial ("cannot assign requested address"). Concurrent requests
-// must reuse a bounded set of connections.
+// must keep their connections for the next request, not close them.
 func TestConcurrentRequestsReuseConnections(t *testing.T) {
 	body := fixture(t, "v1_root_known")
-	var conns atomic.Int64
+	var closed atomic.Int64
 	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write(body)
 	}))
 	srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
-		if s == http.StateNew {
-			conns.Add(1)
+		if s == http.StateClosed {
+			closed.Add(1)
 		}
 	}
 	srv.Start()
@@ -368,8 +368,11 @@ func TestConcurrentRequestsReuseConnections(t *testing.T) {
 		}(w)
 	}
 	wg.Wait()
-	if n := conns.Load(); n > 2*workers {
-		t.Fatalf("%d requests from %d workers opened %d connections, want at most %d", workers*each, workers, n, 2*workers)
+	// Every connection closed while the requests ran is one the pool did not
+	// keep: a socket in TIME_WAIT on a real host.
+	time.Sleep(50 * time.Millisecond)
+	if n := closed.Load(); n > 2 {
+		t.Fatalf("%d requests from %d workers closed %d connections on the way, want none kept back", workers*each, workers, n)
 	}
 }
 
@@ -395,8 +398,36 @@ func TestABridgeRootIsReused(t *testing.T) {
 			t.Fatalf("call %d: (%v, %v), want (%v, nil)", i, ok, err, tc.want)
 		}
 	}
-	if n := asked.Load(); n != 1 {
-		t.Fatalf("three checks at one height asked the bridge %d times, want 1", n)
+	// Two matches ask once; the mismatch asks again.
+	if n := asked.Load(); n != 2 {
+		t.Fatalf("three checks at one height asked the bridge %d times, want 2", n)
+	}
+}
+
+// After a reorganisation the bridge answers a new root at a height it
+// answered before: a proof against the new root asks again rather than fail
+// on the kept one.
+func TestABridgeMismatchAsksAgain(t *testing.T) {
+	var second atomic.Bool
+	other := strings.Repeat("ab", 32)
+	srv := serve(t, map[string]func(w http.ResponseWriter){
+		"/v1/root/101": func(w http.ResponseWriter) {
+			if second.Load() {
+				_, _ = w.Write([]byte(`{"height":101,"merkleRoot":"` + other + `"}`))
+				return
+			}
+			_, _ = w.Write(fixture(t, "v1_root_known"))
+		},
+	})
+	first, _ := chainhash.NewHashFromHex(fixtureField(t, "v1_root_known", "merkleRoot"))
+	after, _ := chainhash.NewHashFromHex(other)
+	c := New(srv.URL)
+	if ok, err := c.IsValidRootForHeight(context.Background(), first, 101); !ok || err != nil {
+		t.Fatalf("before: (%v, %v)", ok, err)
+	}
+	second.Store(true)
+	if ok, err := c.IsValidRootForHeight(context.Background(), after, 101); !ok || err != nil {
+		t.Fatalf("after the reorganisation: (%v, %v), want (true, nil)", ok, err)
 	}
 }
 

@@ -68,10 +68,10 @@ type Client struct {
 	// rate-limited public service should be asked once, and a web node asks
 	// its bridge for the same few heights thousands of times a second.
 	mu    sync.Mutex
-	roots map[uint32]provenRoot
+	roots map[uint32]keptRoot
 }
 
-type provenRoot struct {
+type keptRoot struct {
 	root chainhash.Hash
 	at   time.Time
 }
@@ -247,7 +247,11 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 	if c.err != nil {
 		return false, c.err
 	}
-	if hit, ok := c.provenRoot(height); ok {
+	// A kept root that matches is an answer. A public dialect's kept root was
+	// proven by its header's work, so a mismatch is an answer too; a bridge's
+	// is only what the bridge said, so a mismatch asks again: a reorganised
+	// tip must not fail a good proof for rootTTL.
+	if hit, ok := c.keptRoot(height); ok && (hit == *root || c.Kind != Native) {
 		return hit == *root, nil
 	}
 	if c.Kind != Native {
@@ -292,9 +296,9 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 	return *got == *root, nil
 }
 
-// provenRoot is the root answered for height within rootTTL, if any. Only an
+// keptRoot is the root answered for height within rootTTL, if any. Only an
 // answer is kept: a height the service does not hold yet is asked again.
-func (c *Client) provenRoot(height uint32) (chainhash.Hash, bool) {
+func (c *Client) keptRoot(height uint32) (chainhash.Hash, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	hit, ok := c.roots[height]
@@ -308,9 +312,9 @@ func (c *Client) keepRoot(height uint32, root chainhash.Hash) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.roots == nil || len(c.roots) >= rootCacheMax {
-		c.roots = map[uint32]provenRoot{}
+		c.roots = map[uint32]keptRoot{}
 	}
-	c.roots[height] = provenRoot{root: root, at: time.Now()}
+	c.roots[height] = keptRoot{root: root, at: time.Now()}
 }
 
 // CurrentHeight reports the header service's tip.
