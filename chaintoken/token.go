@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
@@ -114,13 +115,35 @@ func Stored(b []byte, bound int) (*transaction.Transaction, error) {
 
 // Mined reports whether tx carries a proof that verifies against the
 // headers. No transaction, no proof or no headers means nothing is mined.
+// It cannot tell a proof that fails from a header source that did not
+// answer; a caller that must (a reader answering "try again" rather than
+// "not proven") uses MinedCheck.
 func Mined(ctx context.Context, tx *transaction.Transaction, headers chaintracker.ChainTracker) bool {
-	if tx == nil || tx.MerklePath == nil || headers == nil {
-		return false
-	}
-	txid := chainhash.Hash(*tx.TxID())
-	ok, err := tx.MerklePath.Verify(ctx, &txid, headers)
+	ok, err := MinedCheck(ctx, tx, headers)
 	return err == nil && ok
+}
+
+// MinedCheck is Mined with the header source's failure kept apart: (false,
+// nil) when there is no proof or it does not verify, (false, err) when the
+// headers could not be asked (a dial, a timeout, a status that is not an
+// answer), so an outage is never reported as a failed proof.
+func MinedCheck(ctx context.Context, tx *transaction.Transaction, headers chaintracker.ChainTracker) (bool, error) {
+	if tx == nil || tx.MerklePath == nil || headers == nil {
+		return false, nil
+	}
+	// The proof is folded to a root first: a txid the path does not hold, or a
+	// malformed path, is a proof that fails, never an outage. Only asking the
+	// headers can be an outage.
+	txid := chainhash.Hash(*tx.TxID())
+	root, err := tx.MerklePath.ComputeRoot(&txid)
+	if err != nil {
+		return false, nil
+	}
+	ok, err := headers.IsValidRootForHeight(ctx, root, tx.MerklePath.BlockHeight)
+	if err != nil {
+		return false, fmt.Errorf("headers: %w", err)
+	}
+	return ok, nil
 }
 
 // CheckDER refuses, as ErrSignature, a signature that is not the one

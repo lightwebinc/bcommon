@@ -307,6 +307,47 @@ func TestMinedNeedsEverything(t *testing.T) {
 	}
 }
 
+// MinedCheck keeps a header source that did not answer apart from a proof
+// that failed: a lab web node out of local ports reported every read as
+// "its proof does not verify".
+func TestMinedCheckKeepsAnOutageApart(t *testing.T) {
+	v, tracker := loadVector(t)
+	ctx := context.Background()
+	tx, err := chaintoken.Stored(goldentest.Hex(t, v.Replays[0].TokenStoredHex), 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := chaintoken.MinedCheck(ctx, tx, tracker); !ok || err != nil {
+		t.Fatalf("proven: (%v, %v), want (true, nil)", ok, err)
+	}
+	wrong := &goldentest.Tracker{Roots: map[uint32]string{tx.MerklePath.BlockHeight: chainhash.Hash{}.String()}}
+	if ok, err := chaintoken.MinedCheck(ctx, tx, wrong); ok || err != nil {
+		t.Fatalf("another root: (%v, %v), want (false, nil)", ok, err)
+	}
+	stray := *tx
+	path := *tx.MerklePath
+	path.Path = nil
+	stray.MerklePath = &path
+	if ok, err := chaintoken.MinedCheck(ctx, &stray, failing{errors.New("never asked")}); ok || err != nil {
+		t.Fatalf("a malformed path: (%v, %v), want (false, nil) without asking the headers", ok, err)
+	}
+	down := errors.New("dial tcp: connect: cannot assign requested address")
+	ok, err := chaintoken.MinedCheck(ctx, tx, failing{down})
+	if ok || !errors.Is(err, down) {
+		t.Fatalf("headers down: (%v, %v), want (false, an error wrapping the dial)", ok, err)
+	}
+	if chaintoken.Mined(ctx, tx, failing{down}) {
+		t.Fatal("Mined with the headers down")
+	}
+}
+
+type failing struct{ err error }
+
+func (f failing) IsValidRootForHeight(context.Context, *chainhash.Hash, uint32) (bool, error) {
+	return false, f.err
+}
+func (f failing) CurrentHeight(context.Context) (uint32, error) { return 0, f.err }
+
 // The bound is the caller's: a BEEF one byte over it is refused before it
 // is read, and zero means the default.
 func TestBound(t *testing.T) {

@@ -62,14 +62,16 @@ type Client struct {
 
 	err error
 
-	// roots holds roots already proven by their header's work, by height,
-	// for rootTTL: one object's ancestry often names the same block more
-	// than once, and a rate-limited public service should be asked once.
+	// roots holds roots already answered, by height, for rootTTL: proven by
+	// their header's work from a public dialect, or as a bridge answered them.
+	// One object's ancestry often names the same block more than once, a
+	// rate-limited public service should be asked once, and a web node asks
+	// its bridge for the same few heights thousands of times a second.
 	mu    sync.Mutex
-	roots map[uint32]provenRoot
+	roots map[uint32]keptRoot
 }
 
-type provenRoot struct {
+type keptRoot struct {
 	root chainhash.Hash
 	at   time.Time
 }
@@ -125,7 +127,13 @@ var noProxyTransport = &http.Transport{
 	DialContext:         (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
 	TLSClientConfig:     &tls.Config{MinVersion: tls.VersionTLS12},
 	TLSHandshakeTimeout: 10 * time.Second,
-	MaxIdleConns:        4,
+	// A web node checks two proofs per read at thousands of reads a second,
+	// against one header service. With two idle connections per host (the
+	// net/http default) every other concurrent request closes its connection
+	// after use, and a lab host ran out of local ports with 28,230 sockets in
+	// TIME_WAIT. 64 kept per host covers a gateway's read slots.
+	MaxIdleConns:        64,
+	MaxIdleConnsPerHost: 64,
 	IdleConnTimeout:     30 * time.Second,
 }
 
@@ -239,13 +247,14 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 	if c.err != nil {
 		return false, c.err
 	}
+	// A kept root that matches is an answer. A public dialect's kept root was
+	// proven by its header's work, so a mismatch is an answer too; a bridge's
+	// is only what the bridge said, so a mismatch asks again: a reorganised
+	// tip must not fail a good proof for rootTTL.
+	if hit, ok := c.keptRoot(height); ok && (hit == *root || c.Kind != Native) {
+		return hit == *root, nil
+	}
 	if c.Kind != Native {
-		c.mu.Lock()
-		hit, ok := c.roots[height]
-		c.mu.Unlock()
-		if ok && time.Since(hit.at) < rootTTL {
-			return hit.root == *root, nil
-		}
 		h, err := c.fullHeader(ctx, height)
 		if err != nil || h == nil {
 			return false, err
@@ -255,12 +264,7 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 		if err := h.check(height, c.minDifficulty()); err != nil {
 			return false, err
 		}
-		c.mu.Lock()
-		if c.roots == nil || len(c.roots) >= rootCacheMax {
-			c.roots = map[uint32]provenRoot{}
-		}
-		c.roots[height] = provenRoot{root: h.Root, at: time.Now()}
-		c.mu.Unlock()
+		c.keepRoot(height, h.Root)
 		return h.Root == *root, nil
 	}
 	var answer struct {
@@ -281,11 +285,36 @@ func (c *Client) IsValidRootForHeight(ctx context.Context, root *chainhash.Hash,
 	if answer.MerkleRoot == "" {
 		return false, fmt.Errorf("header service: no merkleRoot for height %d", height)
 	}
-	// Compared as the SDK's display hex, which is how the service renders it.
-	// Parsing to a hash and comparing bytes would work too; comparing the
-	// strings makes a byte-order mistake on either side visible as a plain
-	// mismatch rather than as a silent reversal.
-	return strings.EqualFold(answer.MerkleRoot, root.String()), nil
+	// The service renders the SDK's display hex, which NewHashFromHex reads
+	// back into the SDK's byte order: a byte-order mistake on either side is
+	// still a plain mismatch, not a silent reversal.
+	got, err := chainhash.NewHashFromHex(answer.MerkleRoot)
+	if err != nil {
+		return false, fmt.Errorf("header service: merkleRoot for height %d: %w", height, err)
+	}
+	c.keepRoot(height, *got)
+	return *got == *root, nil
+}
+
+// keptRoot is the root answered for height within rootTTL, if any. Only an
+// answer is kept: a height the service does not hold yet is asked again.
+func (c *Client) keptRoot(height uint32) (chainhash.Hash, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	hit, ok := c.roots[height]
+	if !ok || time.Since(hit.at) >= rootTTL {
+		return chainhash.Hash{}, false
+	}
+	return hit.root, true
+}
+
+func (c *Client) keepRoot(height uint32, root chainhash.Hash) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.roots == nil || len(c.roots) >= rootCacheMax {
+		c.roots = map[uint32]keptRoot{}
+	}
+	c.roots[height] = keptRoot{root: root, at: time.Now()}
 }
 
 // CurrentHeight reports the header service's tip.

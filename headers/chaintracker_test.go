@@ -6,12 +6,14 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -322,5 +324,133 @@ func TestDefaultClientPolicy(t *testing.T) {
 		if tr.TLSHandshakeTimeout != 10*time.Second {
 			t.Errorf("Timeout %v: the TLS handshake is bounded at %v, want 10s", tc.in, tr.TLSHandshakeTimeout)
 		}
+	}
+}
+
+// A web node checks two proofs per read at thousands of reads a second, all
+// against one header service. The default transport kept two idle
+// connections per host, so every other concurrent request closed its
+// connection after use: one host held 28,230 sockets in TIME_WAIT and then
+// failed to dial ("cannot assign requested address"). Concurrent requests
+// must keep their connections for the next request, not close them.
+func TestConcurrentRequestsReuseConnections(t *testing.T) {
+	body := fixture(t, "v1_root_known")
+	var closed atomic.Int64
+	srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "application/json")
+		_, _ = w.Write(body)
+	}))
+	srv.Config.ConnState = func(_ net.Conn, s http.ConnState) {
+		if s == http.StateClosed {
+			closed.Add(1)
+		}
+	}
+	srv.Start()
+	t.Cleanup(srv.Close)
+	root, err := chainhash.NewHashFromHex(fixtureField(t, "v1_root_known", "merkleRoot"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const workers, each = 32, 25
+	c := New(srv.URL)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func(w int) {
+			defer wg.Done()
+			for i := 0; i < each; i++ {
+				// A height of its own each time, so no proven root is reused.
+				if _, err := c.IsValidRootForHeight(context.Background(), root, uint32(1000+w*each+i)); err != nil {
+					t.Error(err)
+					return
+				}
+			}
+		}(w)
+	}
+	wg.Wait()
+	// Every connection closed while the requests ran is one the pool did not
+	// keep: a socket in TIME_WAIT on a real host.
+	time.Sleep(50 * time.Millisecond)
+	if n := closed.Load(); n > 2 {
+		t.Fatalf("%d requests from %d workers closed %d connections on the way, want none kept back", workers*each, workers, n)
+	}
+}
+
+// The bridge dialect reuses a root it has been answered, as the public
+// dialects do: two proofs at one height ask once.
+func TestABridgeRootIsReused(t *testing.T) {
+	var asked atomic.Int64
+	srv := serve(t, map[string]func(w http.ResponseWriter){
+		"/v1/root/101": func(w http.ResponseWriter) { asked.Add(1); _, _ = w.Write(fixture(t, "v1_root_known")) },
+	})
+	root, err := chainhash.NewHashFromHex(fixtureField(t, "v1_root_known", "merkleRoot"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, _ := chainhash.NewHashFromHex(strings.Repeat("ab", 32))
+	c := New(srv.URL)
+	for i, tc := range []struct {
+		root *chainhash.Hash
+		want bool
+	}{{root, true}, {root, true}, {other, false}} {
+		ok, err := c.IsValidRootForHeight(context.Background(), tc.root, 101)
+		if err != nil || ok != tc.want {
+			t.Fatalf("call %d: (%v, %v), want (%v, nil)", i, ok, err, tc.want)
+		}
+	}
+	// Two matches ask once; the mismatch asks again.
+	if n := asked.Load(); n != 2 {
+		t.Fatalf("three checks at one height asked the bridge %d times, want 2", n)
+	}
+}
+
+// After a reorganisation the bridge answers a new root at a height it
+// answered before: a proof against the new root asks again rather than fail
+// on the kept one.
+func TestABridgeMismatchAsksAgain(t *testing.T) {
+	var second atomic.Bool
+	other := strings.Repeat("ab", 32)
+	srv := serve(t, map[string]func(w http.ResponseWriter){
+		"/v1/root/101": func(w http.ResponseWriter) {
+			if second.Load() {
+				_, _ = w.Write([]byte(`{"height":101,"merkleRoot":"` + other + `"}`))
+				return
+			}
+			_, _ = w.Write(fixture(t, "v1_root_known"))
+		},
+	})
+	first, _ := chainhash.NewHashFromHex(fixtureField(t, "v1_root_known", "merkleRoot"))
+	after, _ := chainhash.NewHashFromHex(other)
+	c := New(srv.URL)
+	if ok, err := c.IsValidRootForHeight(context.Background(), first, 101); !ok || err != nil {
+		t.Fatalf("before: (%v, %v)", ok, err)
+	}
+	second.Store(true)
+	if ok, err := c.IsValidRootForHeight(context.Background(), after, 101); !ok || err != nil {
+		t.Fatalf("after the reorganisation: (%v, %v), want (true, nil)", ok, err)
+	}
+}
+
+// Only an answer is reused: a height the bridge does not hold yet is asked
+// again, so it validates once the bridge has it.
+func TestABridgeNotYetIsNotReused(t *testing.T) {
+	var held atomic.Bool
+	srv := serve(t, map[string]func(w http.ResponseWriter){
+		"/v1/root/101": func(w http.ResponseWriter) {
+			if !held.Load() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			_, _ = w.Write(fixture(t, "v1_root_known"))
+		},
+	})
+	root, _ := chainhash.NewHashFromHex(fixtureField(t, "v1_root_known", "merkleRoot"))
+	c := New(srv.URL)
+	if ok, err := c.IsValidRootForHeight(context.Background(), root, 101); ok || err != nil {
+		t.Fatalf("not yet held: (%v, %v), want (false, nil)", ok, err)
+	}
+	held.Store(true)
+	if ok, err := c.IsValidRootForHeight(context.Background(), root, 101); !ok || err != nil {
+		t.Fatalf("held now: (%v, %v), want (true, nil)", ok, err)
 	}
 }
