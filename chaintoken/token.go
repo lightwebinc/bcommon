@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"fmt"
 
 	"github.com/bsv-blockchain/go-sdk/chainhash"
 	ec "github.com/bsv-blockchain/go-sdk/primitives/ec"
@@ -114,13 +115,28 @@ func Stored(b []byte, bound int) (*transaction.Transaction, error) {
 
 // Mined reports whether tx carries a proof that verifies against the
 // headers. No transaction, no proof or no headers means nothing is mined.
+// It cannot tell a proof that fails from a header source that did not
+// answer; a caller that must (a reader answering "try again" rather than
+// "not proven") uses MinedCheck.
 func Mined(ctx context.Context, tx *transaction.Transaction, headers chaintracker.ChainTracker) bool {
+	ok, err := MinedCheck(ctx, tx, headers)
+	return err == nil && ok
+}
+
+// MinedCheck is Mined with the header source's failure kept apart: (false,
+// nil) when there is no proof or it does not verify, (false, err) when the
+// headers could not be asked (a dial, a timeout, a status that is not an
+// answer), so an outage is never reported as a failed proof.
+func MinedCheck(ctx context.Context, tx *transaction.Transaction, headers chaintracker.ChainTracker) (bool, error) {
 	if tx == nil || tx.MerklePath == nil || headers == nil {
-		return false
+		return false, nil
 	}
 	txid := chainhash.Hash(*tx.TxID())
 	ok, err := tx.MerklePath.Verify(ctx, &txid, headers)
-	return err == nil && ok
+	if err != nil {
+		return false, fmt.Errorf("headers: %w", err)
+	}
+	return ok, nil
 }
 
 // CheckDER refuses, as ErrSignature, a signature that is not the one
