@@ -63,14 +63,14 @@ inputs.
 
 ## What moving from v1.7.5 to v1.7.8 changed
 
-Nothing for a reader of this library's objects. No derivation, signature or
-encoding changed: every vector is byte for byte what v1.7.5 produced. The
+Nothing for a reader of this library's objects, and one thing inside the
+library (the first row). No derivation, signature or encoding changed: every vector is byte for byte what v1.7.5 produced. The
 SDK's `spv`, `transaction` and `wallet` packages are unchanged between the
 two versions.
 
 | Change in go-sdk | From | Effect here |
 | --- | --- | --- |
-| `ParsePubKey` refuses a compressed key whose x is not below the field prime | v1.7.7 | None: `guard.ParsePubKey` already refused it, and still does |
+| `ParsePubKey` refuses a compressed key whose x is not below the field prime | v1.7.7 | No key is taken that was refused before, and none refused that was taken: `guard.ParsePubKey` already refused it wherever a key from the wire is kept. Two things follow. Where the SDK parses a key before the guard sees it (an identity key header in `termsroute`, a payer key in devkit's `paidhost`), the refusal now comes from the SDK, one step earlier. And the SDK's PushDrop decoder reads nothing of a script written with such a key, so `pushdrop.Loose` reads it as before for the readers that must tell whose a script is (`pushdrop.DecodeTagged`, `carrier.Decode`, `carrier.DecodeFunding`); `CheckCanonical` refuses it as it did |
 | `DecodeScript` treats an `OP_RETURN` that follows an unmatched `OP_ENDIF` as an ordinary opcode, where it folded the rest of the script into one chunk | v1.7.6 | None in the vectors. `pushdrop`'s canonical check reads chunks, and no record this library writes has an unmatched `OP_ENDIF` |
 | The SDK's own certificate field decryption refuses a value that is not UTF-8 | v1.7.6 | None: `resolve` decrypts revealed fields itself and does not call it |
 | BIP39 normalizes a mnemonic and passphrase (NFKD), a BIP32 derived private key stays 32 bytes, `auth.Peer.ToPeerOnSession` is added, and the storage URL helpers return sentinel errors | v1.7.6 to v1.7.8 | None: the library calls none of them |
