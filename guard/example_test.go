@@ -67,7 +67,8 @@ func ExampleParseBEEF() {
 }
 
 // ParsePubKey takes a compressed key only in its one canonical encoding.
-// 02 || p+1 names the same point as the key with x = 1, and go-sdk reads it.
+// 02 || p+1 names the same point as the key with x = 1; go-sdk read it through
+// v1.7.6 and refuses it from v1.7.7.
 func ExampleParsePubKey() {
 	x1, _ := hex.DecodeString("020000000000000000000000000000000000000000000000000000000000000001")
 	alias, _ := hex.DecodeString("02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30")
@@ -77,10 +78,10 @@ func ExampleParsePubKey() {
 
 	_, err = guard.ParsePubKey(alias)
 	fmt.Println(err)
-	sdk, err := ec.PublicKeyFromBytes(alias)
-	fmt.Println("go-sdk:", err == nil, sdk.X.Cmp(k.X) != 0)
+	_, err = ec.PublicKeyFromBytes(alias)
+	fmt.Println("go-sdk refuses it too:", err != nil)
 	// Output:
 	// true <nil>
 	// guard: public key refused: x is not below the field prime
-	// go-sdk: true true
+	// go-sdk refuses it too: true
 }

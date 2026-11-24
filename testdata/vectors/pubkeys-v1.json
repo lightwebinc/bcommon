@@ -27,13 +27,13 @@
     {
       "name": "02 || p+1, an alias of x = 1",
       "accept": false,
-      "sdkParses": true,
+      "sdkParses": false,
       "keyHex": "02fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30"
     },
     {
       "name": "03 || p+1, an alias of x = 1",
       "accept": false,
-      "sdkParses": true,
+      "sdkParses": false,
       "keyHex": "03fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30"
     },
     {
@@ -45,7 +45,7 @@
     {
       "name": "02 || 2^256-1",
       "accept": false,
-      "sdkParses": true,
+      "sdkParses": false,
       "keyHex": "02ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
     },
     {
