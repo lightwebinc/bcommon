@@ -505,7 +505,8 @@ func TestTermsafeImportsOnlyTheStandardLibrary(t *testing.T) {
 // chain; payeecmd is verbs over payee alone, and its tests stand a purse in;
 // unicast is a submit fan-out over the publish leg and nothing else;
 // feepolicy does the policy fetch so that mint stays pure, and reaches
-// nothing but mint.
+// nothing but mint; engineask is one HTTP ask to the engine on the host and
+// reaches nothing.
 var layers = map[string]struct {
 	module []string
 	tests  []string
@@ -526,6 +527,7 @@ var layers = map[string]struct {
 	"unicast":    {module: []string{"publish"}, sdk: true},
 	"heldpay":    {module: []string{"nodeapi"}, tests: []string{"testchain"}, sdk: true},
 	"resolve":    {sdk: true},
+	"engineask":  {},
 }
 
 // testOnly are the packages that exist for tests and local trials. No
