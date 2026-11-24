@@ -49,6 +49,7 @@ beside the standard library and, where noted, go-sdk.
 | 0 | `commit` | none | no |
 | 0 | `chirp` | none | yes |
 | 0 | `hostset` | none | no |
+| 0 | `engineask` | none | no |
 | 0 | `resolve` | none | yes |
 | 0 | `guard` | none | yes |
 | 0 | `mint` | none | yes |
