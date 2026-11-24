@@ -366,10 +366,11 @@ interface PubkeyVector {
   cases: Array<{ name: string; accept: boolean; sdkParses: boolean; keyHex: string }>
 }
 
-// The SDK takes the aliases the rule refuses, as go-sdk does, but it writes
+// The SDK takes the aliases the rule refuses, as go-sdk did through v1.7.6
+// (the vector's sdkParses is go-sdk's answer, false from v1.7.7), but it writes
 // the key back reduced: the alias is a second encoding of the point, which
 // is why the check is made on the bytes.
-test('pubkeys-v1: a key is taken exactly when the independent rule takes it, and the SDK takes the aliases', () => {
+test('pubkeys-v1: a key is taken exactly when the independent rule takes it, and @bsv/sdk takes the aliases', () => {
   const v = vector<PubkeyVector>('pubkeys-v1.json')
   let aliases = 0
   for (const c of v.cases) {
@@ -377,7 +378,7 @@ test('pubkeys-v1: a key is taken exactly when the independent rule takes it, and
     const k = strictPublicKey(b)
     assert.equal(k !== undefined, c.accept, c.name)
     if (k !== undefined) assert.equal(k.toString(), c.keyHex, `${c.name}: writes back as itself`)
-    if (!c.accept && c.sdkParses && b.length === 33) {
+    if (!c.accept && b.length === 33) {
       let sdk: PublicKey | undefined
       try {
         sdk = PublicKey.fromString(c.keyHex)

@@ -21,7 +21,7 @@ var fieldPrime, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffff
 // 0x02 or 0x03, and an x coordinate below the field prime that names a point
 // on the curve. Only then is the key handed to the SDK.
 //
-// go-sdk v1.5.2 to v1.7.5 accept a compressed key whose x is at or above
+// go-sdk v1.5.2 to v1.7.6 accept a compressed key whose x is at or above
 // the prime (02 || p+1 is an alias of the point with x = 1), keep x
 // unreduced and write the alias bytes back, so one point has two encodings and IsEqual
 // calls them two keys. No private key is known for such a key, so it cannot
@@ -29,7 +29,9 @@ var fieldPrime, _ = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffff
 // pin, an index, a de-duplication) would treat the alias as a second key.
 // An uncompressed or hybrid encoding is refused too: a key from the wire in
 // this module is always compressed, and a second encoding of the same point
-// is the same problem.
+// is the same problem. go-sdk refuses the alias itself from v1.7.7; this
+// check stays, so the rule does not depend on the SDK an application builds
+// with.
 func ParsePubKey(b []byte) (*ec.PublicKey, error) {
 	if len(b) != 33 {
 		return nil, fmt.Errorf("%w: %d bytes, want 33 (compressed)", ErrPubKey, len(b))

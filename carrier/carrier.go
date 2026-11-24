@@ -34,7 +34,6 @@ import (
 	hash "github.com/bsv-blockchain/go-sdk/primitives/hash"
 	"github.com/bsv-blockchain/go-sdk/script"
 	"github.com/bsv-blockchain/go-sdk/transaction"
-	sdkpushdrop "github.com/bsv-blockchain/go-sdk/transaction/template/pushdrop"
 	"github.com/bsv-blockchain/go-sdk/wallet"
 
 	"github.com/lightwebinc/bcommon/guard"
@@ -135,7 +134,7 @@ func Decode(tx *transaction.Transaction, classify Classify) (*Carrier, error) {
 		if out == nil || out.LockingScript == nil {
 			continue
 		}
-		d := sdkpushdrop.Decode(out.LockingScript)
+		d := pushdrop.Loose(out.LockingScript)
 		if d == nil || d.LockingPublicKey == nil || len(d.Fields) != 2 {
 			continue
 		}
@@ -382,7 +381,7 @@ func DecodeFunding(s *script.Script, tag []byte) (*ec.PublicKey, bool) {
 	if s == nil {
 		return nil, false
 	}
-	d := sdkpushdrop.Decode(s)
+	d := pushdrop.Loose(s)
 	if d == nil || d.LockingPublicKey == nil || len(d.Fields) != 1 || !bytes.Equal(d.Fields[0], tag) {
 		return nil, false
 	}

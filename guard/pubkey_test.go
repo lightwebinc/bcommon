@@ -40,7 +40,6 @@ func readPubkeyVector(t testing.TB) pubkeyVector {
 // it was read from. The SDK's verdict is re-checked, since the cases it
 // takes and the rule refuses are why ParsePubKey exists.
 func TestParsePubKeyIndependentVector(t *testing.T) {
-	var aliases int
 	for _, c := range readPubkeyVector(t).Cases {
 		t.Run(c.Name, func(t *testing.T) {
 			b := unhex(t, c.KeyHex)
@@ -58,14 +57,11 @@ func TestParsePubKeyIndependentVector(t *testing.T) {
 			if c.SDKParses != (sdkErr == nil) {
 				t.Fatalf("go-sdk parses: %v, the vector says %v", sdkErr == nil, c.SDKParses)
 			}
-			if !c.Accept && c.SDKParses && len(b) == 33 {
-				aliases++
-			}
 		})
 	}
-	if aliases == 0 {
-		t.Fatal("no case go-sdk takes and the rule refuses: the vector no longer shows the alias")
-	}
+	// Through go-sdk v1.7.6 the vector also showed cases the SDK took and the
+	// rule refused (a compressed key with x at or above the prime). From
+	// v1.7.7 the SDK refuses them too, and sdkParses above records that.
 }
 
 func TestParsePubKeyHexRefusesWhatIsNotHex(t *testing.T) {

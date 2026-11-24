@@ -102,7 +102,7 @@ Its commands' flags are in [devkit/README.md](devkit/README.md).
 Go, pinned to an exact tag, the latest in [docs/versioning.md](docs/versioning.md):
 
 ```bash
-go get github.com/lightwebinc/bcommon@v0.39.0
+go get github.com/lightwebinc/bcommon@v0.40.0
 ```
 
 TypeScript: the package is packed from the same tag and vendored, so the
@@ -110,10 +110,10 @@ application's lockfile pins its bytes, and the application supplies the
 `@bsv/sdk` peer at the exact version the package names:
 
 ```bash
-git clone --depth 1 --branch v0.39.0 https://github.com/lightwebinc/bcommon
-cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.39.0.tgz
+git clone --depth 1 --branch v0.40.0 https://github.com/lightwebinc/bcommon
+cd bcommon/ts && npm ci && npm pack    # writes lightwebinc-bcommon-0.40.0.tgz
 # in the application, with the tarball copied to vendor/
-npm install ./vendor/lightwebinc-bcommon-0.39.0.tgz @bsv/sdk@4.1.2
+npm install ./vendor/lightwebinc-bcommon-0.40.0.tgz @bsv/sdk@4.1.2
 ```
 
 ## Usage
@@ -192,7 +192,7 @@ in-process test chain.
 ## Requirements
 
 Go 1.27.2 or later, and github.com/bsv-blockchain/go-sdk pinned at exactly
-v1.7.5, the library's only direct dependency. See
+v1.7.8, the library's only direct dependency. See
 [docs/dependencies.md](docs/dependencies.md). The TypeScript package needs
 Node 24 and `@bsv/sdk` 4.1.2 exactly, as a peer; `make ts-test` builds and
 tests it, and nothing in the Go build needs Node.

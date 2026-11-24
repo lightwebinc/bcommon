@@ -62,7 +62,7 @@
       "kind": "record",
       "name": "the key replaced by 02 || p+1, an alias of x = 1",
       "accept": false,
-      "sdkDecodes": true,
+      "sdkDecodes": false,
       "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac1173616d706c65206f626a656374206f6e6546304402203393ac4c2a92ffa69160892026cf514fa65b713232ab673016eb047e56073e7102206e931f69c0147553ee3b6db195ccc09e61be4d2ee8a08ac35b0fd0b4696905716d"
     },
     {
@@ -132,7 +132,7 @@
       "kind": "funding",
       "name": "the key replaced by 02 || p+1, an alias of x = 1",
       "accept": false,
-      "sdkDecodes": true,
+      "sdkDecodes": false,
       "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac0376780275"
     },
     {
@@ -195,7 +195,7 @@
       "kind": "state",
       "name": "the key replaced by 02 || p+1, an alias of x = 1",
       "accept": false,
-      "sdkDecodes": true,
+      "sdkDecodes": false,
       "lockHex": "2102fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc30ac0376780120a59cb135d8f34f0e5d02b01b7509ec30998abaedb2a1ce0182c402a533d24050463044022030672562b4d95bca50de6ef36e5fd094093f3d353e51d44299c89d0c6f1f974b02206202b7c113a1661ab573d6de0ed24800317423cf77c9863168d1577a26fd6ba06d75"
     },
     {

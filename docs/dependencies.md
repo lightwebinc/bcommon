@@ -28,7 +28,7 @@ in [NOTICE](../NOTICE), with their licenses, and their full texts are in
 `LICENSE-THIRD-PARTY`, which `make licences-update` regenerates from what the
 packages actually link and `make licences` checks is current.
 
-## Why go-sdk is pinned at exactly v1.7.5
+## Why go-sdk is pinned at exactly v1.7.8
 
 The pin is exact rather than a minimum because minimal version selection
 takes the higher of two requirements. A raised pin here would silently change
@@ -43,7 +43,7 @@ pin:
 | A merkle path's declared counts sized an allocation | bounded from v1.5.2 | `guard` walks every BUMP, BEEF and raw transaction before the SDK sees it |
 | A BEEF's ancestry was walked once per path, so a few kilobytes held a reader for hours | walked once per transaction from v1.7.3 | `guard.Limits.Ancestry` is there for a caller whose own walker is of the old kind; `DefaultLimits` sets none |
 | The BRC-103 handshake sent Go's field names, which TypeScript peers on `@bsv/sdk` 2.8 and later refuse | the wire shape from v1.7.1, which still reads the old names | |
-| A compressed public key whose x is at or above the field prime was accepted | accepted through v1.7.5 | `guard.ParsePubKey` is in front of every key from the wire |
+| A compressed public key whose x is at or above the field prime was accepted | refused from v1.7.7 | `guard.ParsePubKey` is in front of every key from the wire, whatever the SDK does |
 
 ## What moving from v1.7.1 to v1.7.5 changed
 
@@ -60,6 +60,25 @@ what v1.7.1 produced.
 A test that builds a parent by hand, with no inputs, marks it as mined with
 `goldentest.Proven`: the SDK now refuses an unmined transaction without
 inputs.
+
+## What moving from v1.7.5 to v1.7.8 changed
+
+Nothing for a reader of this library's objects, and one thing inside the
+library (the first row). No derivation, signature or encoding changed: every vector is byte for byte what v1.7.5 produced. The
+SDK's `spv`, `transaction` and `wallet` packages are unchanged between the
+two versions.
+
+| Change in go-sdk | From | Effect here |
+| --- | --- | --- |
+| `ParsePubKey` refuses a compressed key whose x is not below the field prime | v1.7.7 | No key is taken that was refused before, and none refused that was taken: `guard.ParsePubKey` already refused it wherever a key from the wire is kept. Two things follow. Where the SDK parses a key before the guard sees it (an identity key header in `termsroute`, a payer key in devkit's `paidhost`), the refusal now comes from the SDK, one step earlier. And the SDK's PushDrop decoder reads nothing of a script written with such a key, so `pushdrop.Loose` reads it as before for the readers that must tell whose a script is (`pushdrop.DecodeTagged`, `carrier.Decode`, `carrier.DecodeFunding`); `CheckCanonical` refuses it as it did |
+| `DecodeScript` treats an `OP_RETURN` that follows an unmatched `OP_ENDIF` as an ordinary opcode, where it folded the rest of the script into one chunk | v1.7.6 | None in the vectors. `pushdrop`'s canonical check reads chunks, and no record this library writes has an unmatched `OP_ENDIF` |
+| The SDK's own certificate field decryption refuses a value that is not UTF-8 | v1.7.6 | None: `resolve` decrypts revealed fields itself and does not call it |
+| BIP39 normalizes a mnemonic and passphrase (NFKD), a BIP32 derived private key stays 32 bytes, `auth.Peer.ToPeerOnSession` is added, and the storage URL helpers return sentinel errors | v1.7.6 to v1.7.8 | None: the library calls none of them |
+
+The move was made because go-overlay-services v1.3.10 requires go-sdk
+v1.7.8, so an overlay host that mounts an application's module already builds
+that application on v1.7.8. Pinning it here has the applications test on the
+SDK they run on.
 
 ## Raising the pin
 

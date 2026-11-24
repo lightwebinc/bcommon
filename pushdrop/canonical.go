@@ -24,8 +24,8 @@ var ErrNonCanonical = errors.New("pushdrop: not the canonical encoding")
 // fields and OP_DROP for one left over, and nothing else.
 //
 // go-sdk's decoder reads looser forms too: a wider push, a trailing opcode,
-// drops written one at a time, an uncompressed key or a compressed key whose
-// x is at or above the field prime. Each is another script for the same
+// drops written one at a time, an uncompressed key or, through v1.7.6, a
+// compressed key whose x is at or above the field prime. Each is another script for the same
 // fields, so a reader that keys on script bytes, or on key bytes, would see
 // two outputs where there is one.
 func CheckCanonical(s *script.Script) error {

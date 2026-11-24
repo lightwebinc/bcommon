@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bsv-blockchain/go-sdk/script"
@@ -70,6 +71,39 @@ func TestCanonicalIndependentVector(t *testing.T) {
 	}
 	if malleable == 0 {
 		t.Fatal("no case go-sdk reads and the rule refuses: the vector no longer shows the malleation")
+	}
+}
+
+// A state token whose key is an alias (x at or above the field prime) is the
+// caller's output written another way, so DecodeTagged refuses it as
+// ErrNonCanonical whether or not the SDK in use still parses such a key, also
+// when the key is in a wider push than it needs. Under another tag the same
+// script is somebody else's: ErrNotTagged.
+func TestDecodeTaggedAliasKey(t *testing.T) {
+	v := readPushdropVector(t)
+	stateTag := goldentest.Hex(t, v.StateTagHex)
+	var seen int
+	for _, c := range v.Cases {
+		if c.Kind != "state" || !strings.Contains(c.Name, "an alias of x = 1") {
+			continue
+		}
+		seen++
+		direct := script.Script(goldentest.Hex(t, c.LockHex))
+		if direct[0] != 33 {
+			t.Fatalf("the vector's alias key is not a direct push: %x", direct[:2])
+		}
+		wide := script.Script(append([]byte{script.OpPUSHDATA1}, direct...))
+		for name, s := range map[string]script.Script{"direct push": direct, "OP_PUSHDATA1": wide} {
+			if _, err := pushdrop.DecodeTagged(&s, stateTag, 2); !errors.Is(err, pushdrop.ErrNonCanonical) {
+				t.Fatalf("%s: %v, want ErrNonCanonical", name, err)
+			}
+			if _, err := pushdrop.DecodeTagged(&s, []byte("another tag"), 2); !errors.Is(err, pushdrop.ErrNotTagged) {
+				t.Fatalf("%s under another tag: %v, want ErrNotTagged", name, err)
+			}
+		}
+	}
+	if seen == 0 {
+		t.Fatal("the vector has no state token with an alias key")
 	}
 }
 
